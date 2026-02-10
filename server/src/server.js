@@ -17,9 +17,18 @@ connectDB()
 
     // Start server
     const server = app.listen(config.PORT, () => {
+      const backendUrl = `http://localhost:${config.PORT}`;
       logger.info(
         `Server running in ${config.NODE_ENV} mode on port ${config.PORT}`
       );
+      console.log('\n========================================');
+      console.log('  Backend successfully running');
+      console.log('  MongoDB connected');
+      console.log('  Default roles initialized');
+      console.log('  Server running in', config.NODE_ENV, 'mode on port', config.PORT);
+      console.log('  Backend URL:', backendUrl);
+      console.log('  API Docs:', `${backendUrl}/api-docs`);
+      console.log('========================================\n');
     });
 
     // Handle unhandled promise rejections

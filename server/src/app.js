@@ -2,6 +2,8 @@ const express = require('express');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
@@ -35,7 +37,37 @@ if (config.NODE_ENV === 'development') {
 // Global rate limiter
 app.use(globalRateLimiter);
 
-// Health check endpoint
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'GetMyPair API Documentation',
+}));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Check if the server is running and healthy
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Server is running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Server is running"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
