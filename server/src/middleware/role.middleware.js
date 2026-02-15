@@ -11,7 +11,7 @@ const roleMiddleware = (allowedRoles) => {
       return forbidden(res, 'Authentication required');
     }
 
-    const userRole = req.user.role?.name || req.user.role;
+    const userRole = req.user.role;
 
     if (!userRole) {
       return forbidden(res, 'User role not found');

@@ -34,26 +34,32 @@ const options = {
               type: 'string',
               description: 'User ID',
             },
+            mobile: {
+              type: 'string',
+              description: 'User mobile number',
+            },
+            name: {
+              type: 'string',
+              description: 'User full name',
+            },
+            dateOfBirth: {
+              type: 'string',
+              format: 'date',
+              description: 'User date of birth',
+            },
+            gender: {
+              type: 'string',
+              enum: ['male', 'female', 'other'],
+              description: 'User gender',
+            },
             email: {
               type: 'string',
               format: 'email',
-              description: 'User email address',
+              description: 'User email address (optional)',
             },
-            firstName: {
-              type: 'string',
-              description: 'User first name',
-            },
-            lastName: {
-              type: 'string',
-              description: 'User last name',
-            },
-            phone: {
-              type: 'string',
-              description: 'User phone number',
-            },
-            isEmailVerified: {
+            isPhoneVerified: {
               type: 'boolean',
-              description: 'Email verification status',
+              description: 'Phone verification status',
             },
             isActive: {
               type: 'boolean',
@@ -63,6 +69,11 @@ const options = {
               type: 'object',
               description: 'User role',
             },
+            lastLogin: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last login timestamp',
+            },
             createdAt: {
               type: 'string',
               format: 'date-time',
@@ -70,49 +81,6 @@ const options = {
             updatedAt: {
               type: 'string',
               format: 'date-time',
-            },
-          },
-        },
-        RegisterRequest: {
-          type: 'object',
-          required: ['email', 'password'],
-          properties: {
-            email: {
-              type: 'string',
-              format: 'email',
-              example: 'user@example.com',
-            },
-            password: {
-              type: 'string',
-              minLength: 6,
-              example: 'SecurePass123!',
-            },
-            firstName: {
-              type: 'string',
-              example: 'John',
-            },
-            lastName: {
-              type: 'string',
-              example: 'Doe',
-            },
-            phone: {
-              type: 'string',
-              example: '+1234567890',
-            },
-          },
-        },
-        LoginRequest: {
-          type: 'object',
-          required: ['email', 'password'],
-          properties: {
-            email: {
-              type: 'string',
-              format: 'email',
-              example: 'user@example.com',
-            },
-            password: {
-              type: 'string',
-              example: 'SecurePass123!',
             },
           },
         },

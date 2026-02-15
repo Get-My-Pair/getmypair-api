@@ -2,33 +2,47 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const config = require('./config/env');
 const logger = require('./utils/logger');
-const Role = require('./models/role.model');
 
 // Connect to database
 connectDB()
   .then(async () => {
-    // Initialize default roles
-    try {
-      await Role.initializeDefaultRoles();
-      logger.info('Default roles initialized');
-    } catch (error) {
-      logger.error(`Error initializing roles: ${error.message}`);
-    }
-
     // Start server
     const server = app.listen(config.PORT, () => {
       const backendUrl = `http://localhost:${config.PORT}`;
+      const apiDocsUrl = `${backendUrl}/api-docs`;
+      const frontendUrl = backendUrl;
+      
       logger.info(
         `Server running in ${config.NODE_ENV} mode on port ${config.PORT}`
       );
-      console.log('\n========================================');
-      console.log('  Backend successfully running');
-      console.log('  MongoDB connected');
-      console.log('  Default roles initialized');
-      console.log('  Server running in', config.NODE_ENV, 'mode on port', config.PORT);
-      console.log('  Backend URL:', backendUrl);
-      console.log('  API Docs:', `${backendUrl}/api-docs`);
-      console.log('========================================\n');
+      
+      // Clear console and show success message
+      console.clear();
+      console.log('\n');
+      console.log('╔════════════════════════════════════════════════════════════╗');
+      console.log('║                                                            ║');
+      console.log('║          ✅  SERVER STARTED SUCCESSFULLY  ✅              ║');
+      console.log('║                                                            ║');
+      console.log('╠════════════════════════════════════════════════════════════╣');
+      console.log('║                                                            ║');
+      console.log('║  📊 Status:     Server is running                         ║');
+      console.log('║  🗄️  Database:   MongoDB connected                        ║');
+      console.log('║  🌍 Environment: ' + config.NODE_ENV.padEnd(43) + '║');
+      console.log('║  🔌 Port:       ' + config.PORT.toString().padEnd(43) + '║');
+      console.log('║                                                            ║');
+      console.log('╠════════════════════════════════════════════════════════════╣');
+      console.log('║                                                            ║');
+      console.log('║  🔗 Backend URL:                                           ║');
+      console.log('║     ' + backendUrl.padEnd(59) + '║');
+      console.log('║                                                            ║');
+      console.log('║  📚 API Docs:                                              ║');
+      console.log('║     ' + apiDocsUrl.padEnd(59) + '║');
+      console.log('║                                                            ║');
+      console.log('║  🖥️  Frontend:                                              ║');
+      console.log('║     ' + frontendUrl.padEnd(59) + '║');
+      console.log('║                                                            ║');
+      console.log('╚════════════════════════════════════════════════════════════╝');
+      console.log('\n');
     });
 
     // Handle unhandled promise rejections

@@ -13,7 +13,23 @@ const config = require('./config/env');
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+  })
+);
 
 // CORS configuration
 app.use(
@@ -36,6 +52,10 @@ if (config.NODE_ENV === 'development') {
 
 // Global rate limiter
 app.use(globalRateLimiter);
+
+// Serve static files (HTML frontend)
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

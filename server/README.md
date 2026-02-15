@@ -1,15 +1,15 @@
 # GetMyPair API Server
 
-A comprehensive authentication API built with Express.js, MongoDB, and JWT.
+A comprehensive mobile OTP-based authentication API built with Express.js, MongoDB, and JWT.
 
 ## Features
 
-- User registration with email/phone verification via OTP
+- Mobile OTP-based authentication (no passwords required)
+- User registration via mobile number with OTP verification
 - JWT-based authentication with access and refresh tokens
 - Role-based access control (RBAC)
 - Session management
-- Password reset functionality
-- Account security (lockout, rate limiting)
+- Profile completion flow (name, DOB, gender)
 - Comprehensive audit logging
 - Input validation
 - Error handling
@@ -19,8 +19,7 @@ A comprehensive authentication API built with Express.js, MongoDB, and JWT.
 - **Framework**: Express.js
 - **Database**: MongoDB with Mongoose
 - **Authentication**: JWT (jsonwebtoken)
-- **Password Hashing**: bcryptjs
-- **OTP Generation**: speakeasy
+- **OTP Generation**: Random numeric OTP
 - **Rate Limiting**: express-rate-limit
 - **Validation**: express-validator
 - **Logging**: Winston
@@ -52,15 +51,23 @@ See `.env.example` for all required environment variables.
 
 ### Authentication
 
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/send-otp` - Send OTP for verification
-- `POST /api/auth/verify-otp` - Verify OTP code
-- `POST /api/auth/login` - Login user
+- `POST /api/auth/send-otp` - Send OTP to mobile number
+- `POST /api/auth/verify-otp` - Verify OTP and check if user exists (returns tokens if existing user, or profile completion flag)
+- `POST /api/auth/complete-profile` - Complete profile for new users (name, DOB, gender) and get JWT tokens
 - `POST /api/auth/refresh-token` - Refresh access token
 - `POST /api/auth/logout` - Logout user
 - `GET /api/auth/me` - Get current user profile
-- `POST /api/auth/forgot-password` - Request password reset
-- `POST /api/auth/reset-password` - Reset password
+
+## Authentication Flow
+
+1. **Enter Mobile Number** → `POST /api/auth/send-otp`
+2. **Generate Random OTP** → Stored in database (hashed)
+3. **OTP Verification** → `POST /api/auth/verify-otp`
+   - If user exists → Login success (returns JWT tokens)
+   - If new user → Returns profile completion flag
+4. **Complete Profile** (for new users) → `POST /api/auth/complete-profile`
+   - Provide: name, dateOfBirth, gender
+   - Returns JWT tokens upon successful registration
 
 ## Testing
 

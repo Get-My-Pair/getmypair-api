@@ -20,8 +20,8 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     // Generate tokens
     const accessTokenPayload = {
       userId: user._id.toString(),
-      email: user.email,
-      role: user.role?.name || user.role,
+      mobile: user.mobile,
+      role: user.role,
     };
 
     const refreshTokenPayload = {
@@ -86,7 +86,7 @@ const refreshAccessToken = async (refreshToken) => {
 
     // Get user to generate new access token
     const User = require('../models/user.model');
-    const user = await User.findById(decoded.userId).populate('role');
+    const user = await User.findById(decoded.userId);
 
     if (!user || !user.isActive) {
       throw new Error('User not found or inactive');
@@ -95,8 +95,8 @@ const refreshAccessToken = async (refreshToken) => {
     // Generate new access token
     const accessTokenPayload = {
       userId: user._id.toString(),
-      email: user.email,
-      role: user.role?.name || user.role,
+      mobile: user.mobile,
+      role: user.role,
     };
 
     const accessToken = generateAccessToken(accessTokenPayload);
@@ -109,6 +109,7 @@ const refreshAccessToken = async (refreshToken) => {
     return {
       accessToken,
       expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
+      userId: user._id.toString(),
     };
   } catch (error) {
     logger.error(`Error refreshing token: ${error.message}`);

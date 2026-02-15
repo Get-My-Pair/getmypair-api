@@ -17,14 +17,6 @@ const isValidPhone = (value) => {
 };
 
 /**
- * Custom password strength validator
- */
-const isStrongPassword = (value) => {
-  // At least 6 characters, can include uppercase, lowercase, numbers, special chars
-  return value && value.length >= 6;
-};
-
-/**
  * Handle validation errors
  */
 const handleValidationErrors = (req, res, next) => {
@@ -48,6 +40,5 @@ const handleValidationErrors = (req, res, next) => {
 module.exports = {
   isValidEmail,
   isValidPhone,
-  isStrongPassword,
   handleValidationErrors,
 };

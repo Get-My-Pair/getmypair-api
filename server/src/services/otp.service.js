@@ -19,7 +19,7 @@ const generateOTP = () => {
  * @param {String} email - User email
  * @param {String} phone - User phone (optional)
  * @param {String} type - OTP type ('email' or 'phone')
- * @param {String} purpose - OTP purpose ('verification', 'password-reset', 'login')
+ * @param {String} purpose - OTP purpose ('verification', 'login')
  * @returns {Object} OTP document
  */
 const createOTP = async (email, phone, type, purpose = 'verification') => {
