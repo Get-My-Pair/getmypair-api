@@ -14,15 +14,16 @@ const globalRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// OTP rate limiter
+// OTP rate limiter - more lenient for development
 const otpRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 OTP requests per hour
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: config.NODE_ENV === 'development' ? 20 : 5, // 20 in dev, 5 in production
   message: {
     success: false,
     message: 'Too many OTP requests, please try again later.',
     statusCode: 429,
   },
+  skipSuccessfulRequests: false,
 });
 
 module.exports = {

@@ -30,8 +30,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       lowercase: true,
       trim: true,
-      sparse: true,
-      index: true,
+      default: undefined,
     },
     role: {
       type: String,
@@ -66,6 +65,8 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ mobile: 1 });
 userSchema.index({ role: 1 });
+// Sparse unique index for email - allows multiple null values, but unique non-null values
+userSchema.index({ email: 1 }, { sparse: true, unique: true });
 
 const User = mongoose.model('User', userSchema);
 

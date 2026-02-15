@@ -6,6 +6,26 @@ const logger = require('./utils/logger');
 // Connect to database
 connectDB()
   .then(async () => {
+    // Fix email index if needed (allows multiple null emails)
+    try {
+      const User = require('./models/user.model');
+      const indexes = await User.collection.getIndexes();
+      
+      // Check if email_1 index exists and is not sparse
+      if (indexes.email_1 && !indexes.email_1.sparse) {
+        logger.info('Fixing email index to allow multiple null values...');
+        try {
+          await User.collection.dropIndex('email_1');
+        } catch (err) {
+          // Index might not exist, continue
+        }
+        await User.collection.createIndex({ email: 1 }, { sparse: true, unique: true });
+        logger.info('Email index fixed successfully');
+      }
+    } catch (error) {
+      logger.warn(`Could not fix email index: ${error.message}`);
+    }
+
     // Start server
     const server = app.listen(config.PORT, () => {
       const backendUrl = `http://localhost:${config.PORT}`;

@@ -253,13 +253,10 @@
                         type="tel" 
                         id="mobile" 
                         name="mobile" 
-                        placeholder="6374129515 or +916374129515" 
+                        placeholder="Enter your mobile number" 
                         required
                         pattern="^\+?[1-9]\d{1,14}$"
                     >
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
-                        Enter with or without country code (e.g., 6374129515 or +916374129515)
-                    </small>
                 </div>
                 <button type="submit" class="btn" id="send-otp-btn">
                     Send OTP
@@ -437,10 +434,17 @@
                 if (!response.ok) {
                     // Log the full error response for debugging
                     console.error('API Error Response:', data);
+                    if (data.errors) {
+                        console.error('Validation Errors:', data.errors);
+                    }
                     
                     // Handle validation errors
                     if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-                        const errorMessages = data.errors.map(err => `${err.field}: ${err.message}`).join(', ');
+                        const errorMessages = data.errors.map(err => {
+                            const field = err.field || 'unknown';
+                            const msg = err.message || 'Validation failed';
+                            return `${field}: ${msg}`;
+                        }).join(', ');
                         const error = new Error(errorMessages);
                         error.errors = data.errors;
                         throw error;
@@ -534,19 +538,28 @@
             e.preventDefault();
             const btn = document.getElementById('complete-profile-btn');
             
-            // Ensure mobile has + prefix if it doesn't
-            let mobileNumber = currentMobile;
-            if (mobileNumber && !mobileNumber.startsWith('+')) {
-                // Add country code if missing (assuming India +91)
-                mobileNumber = '+91' + mobileNumber;
-            }
-            
+            // Use the mobile number that was used for OTP verification
+            // It should already have the correct format
             const formData = {
-                mobile: mobileNumber,
+                mobile: currentMobile, // Use the mobile that was verified
                 name: document.getElementById('name').value.trim(),
                 dateOfBirth: document.getElementById('dateOfBirth').value,
                 gender: document.getElementById('gender').value
             };
+            
+            // Validate all fields before sending
+            if (!formData.name || formData.name.length < 2) {
+                showError('error-profile', 'Name must be at least 2 characters');
+                return;
+            }
+            if (!formData.dateOfBirth) {
+                showError('error-profile', 'Date of birth is required');
+                return;
+            }
+            if (!formData.gender) {
+                showError('error-profile', 'Gender is required');
+                return;
+            }
             
             console.log('Submitting profile data:', formData);
             
@@ -563,12 +576,13 @@
                 
                 loadUserProfile();
             } catch (error) {
+                console.error('Complete profile error:', error);
                 // Show validation errors if available
                 if (error.errors && Array.isArray(error.errors)) {
-                    const errorMessages = error.errors.map(err => err.message).join('<br>');
+                    const errorMessages = error.errors.map(err => `${err.field}: ${err.message}`).join('<br>');
                     showError('error-profile', errorMessages);
                 } else {
-                    showError('error-profile', error.message);
+                    showError('error-profile', error.message || 'Failed to complete profile. Please check all fields.');
                 }
             } finally {
                 btn.disabled = false;

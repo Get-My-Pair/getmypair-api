@@ -13,10 +13,15 @@ const logger = require('../utils/logger');
  */
 const sendOTP = async (mobile, ipAddress, userAgent) => {
   try {
+    // Normalize mobile number format (ensure consistency)
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
     // Check rate limit
-    const rateLimitExceeded = await otpService.checkRateLimit(null, mobile, 'phone');
+    const rateLimitExceeded = await otpService.checkRateLimit(null, normalizedMobile, 'phone');
     if (rateLimitExceeded) {
-      // Log failed attempt due to rate limit
       await AuditLog.createLog({
         action: 'otp-generate',
         resource: 'otp',
@@ -24,13 +29,13 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
         errorMessage: 'Rate limit exceeded',
         ipAddress,
         userAgent,
-        details: { mobile, type: 'phone', purpose: 'login' },
+        details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
       });
       throw new Error('Too many OTP requests. Please try again later.');
     }
 
-    // Create OTP
-    const { otp, expiresAt } = await otpService.createOTP(null, mobile, 'phone', 'login');
+    // Create OTP with normalized mobile
+    const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
     // TODO: Send OTP via SMS service
     // For now, log it (in production, use SMS service)
@@ -43,7 +48,7 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
       status: 'success',
       ipAddress,
       userAgent,
-      details: { mobile, type: 'phone', purpose: 'login' },
+      details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
     });
 
     return {
@@ -66,8 +71,14 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
  */
 const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
   try {
+    // Normalize mobile number format (ensure consistency)
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
     // Verify OTP
-    const verification = await otpService.verifyOTP(null, mobile, otp, 'phone');
+    const verification = await otpService.verifyOTP(null, normalizedMobile, otp, 'phone');
 
     if (!verification.valid) {
       await AuditLog.createLog({
@@ -82,8 +93,11 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
       throw new Error(verification.message);
     }
 
-    // Check if user exists
-    const user = await User.findOne({ mobile });
+    // Check if user exists (try both formats)
+    let user = await User.findOne({ mobile: normalizedMobile });
+    if (!user && mobile !== normalizedMobile) {
+      user = await User.findOne({ mobile });
+    }
 
     if (user) {
       // Existing user - Login
@@ -155,8 +169,17 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
  */
 const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo) => {
   try {
-    // Check if user already exists
-    const existingUser = await User.findOne({ mobile });
+    // Normalize mobile number format
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
+    // Check if user already exists (try both formats)
+    let existingUser = await User.findOne({ mobile: normalizedMobile });
+    if (!existingUser && mobile !== normalizedMobile) {
+      existingUser = await User.findOne({ mobile });
+    }
     if (existingUser) {
       await AuditLog.createLog({
         action: 'register',
@@ -170,9 +193,9 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
       throw new Error('User with this mobile number already exists');
     }
 
-    // Create user
+    // Create user with normalized mobile
     const user = new User({
-      mobile,
+      mobile: normalizedMobile,
       name,
       dateOfBirth,
       gender,

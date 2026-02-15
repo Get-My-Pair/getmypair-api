@@ -90,6 +90,10 @@ const completeProfile = async (req, res) => {
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
 
+    // Log received data for debugging
+    logger.info(`Complete profile request: mobile=${mobile}, name=${name}, dateOfBirth=${dateOfBirth}, gender=${gender}`);
+    logger.info(`Request body: ${JSON.stringify(req.body)}`);
+
     const result = await authService.completeProfile(
       mobile,
       name,
@@ -119,6 +123,7 @@ const completeProfile = async (req, res) => {
       details: { mobile: req.body.mobile, name: req.body.name },
     });
     logger.error(`Complete profile error: ${err.message}`);
+    logger.error(`Request body: ${JSON.stringify(req.body)}`);
     return errorResponse(res, err.message, 400);
   }
 };
