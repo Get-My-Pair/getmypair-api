@@ -253,10 +253,13 @@
                         type="tel" 
                         id="mobile" 
                         name="mobile" 
-                        placeholder="+1234567890" 
+                        placeholder="6374129515 or +916374129515" 
                         required
                         pattern="^\+?[1-9]\d{1,14}$"
                     >
+                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                        Enter with or without country code (e.g., 6374129515 or +916374129515)
+                    </small>
                 </div>
                 <button type="submit" class="btn" id="send-otp-btn">
                     Send OTP
@@ -455,7 +458,14 @@
         // Send OTP
         document.getElementById('mobile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const mobile = document.getElementById('mobile').value.trim();
+            let mobile = document.getElementById('mobile').value.trim();
+            
+            // Ensure mobile has + prefix if it doesn't
+            if (mobile && !mobile.startsWith('+')) {
+                // Add country code if missing (assuming India +91)
+                mobile = '+91' + mobile;
+            }
+            
             const btn = document.getElementById('send-otp-btn');
             
             btn.disabled = true;
