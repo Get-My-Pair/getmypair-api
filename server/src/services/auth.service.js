@@ -52,6 +52,7 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     });
 
     return {
+      otp, // Return OTP for development mode
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {

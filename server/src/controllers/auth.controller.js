@@ -13,10 +13,18 @@ const sendOTP = async (req, res) => {
     const userAgent = req.get('user-agent') || 'unknown';
 
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
+    const config = require('../config/env');
 
-    return success(res, 'OTP sent successfully', {
+    // In development mode, include OTP in response for testing
+    const responseData = {
       expiresIn: result.expiresIn,
-    });
+    };
+    
+    if (config.NODE_ENV === 'development' && result.otp) {
+      responseData.otp = result.otp; // Include OTP in development only
+    }
+
+    return success(res, 'OTP sent successfully', responseData);
   } catch (err) {
     const AuditLog = require('../models/auditLog.model');
     // Log failed OTP send attempt
