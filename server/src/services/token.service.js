@@ -17,11 +17,11 @@ const logger = require('../utils/logger');
  */
 const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
   try {
-    // Generate tokens
+    // Generate tokens - JWT contains userId, role, expiry for backend authorization
+    const roleName = user.role?.name || (typeof user.role === 'string' ? user.role : null);
     const accessTokenPayload = {
       userId: user._id.toString(),
-      email: user.email,
-      role: user.role?.name || user.role,
+      role: roleName,
     };
 
     const refreshTokenPayload = {
@@ -93,10 +93,10 @@ const refreshAccessToken = async (refreshToken) => {
     }
 
     // Generate new access token
+    const roleName = user.role?.name || (typeof user.role === 'string' ? user.role : null);
     const accessTokenPayload = {
       userId: user._id.toString(),
-      email: user.email,
-      role: user.role?.name || user.role,
+      role: roleName,
     };
 
     const accessToken = generateAccessToken(accessTokenPayload);

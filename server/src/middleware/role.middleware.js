@@ -1,8 +1,10 @@
 const { forbidden } = require('../utils/response');
+const { VALID_ROLES } = require('../config/roles');
 
 /**
  * Role-based authorization middleware
- * @param {Array<String>} allowedRoles - Array of allowed role names
+ * Validates JWT, extracts role, checks if role is allowed for the API
+ * @param {Array<String>} allowedRoles - Allowed roles (USER, COBBER, DELIVERY, ADMIN)
  * @returns {Function} Middleware function
  */
 const roleMiddleware = (allowedRoles) => {
@@ -12,13 +14,14 @@ const roleMiddleware = (allowedRoles) => {
     }
 
     const userRole = req.user.role?.name || req.user.role;
+    const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : userRole;
 
-    if (!userRole) {
+    if (!roleUpper || !VALID_ROLES.includes(roleUpper)) {
       return forbidden(res, 'User role not found');
     }
 
-    if (!allowedRoles.includes(userRole)) {
-      return forbidden(res, 'Insufficient permissions');
+    if (!allowedRoles.map((r) => r.toUpperCase()).includes(roleUpper)) {
+      return forbidden(res, 'Access denied. Insufficient permissions.');
     }
 
     next();

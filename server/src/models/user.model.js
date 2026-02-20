@@ -6,17 +6,21 @@ const userSchema = new mongoose.Schema(
   {
     email: {
       type: String,
-      required: true,
-      unique: true,
+      sparse: true, // unique but allow null
       lowercase: true,
       trim: true,
       index: true,
     },
     password: {
       type: String,
-      required: true,
       minlength: 6,
       select: false,
+    },
+    mobile: {
+      type: String,
+      sparse: true,
+      trim: true,
+      index: true,
     },
     firstName: {
       type: String,
@@ -32,13 +36,34 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    dateOfBirth: {
+      type: Date,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+      trim: true,
+    },
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Role',
       required: true,
       index: true,
     },
+    profileCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    location: {
+      lat: { type: Number },
+      lng: { type: Number },
+      address: { type: String, trim: true },
+    },
     isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isPhoneVerified: {
       type: Boolean,
       default: false,
     },
@@ -76,8 +101,18 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.index({ email: 1 });
+userSchema.index({ email: 1 }, { sparse: true });
+userSchema.index({ mobile: 1 }, { sparse: true });
 userSchema.index({ role: 1 });
+
+// User must have email OR mobile
+userSchema.pre('validate', function (next) {
+  if (!this.email && !this.mobile) {
+    next(new Error('Either email or mobile is required'));
+  } else {
+    next();
+  }
+});
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

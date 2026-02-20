@@ -5,20 +5,18 @@ const logger = require('../utils/logger');
 
 /**
  * Register new user
+ * Role is derived from X-App-Source header - client cannot send role
  * POST /api/auth/register
  */
 const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
+    const appSource = req.get('X-App-Source') || req.body.appSource || 'USER_APP';
 
-    // Register user
-    const user = await authService.registerUser({
-      email,
-      password,
-      firstName,
-      lastName,
-      phone,
-    });
+    const user = await authService.registerUser(
+      { email, password, firstName, lastName, phone },
+      appSource
+    );
 
     // Send OTP for email verification
     await authService.sendOTP(email, phone, 'email', 'verification');
@@ -66,11 +64,12 @@ const verifyOTP = async (req, res) => {
   try {
     const { email, phone, otp, type } = req.body;
 
-    // Check if this is for registration completion
     const User = require('../models/user.model');
-    const user = await User.findOne({ email });
+    const user = type === 'email'
+      ? await User.findOne({ email })
+      : await User.findOne({ $or: [{ mobile: phone }, { phone }] });
 
-    if (user && !user.isEmailVerified && type === 'email') {
+    if (user && ((type === 'email' && !user.isEmailVerified) || (type === 'phone' && !user.isPhoneVerified))) {
       // Complete registration
       const result = await authService.verifyOTPAndCompleteRegistration(
         email,
@@ -232,6 +231,93 @@ const resetPassword = async (req, res) => {
   }
 };
 
+/**
+ * Verify mobile OTP - Login if exists, else return profileRequired
+ * POST /api/auth/verify-mobile-otp
+ */
+const verifyMobileOTP = async (req, res) => {
+  try {
+    const { mobile, otp, appSource } = req.body;
+    const ipAddress = req.ip || req.connection?.remoteAddress || '';
+    const userAgent = req.get('user-agent') || '';
+    const deviceInfo = req.get('device-info') || '';
+
+    const result = await authService.verifyMobileOTPAndLoginOrRegister(
+      mobile,
+      otp,
+      appSource || 'USER_APP',
+      { ipAddress, userAgent, deviceInfo }
+    );
+
+    if (result.profileRequired) {
+      return success(res, 'Profile required to complete registration', {
+        profileRequired: true,
+        verifiedMobile: result.verifiedMobile,
+      });
+    }
+
+    return success(res, 'Login successful', {
+      user: result.user,
+      tokens: result.tokens,
+    });
+  } catch (err) {
+    logger.error(`Verify mobile OTP error: ${err.message}`);
+    return errorResponse(res, err.message, 400);
+  }
+};
+
+/**
+ * Complete mobile registration with profile
+ * POST /api/auth/complete-mobile-registration
+ */
+const completeMobileRegistration = async (req, res) => {
+  try {
+    const { mobile, otp, appSource, firstName, lastName, dateOfBirth, gender, location } = req.body;
+    const ipAddress = req.ip || req.connection?.remoteAddress || '';
+    const userAgent = req.get('user-agent') || '';
+    const deviceInfo = req.get('device-info') || '';
+
+    const result = await authService.completeMobileRegistration({
+      mobile,
+      otp,
+      appSource: appSource || 'USER_APP',
+      profile: { firstName, lastName, dateOfBirth, gender, location },
+      context: { ipAddress, userAgent, deviceInfo },
+    });
+
+    return success(res, 'Registration completed successfully', {
+      user: result.user,
+      tokens: result.tokens,
+    }, 201);
+  } catch (err) {
+    logger.error(`Complete mobile registration error: ${err.message}`);
+    return errorResponse(res, err.message, 400);
+  }
+};
+
+/**
+ * Update profile - Location allowed for Flutter
+ * PUT /api/auth/profile
+ */
+const updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, dateOfBirth, gender, location } = req.body;
+
+    const user = await authService.updateProfile(req.user._id, {
+      firstName,
+      lastName,
+      dateOfBirth,
+      gender,
+      location,
+    });
+
+    return success(res, 'Profile updated successfully', { user });
+  } catch (err) {
+    logger.error(`Update profile error: ${err.message}`);
+    return errorResponse(res, err.message, 400);
+  }
+};
+
 module.exports = {
   register,
   sendOTP,
@@ -242,4 +328,7 @@ module.exports = {
   getCurrentUser,
   forgotPassword,
   resetPassword,
+  verifyMobileOTP,
+  completeMobileRegistration,
+  updateProfile,
 };

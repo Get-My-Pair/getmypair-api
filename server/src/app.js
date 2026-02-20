@@ -9,6 +9,7 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
+const pkg = require('../package.json');
 
 const app = express();
 
@@ -67,12 +68,49 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *                 timestamp:
  *                   type: string
  *                   format: date-time
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
  */
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
+    version: pkg.version,
+  });
+});
+
+/**
+ * @swagger
+ * /api/version:
+ *   get:
+ *     summary: Get API version
+ *     description: Returns the current API version for Flutter app display or update checks
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API version info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
+ *                 name:
+ *                   type: string
+ *                   example: "getmypair-api"
+ */
+app.get('/api/version', (req, res) => {
+  res.status(200).json({
+    success: true,
+    version: pkg.version,
+    name: pkg.name,
   });
 });
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { VALID_ROLES } = require('../config/roles');
 
 const roleSchema = new mongoose.Schema(
   {
@@ -7,8 +8,8 @@ const roleSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      lowercase: true,
-      enum: ['user', 'admin', 'moderator'],
+      uppercase: true,
+      enum: VALID_ROLES,
     },
     description: {
       type: String,
@@ -29,13 +30,14 @@ const roleSchema = new mongoose.Schema(
 roleSchema.index({ name: 1 });
 
 /**
- * Initialize default roles (user, admin, moderator) if they don't exist
+ * Initialize default roles (USER, COBBER, DELIVERY, ADMIN) if they don't exist
  */
 roleSchema.statics.initializeDefaultRoles = async function () {
   const defaultRoles = [
-    { name: 'user', description: 'Default user role' },
-    { name: 'admin', description: 'Administrator role' },
-    { name: 'moderator', description: 'Moderator role' },
+    { name: 'USER', description: 'User App role' },
+    { name: 'COBBER', description: 'Cobber App role' },
+    { name: 'DELIVERY', description: 'Delivery App role' },
+    { name: 'ADMIN', description: 'Admin App role' },
   ];
 
   for (const roleData of defaultRoles) {

@@ -10,6 +10,9 @@ const {
   refreshTokenValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
+  verifyMobileOTPValidation,
+  completeMobileRegistrationValidation,
+  updateProfileValidation,
 } = require('../validations/auth.validation');
 const {
   globalRateLimiter,
@@ -410,6 +413,49 @@ router.post('/logout', authMiddleware, authController.logout);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/me', authMiddleware, authController.getCurrentUser);
+
+/**
+ * @swagger
+ * /api/auth/verify-mobile-otp:
+ *   post:
+ *     summary: Verify mobile OTP and login or get profile required
+ *     tags: [Authentication]
+ */
+router.post(
+  '/verify-mobile-otp',
+  otpRateLimiter,
+  verifyMobileOTPValidation,
+  authController.verifyMobileOTP
+);
+
+/**
+ * @swagger
+ * /api/auth/complete-mobile-registration:
+ *   post:
+ *     summary: Complete mobile registration with profile
+ *     tags: [Authentication]
+ */
+router.post(
+  '/complete-mobile-registration',
+  completeMobileRegistrationValidation,
+  authController.completeMobileRegistration
+);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     summary: Update profile (location allowed for Flutter)
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/profile',
+  authMiddleware,
+  updateProfileValidation,
+  authController.updateProfile
+);
 
 /**
  * @swagger

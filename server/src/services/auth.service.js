@@ -1,45 +1,60 @@
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
 const AuditLog = require('../models/auditLog.model');
+const { getRoleFromAppSource } = require('../config/roles');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
 const logger = require('../utils/logger');
 
 /**
- * Register new user
+ * Register new user - Role is derived from appSource, NEVER from client
  * @param {Object} userData - User registration data
+ * @param {String} appSource - App identifier (USER_APP, COBBER_APP, etc.)
  * @returns {Object} User object
  */
-const registerUser = async (userData) => {
+const registerUser = async (userData, appSource = 'USER_APP') => {
   try {
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: userData.email });
-    if (existingUser) {
-      throw new Error('User with this email already exists');
+    const roleName = getRoleFromAppSource(appSource);
+
+    if (userData.email && !userData.password) {
+      throw new Error('Password is required for email registration');
     }
 
-    // Get default role
-    let role = await Role.findOne({ name: 'user' });
+    if (userData.email) {
+      const existingUser = await User.findOne({ email: userData.email });
+      if (existingUser) {
+        throw new Error('User with this email already exists');
+      }
+    }
+    if (userData.mobile) {
+      const existingMobile = await User.findOne({ mobile: userData.mobile });
+      if (existingMobile) {
+        throw new Error('User with this mobile already exists');
+      }
+    }
+
+    // Get role from DB
+    let role = await Role.findOne({ name: roleName });
     if (!role) {
-      // Initialize default roles if not exists
       await Role.initializeDefaultRoles();
-      role = await Role.findOne({ name: 'user' });
+      role = await Role.findOne({ name: roleName });
     }
 
-    // Create user
+    // Remove role from userData - backend only assigns role
+    const { role: _omitRole, ...safeUserData } = userData;
+
     const user = new User({
-      ...userData,
+      ...safeUserData,
       role: role._id,
     });
 
     await user.save();
 
-    // Log audit event
     await AuditLog.createLog({
       action: 'register',
       resource: 'user',
       status: 'success',
-      details: { email: user.email, userId: user._id },
+      details: { email: user.email, mobile: user.mobile, userId: user._id, role: roleName },
     });
 
     return user;
@@ -233,8 +248,9 @@ const verifyOTPAndCompleteRegistration = async (email, phone, otp, type) => {
       throw new Error(verification.message);
     }
 
-    // Find user
-    const user = await User.findOne({ email }).populate('role');
+    // Find user by email or phone
+    const query = type === 'email' ? { email } : { $or: [{ mobile: phone }, { phone }] };
+    const user = await User.findOne(query).populate('role');
 
     if (!user) {
       throw new Error('User not found');
@@ -370,12 +386,143 @@ const getCurrentUser = async (userId) => {
   }
 };
 
+/**
+ * Mobile OTP - Verify and login if user exists, else return profileRequired
+ * @param {String} mobile - User mobile number
+ * @param {String} otp - OTP code
+ * @param {String} appSource - App identifier for role assignment
+ * @param {Object} context - ipAddress, userAgent, deviceInfo
+ * @returns {Object} { user, tokens } or { profileRequired: true }
+ */
+const verifyMobileOTPAndLoginOrRegister = async (mobile, otp, appSource, context = {}) => {
+  const { ipAddress = '', userAgent = '', deviceInfo = '' } = context;
+  const verification = await otpService.verifyOTP(null, mobile, otp, 'phone');
+  if (!verification.valid) {
+    throw new Error(verification.message || 'Invalid or expired OTP');
+  }
+
+  const user = await User.findOne({ mobile }).populate('role');
+  if (user) {
+    user.isPhoneVerified = true;
+    await user.save();
+    const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
+      user,
+      deviceInfo,
+      ipAddress,
+      userAgent
+    );
+    await AuditLog.createLog({
+      userId: user._id,
+      action: 'login',
+      resource: 'auth',
+      ipAddress,
+      userAgent,
+      status: 'success',
+      details: { mobile },
+    });
+    return { user: user.toJSON(), tokens: { accessToken, refreshToken, expiresIn } };
+  }
+
+  return { profileRequired: true, verifiedMobile: mobile };
+};
+
+/**
+ * Complete mobile registration - Create user with profile, role from appSource
+ * @param {Object} params - mobile, otp, appSource, profile
+ */
+const completeMobileRegistration = async (params) => {
+  const { mobile, otp, appSource, profile, context = {} } = params;
+  const { ipAddress = '', userAgent = '', deviceInfo = '' } = context;
+
+  const verification = await otpService.verifyOTP(null, mobile, otp, 'phone');
+  if (!verification.valid) {
+    throw new Error(verification.message || 'Invalid or expired OTP');
+  }
+
+  const roleName = getRoleFromAppSource(appSource);
+  let role = await Role.findOne({ name: roleName });
+  if (!role) {
+    await Role.initializeDefaultRoles();
+    role = await Role.findOne({ name: roleName });
+  }
+
+  const user = new User({
+    mobile,
+    isPhoneVerified: true,
+    role: role._id,
+    profileCompleted: true,
+    ...profile,
+  });
+  await user.save();
+
+  const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
+    user,
+    deviceInfo,
+    ipAddress,
+    userAgent
+  );
+
+  await AuditLog.createLog({
+    action: 'register',
+    resource: 'user',
+    status: 'success',
+    details: { mobile, userId: user._id, role: roleName },
+  });
+
+  return {
+    user: user.toJSON(),
+    tokens: { accessToken, refreshToken, expiresIn },
+  };
+};
+
+/**
+ * Update user profile - Location allowed for Flutter
+ * Role is NEVER updatable from API
+ * @param {String} userId - User ID
+ * @param {Object} profileData - firstName, lastName, dateOfBirth, gender, location
+ */
+const updateProfile = async (userId, profileData) => {
+  const allowedFields = ['firstName', 'lastName', 'dateOfBirth', 'gender', 'location'];
+  const update = {};
+  for (const key of allowedFields) {
+    if (profileData[key] !== undefined) {
+      update[key] = profileData[key];
+    }
+  }
+  // location: { lat, lng, address }
+  if (update.location && typeof update.location !== 'object') {
+    delete update.location;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: update, profileCompleted: true },
+    { new: true, runValidators: true }
+  )
+    .populate('role');
+
+  if (!user) throw new Error('User not found');
+
+  await AuditLog.createLog({
+    userId: user._id,
+    action: 'profile-update',
+    resource: 'user',
+    status: 'success',
+    details: { updatedFields: Object.keys(update) },
+  });
+
+  return user.toJSON();
+};
+
 module.exports = {
   registerUser,
   loginUser,
   sendOTP,
   verifyOTPAndCompleteRegistration,
+  verifyMobileOTPAndLoginOrRegister,
+  completeMobileRegistration,
   forgotPassword,
   resetPassword,
   getCurrentUser,
+  updateProfile,
 };
