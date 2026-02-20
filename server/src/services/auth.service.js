@@ -159,19 +159,10 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
       throw new Error(verification.message);
     }
 
-<<<<<<< HEAD
-    // Find user by email or phone
-    const query = type === 'email' ? { email } : { $or: [{ mobile: phone }, { phone }] };
-    const user = await User.findOne(query).populate('role');
-
-    if (!user) {
-      throw new Error('User not found');
-=======
     // Check if user exists (try both formats)
     let user = await User.findOne({ mobile: normalizedMobile });
     if (!user && mobile !== normalizedMobile) {
       user = await User.findOne({ mobile });
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
     }
 
     if (user) {
@@ -240,10 +231,22 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
  * @param {String} ipAddress - IP address
  * @param {String} userAgent - User agent
  * @param {String} deviceInfo - Device information
+ * @param {String} appSource - App identifier for role (USER_APP, COBBER_APP, etc.)
+ * @param {Object} location - Optional { lat, lng, address }
  * @returns {Object} User and tokens
  */
-const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo) => {
+const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo, appSource = 'USER_APP', location = null) => {
   try {
+    // Role from app source (client sends X-App-Source header; backend sets role)
+    let role = 'user';
+    try {
+      const roleName = getRoleFromAppSource(appSource);
+      role = roleName ? roleName.toLowerCase() : 'user';
+      if (!['user', 'admin', 'moderator'].includes(role)) role = 'user';
+    } catch (_) {
+      role = 'user';
+    }
+
     // Normalize mobile number format
     let normalizedMobile = mobile;
     if (mobile && !mobile.startsWith('+')) {
@@ -268,15 +271,23 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
       throw new Error('User with this mobile number already exists');
     }
 
-    // Create user with normalized mobile
-    const user = new User({
+    const userData = {
       mobile: normalizedMobile,
       name,
       dateOfBirth,
       gender,
-      role: 'user', // Default role
+      role,
       isPhoneVerified: true,
-    });
+    };
+    if (location && typeof location === 'object' && (location.lat != null || location.lng != null || location.address)) {
+      userData.location = {
+        lat: location.lat,
+        lng: location.lng,
+        address: location.address,
+      };
+    }
+
+    const user = new User(userData);
 
     await user.save();
 

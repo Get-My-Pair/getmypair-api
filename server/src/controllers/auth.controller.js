@@ -3,45 +3,7 @@ const { success, error: errorResponse } = require('../utils/response');
 const logger = require('../utils/logger');
 
 /**
-<<<<<<< HEAD
- * Register new user
- * Role is derived from X-App-Source header - client cannot send role
- * POST /api/auth/register
- */
-const register = async (req, res) => {
-  try {
-    const { email, password, firstName, lastName, phone } = req.body;
-    const appSource = req.get('X-App-Source') || req.body.appSource || 'USER_APP';
-
-    const user = await authService.registerUser(
-      { email, password, firstName, lastName, phone },
-      appSource
-    );
-
-    // Send OTP for email verification
-    await authService.sendOTP(email, phone, 'email', 'verification');
-
-    return success(
-      res,
-      'Registration successful. Please verify your email.',
-      {
-        userId: user._id,
-        email: user.email,
-        otpSent: true,
-      },
-      201
-    );
-  } catch (err) {
-    logger.error(`Register error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-/**
- * Send OTP
-=======
  * Send OTP to mobile number
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
  * POST /api/auth/send-otp
  */
 const sendOTP = async (req, res) => {
@@ -91,30 +53,11 @@ const verifyOTP = async (req, res) => {
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
 
-<<<<<<< HEAD
-    const User = require('../models/user.model');
-    const user = type === 'email'
-      ? await User.findOne({ email })
-      : await User.findOne({ $or: [{ mobile: phone }, { phone }] });
-
-    if (user && ((type === 'email' && !user.isEmailVerified) || (type === 'phone' && !user.isPhoneVerified))) {
-      // Complete registration
-      const result = await authService.verifyOTPAndCompleteRegistration(
-        email,
-        phone,
-        otp,
-        type
-      );
-
-      return success(res, 'OTP verified successfully. Registration completed.', {
-        verified: true,
-=======
     const result = await authService.verifyOTP(mobile, otp, ipAddress, userAgent, deviceInfo);
 
     if (result.isExistingUser) {
       // Existing user - Login successful
       return success(res, 'Login successful', {
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
         user: result.user,
         tokens: result.tokens,
       });
@@ -147,17 +90,19 @@ const verifyOTP = async (req, res) => {
 /**
  * Complete profile and create user account
  * POST /api/auth/complete-profile
+ * Headers: X-App-Source (USER_APP, COBBER_APP, etc.), X-App-Version (optional)
+ * Body may include optional location: { lat, lng, address }
  */
 const completeProfile = async (req, res) => {
   try {
-    const { mobile, name, dateOfBirth, gender } = req.body;
+    const { mobile, name, dateOfBirth, gender, location } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
+    const appSource = req.get('X-App-Source') || 'USER_APP';
+    const appVersion = req.get('X-App-Version') || '';
 
-    // Log received data for debugging
-    logger.info(`Complete profile request: mobile=${mobile}, name=${name}, dateOfBirth=${dateOfBirth}, gender=${gender}`);
-    logger.info(`Request body: ${JSON.stringify(req.body)}`);
+    logger.info(`Complete profile: mobile=${mobile}, appSource=${appSource}, appVersion=${appVersion}`);
 
     const result = await authService.completeProfile(
       mobile,
@@ -166,7 +111,9 @@ const completeProfile = async (req, res) => {
       gender,
       ipAddress,
       userAgent,
-      deviceInfo
+      deviceInfo,
+      appSource,
+      location
     );
 
     return success(res, 'Profile completed successfully. Login successful.', {
@@ -297,130 +244,6 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-/**
- * Forgot password
- * POST /api/auth/forgot-password
- */
-const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const result = await authService.forgotPassword(email);
-
-    return success(res, result.message);
-  } catch (err) {
-    logger.error(`Forgot password error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-/**
- * Reset password
- * POST /api/auth/reset-password
- */
-const resetPassword = async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body;
-
-    const result = await authService.resetPassword(email, otp, newPassword);
-
-    return success(res, result.message);
-  } catch (err) {
-    logger.error(`Reset password error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-/**
- * Verify mobile OTP - Login if exists, else return profileRequired
- * POST /api/auth/verify-mobile-otp
- */
-const verifyMobileOTP = async (req, res) => {
-  try {
-    const { mobile, otp, appSource } = req.body;
-    const ipAddress = req.ip || req.connection?.remoteAddress || '';
-    const userAgent = req.get('user-agent') || '';
-    const deviceInfo = req.get('device-info') || '';
-
-    const result = await authService.verifyMobileOTPAndLoginOrRegister(
-      mobile,
-      otp,
-      appSource || 'USER_APP',
-      { ipAddress, userAgent, deviceInfo }
-    );
-
-    if (result.profileRequired) {
-      return success(res, 'Profile required to complete registration', {
-        profileRequired: true,
-        verifiedMobile: result.verifiedMobile,
-      });
-    }
-
-    return success(res, 'Login successful', {
-      user: result.user,
-      tokens: result.tokens,
-    });
-  } catch (err) {
-    logger.error(`Verify mobile OTP error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-/**
- * Complete mobile registration with profile
- * POST /api/auth/complete-mobile-registration
- */
-const completeMobileRegistration = async (req, res) => {
-  try {
-    const { mobile, otp, appSource, firstName, lastName, dateOfBirth, gender, location } = req.body;
-    const ipAddress = req.ip || req.connection?.remoteAddress || '';
-    const userAgent = req.get('user-agent') || '';
-    const deviceInfo = req.get('device-info') || '';
-
-    const result = await authService.completeMobileRegistration({
-      mobile,
-      otp,
-      appSource: appSource || 'USER_APP',
-      profile: { firstName, lastName, dateOfBirth, gender, location },
-      context: { ipAddress, userAgent, deviceInfo },
-    });
-
-    return success(res, 'Registration completed successfully', {
-      user: result.user,
-      tokens: result.tokens,
-    }, 201);
-  } catch (err) {
-    logger.error(`Complete mobile registration error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-/**
- * Update profile - Location allowed for Flutter
- * PUT /api/auth/profile
- */
-const updateProfile = async (req, res) => {
-  try {
-    const { firstName, lastName, dateOfBirth, gender, location } = req.body;
-
-    const user = await authService.updateProfile(req.user._id, {
-      firstName,
-      lastName,
-      dateOfBirth,
-      gender,
-      location,
-    });
-
-    return success(res, 'Profile updated successfully', { user });
-  } catch (err) {
-    logger.error(`Update profile error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
-  }
-};
-
-=======
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -428,12 +251,4 @@ module.exports = {
   refreshToken,
   logout,
   getCurrentUser,
-<<<<<<< HEAD
-  forgotPassword,
-  resetPassword,
-  verifyMobileOTP,
-  completeMobileRegistration,
-  updateProfile,
-=======
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 };

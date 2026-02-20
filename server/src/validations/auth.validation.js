@@ -95,6 +95,10 @@ const completeProfileValidation = [
     .isIn(['male', 'female', 'other'])
     .withMessage('Gender must be one of: male, female, other')
     .toLowerCase(),
+  body('location').optional().isObject().withMessage('Location must be an object'),
+  body('location.lat').optional().isFloat({ min: -90, max: 90 }),
+  body('location.lng').optional().isFloat({ min: -180, max: 180 }),
+  body('location.address').optional().trim().isLength({ max: 500 }),
   handleValidationErrors,
 ];
 
@@ -106,117 +110,9 @@ const refreshTokenValidation = [
   handleValidationErrors,
 ];
 
-<<<<<<< HEAD
-// Forgot password validation
-const forgotPasswordValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  handleValidationErrors,
-];
-
-// Mobile OTP verification validation
-const verifyMobileOTPValidation = [
-  body('mobile')
-    .trim()
-    .notEmpty()
-    .withMessage('Mobile is required'),
-  body('otp')
-    .notEmpty()
-    .withMessage('OTP is required')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits')
-    .isNumeric()
-    .withMessage('OTP must be numeric'),
-  body('appSource')
-    .optional()
-    .isIn(['USER_APP', 'COBBER_APP', 'DELIVERY_APP', 'ADMIN_APP'])
-    .withMessage('Invalid app source'),
-  handleValidationErrors,
-];
-
-// Complete mobile registration validation
-const completeMobileRegistrationValidation = [
-  body('mobile')
-    .trim()
-    .notEmpty()
-    .withMessage('Mobile is required'),
-  body('otp')
-    .notEmpty()
-    .withMessage('OTP is required')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits')
-    .isNumeric()
-    .withMessage('OTP must be numeric'),
-  body('appSource')
-    .optional()
-    .isIn(['USER_APP', 'COBBER_APP', 'DELIVERY_APP', 'ADMIN_APP'])
-    .withMessage('Invalid app source'),
-  body('firstName').optional().trim().isLength({ max: 50 }),
-  body('lastName').optional().trim().isLength({ max: 50 }),
-  body('dateOfBirth').optional().isISO8601().withMessage('Invalid date format'),
-  body('gender').optional().isIn(['male', 'female', 'other', 'prefer_not_to_say']),
-  body('location').optional().isObject(),
-  body('location.lat').optional().isFloat({ min: -90, max: 90 }),
-  body('location.lng').optional().isFloat({ min: -180, max: 180 }),
-  body('location.address').optional().trim().isLength({ max: 500 }),
-  handleValidationErrors,
-];
-
-// Profile update validation
-const updateProfileValidation = [
-  body('firstName').optional().trim().isLength({ max: 50 }),
-  body('lastName').optional().trim().isLength({ max: 50 }),
-  body('dateOfBirth').optional().isISO8601().withMessage('Invalid date format'),
-  body('gender').optional().isIn(['male', 'female', 'other', 'prefer_not_to_say']),
-  body('location').optional().isObject(),
-  body('location.lat').optional().isFloat({ min: -90, max: 90 }),
-  body('location.lng').optional().isFloat({ min: -180, max: 180 }),
-  body('location.address').optional().trim().isLength({ max: 500 }),
-  handleValidationErrors,
-];
-
-// Reset password validation
-const resetPasswordValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('otp')
-    .notEmpty()
-    .withMessage('OTP is required')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits')
-    .isNumeric()
-    .withMessage('OTP must be numeric'),
-  body('newPassword')
-    .notEmpty()
-    .withMessage('New password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  handleValidationErrors,
-];
-
-=======
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 module.exports = {
   sendOTPValidation,
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
-<<<<<<< HEAD
-  forgotPasswordValidation,
-  resetPasswordValidation,
-  verifyMobileOTPValidation,
-  completeMobileRegistrationValidation,
-  updateProfileValidation,
-=======
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 };
