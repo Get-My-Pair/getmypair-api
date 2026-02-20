@@ -1,108 +1,30 @@
 const { body } = require('express-validator');
-const { isValidEmail, isValidPhone, handleValidationErrors } = require('../utils/validators');
+const { isValidPhone, handleValidationErrors } = require('../utils/validators');
 
-// Register validation
-const registerValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  body('firstName')
-    .optional()
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('First name must be less than 50 characters'),
-  body('lastName')
-    .optional()
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Last name must be less than 50 characters'),
-  body('phone')
-    .optional()
-    .trim()
-    .custom((value) => {
-      if (value && !isValidPhone(value)) {
-        throw new Error('Please provide a valid phone number');
-      }
-      return true;
-    }),
-  handleValidationErrors,
-];
-
-// Login validation
-const loginValidation = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required'),
-  handleValidationErrors,
-];
-
-// Send OTP validation
+// Send OTP validation (mobile number only)
 const sendOTPValidation = [
-  body('email')
-    .optional()
+  body('mobile')
     .trim()
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('phone')
-    .optional()
-    .trim()
+    .notEmpty()
+    .withMessage('Mobile number is required')
     .custom((value) => {
-      if (value && !isValidPhone(value)) {
-        throw new Error('Please provide a valid phone number');
+      if (!isValidPhone(value)) {
+        throw new Error('Please provide a valid mobile number');
       }
       return true;
     }),
-  body('type')
-    .notEmpty()
-    .withMessage('Type is required')
-    .isIn(['email', 'phone'])
-    .withMessage('Type must be either "email" or "phone"'),
-  body().custom((value) => {
-    if (!value.email && !value.phone) {
-      throw new Error('Either email or phone is required');
-    }
-    if (value.type === 'email' && !value.email) {
-      throw new Error('Email is required when type is "email"');
-    }
-    if (value.type === 'phone' && !value.phone) {
-      throw new Error('Phone is required when type is "phone"');
-    }
-    return true;
-  }),
   handleValidationErrors,
 ];
 
 // Verify OTP validation
 const verifyOTPValidation = [
-  body('email')
-    .optional()
+  body('mobile')
     .trim()
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('phone')
-    .optional()
-    .trim()
+    .notEmpty()
+    .withMessage('Mobile number is required')
     .custom((value) => {
-      if (value && !isValidPhone(value)) {
-        throw new Error('Please provide a valid phone number');
+      if (!isValidPhone(value)) {
+        throw new Error('Please provide a valid mobile number');
       }
       return true;
     }),
@@ -113,23 +35,66 @@ const verifyOTPValidation = [
     .withMessage('OTP must be 6 digits')
     .isNumeric()
     .withMessage('OTP must be numeric'),
-  body('type')
+  handleValidationErrors,
+];
+
+// Complete profile validation
+const completeProfileValidation = [
+  body('mobile')
+    .trim()
     .notEmpty()
-    .withMessage('Type is required')
-    .isIn(['email', 'phone'])
-    .withMessage('Type must be either "email" or "phone"'),
-  body().custom((value) => {
-    if (!value.email && !value.phone) {
-      throw new Error('Either email or phone is required');
-    }
-    if (value.type === 'email' && !value.email) {
-      throw new Error('Email is required when type is "email"');
-    }
-    if (value.type === 'phone' && !value.phone) {
-      throw new Error('Phone is required when type is "phone"');
-    }
-    return true;
-  }),
+    .withMessage('Mobile number is required')
+    .custom((value) => {
+      if (!isValidPhone(value)) {
+        throw new Error('Please provide a valid mobile number');
+      }
+      return true;
+    }),
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('dateOfBirth')
+    .notEmpty()
+    .withMessage('Date of birth is required')
+    .custom((value) => {
+      // Accept both YYYY-MM-DD and ISO 8601 formats
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(value) && !Date.parse(value)) {
+        throw new Error('Please provide a valid date of birth (YYYY-MM-DD format)');
+      }
+      
+      const dob = new Date(value);
+      if (isNaN(dob.getTime())) {
+        throw new Error('Please provide a valid date of birth');
+      }
+      
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      
+      if (age < 18) {
+        throw new Error('You must be at least 18 years old');
+      }
+      if (age > 120) {
+        throw new Error('Please provide a valid date of birth');
+      }
+      
+      return true;
+    }),
+  body('gender')
+    .trim()
+    .notEmpty()
+    .withMessage('Gender is required')
+    .isIn(['male', 'female', 'other'])
+    .withMessage('Gender must be one of: male, female, other')
+    .toLowerCase(),
   handleValidationErrors,
 ];
 
@@ -141,6 +106,7 @@ const refreshTokenValidation = [
   handleValidationErrors,
 ];
 
+<<<<<<< HEAD
 // Forgot password validation
 const forgotPasswordValidation = [
   body('email')
@@ -238,15 +204,19 @@ const resetPasswordValidation = [
   handleValidationErrors,
 ];
 
+=======
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 module.exports = {
-  registerValidation,
-  loginValidation,
   sendOTPValidation,
   verifyOTPValidation,
+  completeProfileValidation,
   refreshTokenValidation,
+<<<<<<< HEAD
   forgotPasswordValidation,
   resetPasswordValidation,
   verifyMobileOTPValidation,
   completeMobileRegistrationValidation,
   updateProfileValidation,
+=======
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 };

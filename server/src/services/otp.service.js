@@ -19,13 +19,35 @@ const generateOTP = () => {
  * @param {String} email - User email
  * @param {String} phone - User phone (optional)
  * @param {String} type - OTP type ('email' or 'phone')
- * @param {String} purpose - OTP purpose ('verification', 'password-reset', 'login')
+ * @param {String} purpose - OTP purpose ('verification', 'login')
  * @returns {Object} OTP document
  */
 const createOTP = async (email, phone, type, purpose = 'verification') => {
   try {
-    // Delete any existing unused OTPs for this email/phone
-    const query = type === 'email' ? { email, isUsed: false } : { phone, isUsed: false };
+    // Normalize phone number format for consistency
+    let normalizedPhone = phone;
+    if (phone && type === 'phone') {
+      // Ensure consistent format - if no +, add country code
+      if (!phone.startsWith('+')) {
+        // Default to India +91 if no country code
+        normalizedPhone = '+91' + phone;
+      }
+    }
+    
+    // Delete any existing unused OTPs for this email/phone (check both formats)
+    let query;
+    if (type === 'email') {
+      query = { email, isUsed: false };
+    } else {
+      // Check both normalized and original format
+      const phoneFormats = [normalizedPhone];
+      if (phone !== normalizedPhone) {
+        phoneFormats.push(phone);
+      }
+      query = { 
+        $or: phoneFormats.map(p => ({ phone: p, isUsed: false }))
+      };
+    }
     await OTP.deleteMany(query);
 
     // Generate new OTP
@@ -35,7 +57,7 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
     // Create OTP document (will be hashed by pre-save hook)
     const otp = new OTP({
       email: type === 'email' ? email : undefined,
-      phone: type === 'phone' ? phone : undefined,
+      phone: type === 'phone' ? normalizedPhone : undefined,
       otp: otpCode,
       type,
       purpose,
@@ -66,7 +88,26 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
  */
 const verifyOTP = async (email, phone, otpCode, type) => {
   try {
-    const query = type === 'email' ? { email, type } : { phone, type };
+    // Normalize phone number - try both with and without + prefix
+    let query;
+    if (type === 'email') {
+      query = { email, type };
+    } else {
+      // Try to find OTP with exact phone match, or try alternative formats
+      const phoneVariants = [phone];
+      if (phone && !phone.startsWith('+')) {
+        phoneVariants.push('+' + phone);
+        phoneVariants.push('+91' + phone); // India country code
+      } else if (phone && phone.startsWith('+91')) {
+        phoneVariants.push(phone.substring(3)); // Remove +91
+        phoneVariants.push(phone.substring(1)); // Remove +
+      }
+      
+      query = { 
+        type,
+        $or: phoneVariants.map(p => ({ phone: p }))
+      };
+    }
     
     const otp = await OTP.findOne({
       ...query,

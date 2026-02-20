@@ -1,5 +1,4 @@
 const User = require('../models/user.model');
-const Role = require('../models/role.model');
 const AuditLog = require('../models/auditLog.model');
 const { getRoleFromAppSource } = require('../config/roles');
 const otpService = require('./otp.service');
@@ -7,6 +6,7 @@ const tokenService = require('./token.service');
 const logger = require('../utils/logger');
 
 /**
+<<<<<<< HEAD
  * Register new user - Role is derived from appSource, NEVER from client
  * @param {Object} userData - User registration data
  * @param {String} appSource - App identifier (USER_APP, COBBER_APP, etc.)
@@ -68,154 +68,56 @@ const registerUser = async (userData, appSource = 'USER_APP') => {
  * Login user
  * @param {String} email - User email
  * @param {String} password - User password
+=======
+ * Send OTP to mobile number
+ * @param {String} mobile - User mobile number
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
  * @param {String} ipAddress - IP address
  * @param {String} userAgent - User agent
- * @param {String} deviceInfo - Device information
- * @returns {Object} User and tokens
- */
-const loginUser = async (email, password, ipAddress, userAgent, deviceInfo) => {
-  try {
-    // Find user with password field
-    const user = await User.findOne({ email })
-      .select('+password')
-      .populate('role');
-
-    if (!user) {
-      await AuditLog.createLog({
-        action: 'login',
-        resource: 'auth',
-        ipAddress,
-        userAgent,
-        status: 'failure',
-        errorMessage: 'User not found',
-        details: { email },
-      });
-      throw new Error('Invalid email or password');
-    }
-
-    // Check if account is locked
-    if (user.isLocked) {
-      await AuditLog.createLog({
-        userId: user._id,
-        action: 'login',
-        resource: 'auth',
-        ipAddress,
-        userAgent,
-        status: 'failure',
-        errorMessage: 'Account locked',
-        details: { email },
-      });
-      throw new Error('Account is locked. Please try again later.');
-    }
-
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (!isPasswordValid) {
-      // Increment login attempts
-      await user.incLoginAttempts();
-
-      await AuditLog.createLog({
-        userId: user._id,
-        action: 'login',
-        resource: 'auth',
-        ipAddress,
-        userAgent,
-        status: 'failure',
-        errorMessage: 'Invalid password',
-        details: { email },
-      });
-
-      throw new Error('Invalid email or password');
-    }
-
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      await AuditLog.createLog({
-        userId: user._id,
-        action: 'login',
-        resource: 'auth',
-        ipAddress,
-        userAgent,
-        status: 'failure',
-        errorMessage: 'Email not verified',
-        details: { email },
-      });
-      throw new Error('Please verify your email before logging in');
-    }
-
-    // Reset login attempts on successful login
-    await user.resetLoginAttempts();
-
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    // Create session and generate tokens
-    const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
-      user,
-      deviceInfo,
-      ipAddress,
-      userAgent
-    );
-
-    // Log successful login
-    await AuditLog.createLog({
-      userId: user._id,
-      action: 'login',
-      resource: 'auth',
-      ipAddress,
-      userAgent,
-      status: 'success',
-      details: { email },
-    });
-
-    return {
-      user: user.toJSON(),
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn,
-      },
-    };
-  } catch (error) {
-    logger.error(`Error logging in user: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
- * Send OTP for verification
- * @param {String} email - User email
- * @param {String} phone - User phone (optional)
- * @param {String} type - OTP type ('email' or 'phone')
- * @param {String} purpose - OTP purpose
  * @returns {Object} OTP info
  */
-const sendOTP = async (email, phone, type, purpose = 'verification') => {
+const sendOTP = async (mobile, ipAddress, userAgent) => {
   try {
+    // Normalize mobile number format (ensure consistency)
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
     // Check rate limit
-    const rateLimitExceeded = await otpService.checkRateLimit(email, phone, type);
+    const rateLimitExceeded = await otpService.checkRateLimit(null, normalizedMobile, 'phone');
     if (rateLimitExceeded) {
+      await AuditLog.createLog({
+        action: 'otp-generate',
+        resource: 'otp',
+        status: 'failure',
+        errorMessage: 'Rate limit exceeded',
+        ipAddress,
+        userAgent,
+        details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
+      });
       throw new Error('Too many OTP requests. Please try again later.');
     }
 
-    // Create OTP
-    const { otp, expiresAt } = await otpService.createOTP(email, phone, type, purpose);
+    // Create OTP with normalized mobile
+    const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // TODO: Send OTP via email/SMS service
-    // For now, log it (in production, use nodemailer or SMS service)
-    logger.info(`OTP for ${type === 'email' ? email : phone}: ${otp}`);
+    // TODO: Send OTP via SMS service
+    // For now, log it (in production, use SMS service)
+    logger.info(`OTP for mobile ${mobile}: ${otp}`);
 
     // Log audit event
     await AuditLog.createLog({
       action: 'otp-generate',
       resource: 'otp',
       status: 'success',
-      details: { email, phone, type, purpose },
+      ipAddress,
+      userAgent,
+      details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
     });
 
     return {
+      otp, // Return OTP for development mode
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {
@@ -225,17 +127,24 @@ const sendOTP = async (email, phone, type, purpose = 'verification') => {
 };
 
 /**
- * Verify OTP and complete registration
- * @param {String} email - User email
- * @param {String} phone - User phone (optional)
+ * Verify OTP and check if user exists
+ * @param {String} mobile - User mobile number
  * @param {String} otp - OTP code
- * @param {String} type - OTP type
- * @returns {Object} Verification result
+ * @param {String} ipAddress - IP address
+ * @param {String} userAgent - User agent
+ * @param {String} deviceInfo - Device information
+ * @returns {Object} Verification result with user status
  */
-const verifyOTPAndCompleteRegistration = async (email, phone, otp, type) => {
+const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
   try {
+    // Normalize mobile number format (ensure consistency)
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
     // Verify OTP
-    const verification = await otpService.verifyOTP(email, phone, otp, type);
+    const verification = await otpService.verifyOTP(null, normalizedMobile, otp, 'phone');
 
     if (!verification.valid) {
       await AuditLog.createLog({
@@ -243,43 +152,151 @@ const verifyOTPAndCompleteRegistration = async (email, phone, otp, type) => {
         resource: 'otp',
         status: 'failure',
         errorMessage: verification.message,
-        details: { email, phone, type },
+        ipAddress,
+        userAgent,
+        details: { mobile, type: 'phone', attemptsRemaining: verification.attemptsRemaining },
       });
       throw new Error(verification.message);
     }
 
+<<<<<<< HEAD
     // Find user by email or phone
     const query = type === 'email' ? { email } : { $or: [{ mobile: phone }, { phone }] };
     const user = await User.findOne(query).populate('role');
 
     if (!user) {
       throw new Error('User not found');
+=======
+    // Check if user exists (try both formats)
+    let user = await User.findOne({ mobile: normalizedMobile });
+    if (!user && mobile !== normalizedMobile) {
+      user = await User.findOne({ mobile });
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
     }
 
-    // Update verification status
-    if (type === 'email') {
-      user.isEmailVerified = true;
-    } else if (type === 'phone') {
+    if (user) {
+      // Existing user - Login
       user.isPhoneVerified = true;
+      user.lastLogin = new Date();
+      await user.save();
+
+      // Create session and generate tokens
+      const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
+        user,
+        deviceInfo || 'mobile',
+        ipAddress || '127.0.0.1',
+        userAgent || 'unknown'
+      );
+
+      // Log successful login
+      await AuditLog.createLog({
+        userId: user._id,
+        action: 'login',
+        resource: 'auth',
+        ipAddress,
+        userAgent,
+        status: 'success',
+        details: { mobile },
+      });
+
+      return {
+        isExistingUser: true,
+        user: user.toJSON(),
+        tokens: {
+          accessToken,
+          refreshToken,
+          expiresIn,
+        },
+      };
+    } else {
+      // New user - Need profile completion
+      await AuditLog.createLog({
+        action: 'otp-verify',
+        resource: 'otp',
+        status: 'success',
+        ipAddress,
+        userAgent,
+        details: { mobile, type: 'phone', requiresProfileCompletion: true },
+      });
+
+      return {
+        isExistingUser: false,
+        requiresProfileCompletion: true,
+        message: 'Please complete your profile',
+      };
     }
+  } catch (error) {
+    logger.error(`Error verifying OTP: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Complete profile and create user account
+ * @param {String} mobile - User mobile number
+ * @param {String} name - User name
+ * @param {Date} dateOfBirth - User date of birth
+ * @param {String} gender - User gender
+ * @param {String} ipAddress - IP address
+ * @param {String} userAgent - User agent
+ * @param {String} deviceInfo - Device information
+ * @returns {Object} User and tokens
+ */
+const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo) => {
+  try {
+    // Normalize mobile number format
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile; // Default to India +91
+    }
+    
+    // Check if user already exists (try both formats)
+    let existingUser = await User.findOne({ mobile: normalizedMobile });
+    if (!existingUser && mobile !== normalizedMobile) {
+      existingUser = await User.findOne({ mobile });
+    }
+    if (existingUser) {
+      await AuditLog.createLog({
+        action: 'register',
+        resource: 'user',
+        status: 'failure',
+        errorMessage: 'User with this mobile number already exists',
+        ipAddress,
+        userAgent,
+        details: { mobile, name },
+      });
+      throw new Error('User with this mobile number already exists');
+    }
+
+    // Create user with normalized mobile
+    const user = new User({
+      mobile: normalizedMobile,
+      name,
+      dateOfBirth,
+      gender,
+      role: 'user', // Default role
+      isPhoneVerified: true,
+    });
 
     await user.save();
 
     // Create session and generate tokens
     const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
       user,
-      'web',
-      '127.0.0.1',
-      'unknown'
+      deviceInfo || 'mobile',
+      ipAddress || '127.0.0.1',
+      userAgent || 'unknown'
     );
 
     // Log audit event
     await AuditLog.createLog({
       userId: user._id,
-      action: 'otp-verify',
-      resource: 'otp',
+      action: 'register',
+      resource: 'user',
       status: 'success',
-      details: { email, phone, type },
+      ipAddress,
+      userAgent,
+      details: { mobile, name, gender, dateOfBirth },
     });
 
     return {
@@ -291,77 +308,7 @@ const verifyOTPAndCompleteRegistration = async (email, phone, otp, type) => {
       },
     };
   } catch (error) {
-    logger.error(`Error verifying OTP: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
- * Forgot password - send reset OTP
- * @param {String} email - User email
- * @returns {Object} Success message
- */
-const forgotPassword = async (email) => {
-  try {
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      // Don't reveal if user exists for security
-      return { message: 'If email exists, password reset OTP has been sent' };
-    }
-
-    // Send OTP for password reset
-    await sendOTP(email, null, 'email', 'password-reset');
-
-    return { message: 'Password reset OTP sent to your email' };
-  } catch (error) {
-    logger.error(`Error in forgot password: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
- * Reset password using OTP
- * @param {String} email - User email
- * @param {String} otp - OTP code
- * @param {String} newPassword - New password
- * @returns {Object} Success message
- */
-const resetPassword = async (email, otp, newPassword) => {
-  try {
-    // Verify OTP
-    const verification = await otpService.verifyOTP(email, null, otp, 'email');
-
-    if (!verification.valid || verification.otpDoc.purpose !== 'password-reset') {
-      throw new Error('Invalid or expired OTP');
-    }
-
-    // Find user
-    const user = await User.findOne({ email }).select('+password');
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Update password
-    user.password = newPassword;
-    await user.save();
-
-    // Revoke all sessions
-    await tokenService.revokeAllUserSessions(user._id);
-
-    // Log audit event
-    await AuditLog.createLog({
-      userId: user._id,
-      action: 'password-reset',
-      resource: 'auth',
-      status: 'success',
-      details: { email },
-    });
-
-    return { message: 'Password reset successful' };
-  } catch (error) {
-    logger.error(`Error resetting password: ${error.message}`);
+    logger.error(`Error completing profile: ${error.message}`);
     throw error;
   }
 };
@@ -371,13 +318,33 @@ const resetPassword = async (email, otp, newPassword) => {
  * @param {String} userId - User ID
  * @returns {Object} User object
  */
-const getCurrentUser = async (userId) => {
+const getCurrentUser = async (userId, ipAddress, userAgent) => {
   try {
-    const user = await User.findById(userId).populate('role');
+    const user = await User.findById(userId);
 
     if (!user) {
+      await AuditLog.createLog({
+        userId,
+        action: 'profile-update',
+        resource: 'user',
+        status: 'failure',
+        errorMessage: 'User not found',
+        ipAddress,
+        userAgent,
+      });
       throw new Error('User not found');
     }
+
+    // Log profile view
+    await AuditLog.createLog({
+      userId: user._id,
+      action: 'profile-update',
+      resource: 'user',
+      status: 'success',
+      ipAddress,
+      userAgent,
+      details: { action: 'view_profile' },
+    });
 
     return user.toJSON();
   } catch (error) {
@@ -515,14 +482,17 @@ const updateProfile = async (userId, profileData) => {
 };
 
 module.exports = {
-  registerUser,
-  loginUser,
   sendOTP,
+<<<<<<< HEAD
   verifyOTPAndCompleteRegistration,
   verifyMobileOTPAndLoginOrRegister,
   completeMobileRegistration,
   forgotPassword,
   resetPassword,
+=======
+  verifyOTP,
+  completeProfile,
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
   getCurrentUser,
   updateProfile,
 };

@@ -13,8 +13,12 @@ const roleMiddleware = (allowedRoles) => {
       return forbidden(res, 'Authentication required');
     }
 
+<<<<<<< HEAD
     const userRole = req.user.role?.name || req.user.role;
     const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : userRole;
+=======
+    const userRole = req.user.role;
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 
     if (!roleUpper || !VALID_ROLES.includes(roleUpper)) {
       return forbidden(res, 'User role not found');

@@ -3,46 +3,48 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const {
-  registerValidation,
-  loginValidation,
   sendOTPValidation,
   verifyOTPValidation,
+  completeProfileValidation,
   refreshTokenValidation,
+<<<<<<< HEAD
   forgotPasswordValidation,
   resetPasswordValidation,
   verifyMobileOTPValidation,
   completeMobileRegistrationValidation,
   updateProfileValidation,
+=======
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 } = require('../validations/auth.validation');
 const {
-  globalRateLimiter,
-  loginRateLimiter,
   otpRateLimiter,
-  registerRateLimiter,
 } = require('../middleware/rateLimit');
 
 /**
  * @swagger
- * /api/auth/register:
+ * /api/auth/send-otp:
  *   post:
- *     summary: Register a new user
- *     description: Register a new user account. An OTP will be sent to the provided email for verification.
+ *     summary: Send OTP to mobile number
+ *     description: Generate and send a one-time password (OTP) to the user's mobile number for authentication.
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RegisterRequest'
+ *             type: object
+ *             required:
+ *               - mobile
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *                 example: "+1234567890"
+ *                 description: User mobile number
  *           example:
- *             email: user@example.com
- *             password: SecurePass123!
- *             firstName: John
- *             lastName: Doe
- *             phone: "+1234567890"
+ *             mobile: "+1234567890"
  *     responses:
- *       201:
- *         description: Registration successful. OTP sent to email.
+ *       200:
+ *         description: OTP sent successfully
  *         content:
  *           application/json:
  *             schema:
@@ -53,85 +55,15 @@ const {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Registration successful. Please verify your email."
+ *                   example: "OTP sent successfully"
  *                 data:
  *                   type: object
  *                   properties:
- *                     userId:
- *                       type: string
- *                     email:
- *                       type: string
- *                     otpSent:
- *                       type: boolean
- *                       example: true
- *       400:
- *         description: Bad request - Validation error or user already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "User with this email already exists"
- */
-router.post(
-  '/register',
-  registerRateLimiter,
-  registerValidation,
-  authController.register
-);
-
-/**
- * @swagger
- * /api/auth/send-otp:
- *   post:
- *     summary: Send OTP to user's email or phone
- *     description: Send a one-time password (OTP) to the user's email or phone for verification purposes.
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - type
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: user@example.com
- *                 description: User email (required if type is 'email')
- *               phone:
- *                 type: string
- *                 example: "+1234567890"
- *                 description: User phone number (required if type is 'phone')
- *               type:
- *                 type: string
- *                 enum: [email, phone]
- *                 example: email
- *                 description: OTP delivery method
- *           example:
- *             email: user@example.com
- *             type: email
- *     responses:
- *       200:
- *         description: OTP sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "OTP sent successfully"
- *               data:
- *                 expiresIn: 600
+ *                     expiresIn:
+ *                       type: number
+ *                       example: 600
  *       400:
  *         description: Bad request - Validation error or rate limit exceeded
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendOTP);
 
@@ -139,8 +71,8 @@ router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendO
  * @swagger
  * /api/auth/verify-otp:
  *   post:
- *     summary: Verify OTP code
- *     description: Verify the OTP code sent to user's email or phone. If verifying email during registration, this will complete the registration and return tokens.
+ *     summary: Verify OTP and check if user exists
+ *     description: Verify the OTP code sent to user's mobile. If user exists, returns JWT tokens. If new user, returns flag for profile completion.
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -149,31 +81,112 @@ router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendO
  *           schema:
  *             type: object
  *             required:
+ *               - mobile
  *               - otp
- *               - type
  *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: user@example.com
- *               phone:
+ *               mobile:
  *                 type: string
  *                 example: "+1234567890"
  *               otp:
  *                 type: string
  *                 example: "123456"
  *                 description: 6-digit OTP code
- *               type:
- *                 type: string
- *                 enum: [email, phone]
- *                 example: email
  *           example:
- *             email: user@example.com
+ *             mobile: "+1234567890"
  *             otp: "123456"
- *             type: email
  *     responses:
  *       200:
  *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Existing user - Login successful
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       example: "Login successful"
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         user:
+ *                           $ref: '#/components/schemas/User'
+ *                         tokens:
+ *                           type: object
+ *                           properties:
+ *                             accessToken:
+ *                               type: string
+ *                             refreshToken:
+ *                               type: string
+ *                             expiresIn:
+ *                               type: string
+ *                 - type: object
+ *                   description: New user - Profile completion required
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       example: "Please complete your profile"
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         requiresProfileCompletion:
+ *                           type: boolean
+ *                           example: true
+ *                         mobile:
+ *                           type: string
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post('/verify-otp', otpRateLimiter, verifyOTPValidation, authController.verifyOTP);
+
+/**
+ * @swagger
+ * /api/auth/complete-profile:
+ *   post:
+ *     summary: Complete profile for new user
+ *     description: Create user account with name, date of birth, and gender. Returns JWT tokens upon successful registration.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile
+ *               - name
+ *               - dateOfBirth
+ *               - gender
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: "1990-01-01"
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other]
+ *                 example: "male"
+ *           example:
+ *             mobile: "+1234567890"
+ *             name: "John Doe"
+ *             dateOfBirth: "1990-01-01"
+ *             gender: "male"
+ *     responses:
+ *       201:
+ *         description: Profile completed successfully. Login successful.
  *         content:
  *           application/json:
  *             schema:
@@ -184,11 +197,10 @@ router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendO
  *                   example: true
  *                 message:
  *                   type: string
+ *                   example: "Profile completed successfully. Login successful."
  *                 data:
  *                   type: object
  *                   properties:
- *                     verified:
- *                       type: boolean
  *                     user:
  *                       $ref: '#/components/schemas/User'
  *                     tokens:
@@ -201,77 +213,9 @@ router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendO
  *                         expiresIn:
  *                           type: string
  *       400:
- *         description: Invalid or expired OTP
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *         description: Bad request - Validation error or user already exists
  */
-router.post(
-  '/verify-otp',
-  otpRateLimiter,
-  verifyOTPValidation,
-  authController.verifyOTP
-);
-
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Login user and get JWT tokens
- *     description: Authenticate user with email and password. Returns access and refresh tokens upon successful login.
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/LoginRequest'
- *           example:
- *             email: user@example.com
- *             password: SecurePass123!
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Login successful"
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *                     tokens:
- *                       type: object
- *                       properties:
- *                         accessToken:
- *                           type: string
- *                         refreshToken:
- *                           type: string
- *                         expiresIn:
- *                           type: string
- *       401:
- *         description: Invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       403:
- *         description: Account locked or email not verified
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.post('/login', loginRateLimiter, loginValidation, authController.login);
+router.post('/complete-profile', completeProfileValidation, authController.completeProfile);
 
 /**
  * @swagger
@@ -297,36 +241,10 @@ router.post('/login', loginRateLimiter, loginValidation, authController.login);
  *     responses:
  *       200:
  *         description: Token refreshed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Token refreshed successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     accessToken:
- *                       type: string
- *                     expiresIn:
- *                       type: string
  *       401:
  *         description: Invalid or expired refresh token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post(
-  '/refresh-token',
-  refreshTokenValidation,
-  authController.refreshToken
-);
+router.post('/refresh-token', refreshTokenValidation, authController.refreshToken);
 
 /**
  * @swagger
@@ -347,27 +265,11 @@ router.post(
  *               refreshToken:
  *                 type: string
  *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                 description: Optional refresh token to revoke
  *     responses:
  *       200:
  *         description: Logout successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Logout successful"
  *       401:
  *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/logout', authMiddleware, authController.logout);
 
@@ -383,37 +285,14 @@ router.post('/logout', authMiddleware, authController.logout);
  *     responses:
  *       200:
  *         description: User profile retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "User retrieved successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
  *       401:
  *         description: Unauthorized - Invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/me', authMiddleware, authController.getCurrentUser);
 
+<<<<<<< HEAD
 /**
  * @swagger
  * /api/auth/verify-mobile-otp:
@@ -560,4 +439,6 @@ router.post(
   authController.resetPassword
 );
 
+=======
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 module.exports = router;

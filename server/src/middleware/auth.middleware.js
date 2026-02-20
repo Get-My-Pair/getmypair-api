@@ -14,12 +14,30 @@ const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.createLog({
+        action: 'login',
+        resource: 'auth',
+        status: 'failure',
+        errorMessage: 'No token provided',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent') || 'unknown',
+      });
       return unauthorized(res, 'No token provided');
     }
 
     const token = authHeader.split(' ')[1];
 
     if (!token) {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.createLog({
+        action: 'login',
+        resource: 'auth',
+        status: 'failure',
+        errorMessage: 'No token provided',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent') || 'unknown',
+      });
       return unauthorized(res, 'No token provided');
     }
 
@@ -27,16 +45,34 @@ const authMiddleware = async (req, res, next) => {
     const decoded = verifyAccessToken(token);
 
     // Find user
-    const user = await User.findById(decoded.userId)
-      .select('-password')
-      .populate('role');
+    const user = await User.findById(decoded.userId);
 
     if (!user) {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.createLog({
+        action: 'login',
+        resource: 'auth',
+        status: 'failure',
+        errorMessage: 'User not found',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent') || 'unknown',
+        details: { userId: decoded.userId },
+      });
       return unauthorized(res, 'User not found');
     }
 
     // Check if user is active
     if (!user.isActive) {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.createLog({
+        userId: user._id,
+        action: 'login',
+        resource: 'auth',
+        status: 'failure',
+        errorMessage: 'User account is inactive',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent') || 'unknown',
+      });
       return unauthorized(res, 'User account is inactive');
     }
 
@@ -49,6 +85,16 @@ const authMiddleware = async (req, res, next) => {
     });
 
     if (!session) {
+      const AuditLog = require('../models/auditLog.model');
+      await AuditLog.createLog({
+        userId: user._id,
+        action: 'login',
+        resource: 'auth',
+        status: 'failure',
+        errorMessage: 'Invalid session',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent') || 'unknown',
+      });
       return unauthorized(res, 'Invalid session');
     }
 
@@ -61,6 +107,15 @@ const authMiddleware = async (req, res, next) => {
 
     next();
   } catch (error) {
+    const AuditLog = require('../models/auditLog.model');
+    await AuditLog.createLog({
+      action: 'login',
+      resource: 'auth',
+      status: 'failure',
+      errorMessage: error.message || 'Invalid or expired token',
+      ipAddress: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('user-agent') || 'unknown',
+    });
     return unauthorized(res, error.message || 'Invalid or expired token');
   }
 };

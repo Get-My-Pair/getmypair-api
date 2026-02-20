@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const config = require('../config/env');
 
 const userSchema = new mongoose.Schema(
   {
-    email: {
+    mobile: {
       type: String,
+<<<<<<< HEAD
       sparse: true, // unique but allow null
       lowercase: true,
       trim: true,
@@ -35,6 +35,34 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+=======
+      required: true,
+      unique: true,
+      trim: true,
+      index: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+    dateOfBirth: {
+      type: Date,
+      required: true,
+    },
+    gender: {
+      type: String,
+      required: true,
+      enum: ['male', 'female', 'other'],
+      lowercase: true,
+    },
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: undefined,
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
     },
     dateOfBirth: {
       type: Date,
@@ -45,11 +73,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     role: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Role',
-      required: true,
+      type: String,
+      enum: ['user', 'admin', 'moderator'],
+      default: 'user',
+      lowercase: true,
       index: true,
     },
+<<<<<<< HEAD
     profileCompleted: {
       type: Boolean,
       default: false,
@@ -60,6 +90,9 @@ const userSchema = new mongoose.Schema(
       address: { type: String, trim: true },
     },
     isEmailVerified: {
+=======
+    isPhoneVerified: {
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
       type: Boolean,
       default: false,
     },
@@ -71,17 +104,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-    loginAttempts: {
-      type: Number,
-      default: 0,
-    },
-    lockUntil: {
-      type: Date,
-    },
     lastLogin: {
       type: Date,
     },
@@ -91,9 +113,6 @@ const userSchema = new mongoose.Schema(
     toJSON: {
       virtuals: false,
       transform(doc, ret) {
-        delete ret.password;
-        delete ret.loginAttempts;
-        delete ret.lockUntil;
         return ret;
       },
     },
@@ -101,6 +120,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+<<<<<<< HEAD
 userSchema.index({ email: 1 }, { sparse: true });
 userSchema.index({ mobile: 1 }, { sparse: true });
 userSchema.index({ role: 1 });
@@ -167,6 +187,12 @@ userSchema.methods.resetLoginAttempts = async function () {
   this.lockUntil = undefined;
   return this.save();
 };
+=======
+userSchema.index({ mobile: 1 });
+userSchema.index({ role: 1 });
+// Sparse unique index for email - allows multiple null values, but unique non-null values
+userSchema.index({ email: 1 }, { sparse: true, unique: true });
+>>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
 
 const User = mongoose.model('User', userSchema);
 

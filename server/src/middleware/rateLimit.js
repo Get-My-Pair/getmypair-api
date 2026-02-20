@@ -14,43 +14,19 @@ const globalRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Login rate limiter - stricter
-const loginRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per 15 minutes
-  message: {
-    success: false,
-    message: 'Too many login attempts, please try again later.',
-    statusCode: 429,
-  },
-  skipSuccessfulRequests: true,
-});
-
-// OTP rate limiter
+// OTP rate limiter - more lenient for development
 const otpRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 OTP requests per hour
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: config.NODE_ENV === 'development' ? 20 : 5, // 20 in dev, 5 in production
   message: {
     success: false,
     message: 'Too many OTP requests, please try again later.',
     statusCode: 429,
   },
-});
-
-// Registration rate limiter
-const registerRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 registrations per hour
-  message: {
-    success: false,
-    message: 'Too many registration attempts, please try again later.',
-    statusCode: 429,
-  },
+  skipSuccessfulRequests: false,
 });
 
 module.exports = {
   globalRateLimiter,
-  loginRateLimiter,
   otpRateLimiter,
-  registerRateLimiter,
 };
