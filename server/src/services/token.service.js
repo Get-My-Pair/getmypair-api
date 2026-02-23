@@ -21,12 +21,7 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     const roleName = user.role?.name || (typeof user.role === 'string' ? user.role : null);
     const accessTokenPayload = {
       userId: user._id.toString(),
-<<<<<<< HEAD
       role: roleName,
-=======
-      mobile: user.mobile,
-      role: user.role,
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
     };
 
     const refreshTokenPayload = {
@@ -101,12 +96,7 @@ const refreshAccessToken = async (refreshToken) => {
     const roleName = user.role?.name || (typeof user.role === 'string' ? user.role : null);
     const accessTokenPayload = {
       userId: user._id.toString(),
-<<<<<<< HEAD
       role: roleName,
-=======
-      mobile: user.mobile,
-      role: user.role,
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
     };
 
     const accessToken = generateAccessToken(accessTokenPayload);

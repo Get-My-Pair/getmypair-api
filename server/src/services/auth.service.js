@@ -6,72 +6,8 @@ const tokenService = require('./token.service');
 const logger = require('../utils/logger');
 
 /**
-<<<<<<< HEAD
- * Register new user - Role is derived from appSource, NEVER from client
- * @param {Object} userData - User registration data
- * @param {String} appSource - App identifier (USER_APP, COBBER_APP, etc.)
- * @returns {Object} User object
- */
-const registerUser = async (userData, appSource = 'USER_APP') => {
-  try {
-    const roleName = getRoleFromAppSource(appSource);
-
-    if (userData.email && !userData.password) {
-      throw new Error('Password is required for email registration');
-    }
-
-    if (userData.email) {
-      const existingUser = await User.findOne({ email: userData.email });
-      if (existingUser) {
-        throw new Error('User with this email already exists');
-      }
-    }
-    if (userData.mobile) {
-      const existingMobile = await User.findOne({ mobile: userData.mobile });
-      if (existingMobile) {
-        throw new Error('User with this mobile already exists');
-      }
-    }
-
-    // Get role from DB
-    let role = await Role.findOne({ name: roleName });
-    if (!role) {
-      await Role.initializeDefaultRoles();
-      role = await Role.findOne({ name: roleName });
-    }
-
-    // Remove role from userData - backend only assigns role
-    const { role: _omitRole, ...safeUserData } = userData;
-
-    const user = new User({
-      ...safeUserData,
-      role: role._id,
-    });
-
-    await user.save();
-
-    await AuditLog.createLog({
-      action: 'register',
-      resource: 'user',
-      status: 'success',
-      details: { email: user.email, mobile: user.mobile, userId: user._id, role: roleName },
-    });
-
-    return user;
-  } catch (error) {
-    logger.error(`Error registering user: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
- * Login user
- * @param {String} email - User email
- * @param {String} password - User password
-=======
  * Send OTP to mobile number
  * @param {String} mobile - User mobile number
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
  * @param {String} ipAddress - IP address
  * @param {String} userAgent - User agent
  * @returns {Object} OTP info
@@ -83,7 +19,7 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     if (mobile && !mobile.startsWith('+')) {
       normalizedMobile = '+91' + mobile; // Default to India +91
     }
-    
+
     // Check rate limit
     const rateLimitExceeded = await otpService.checkRateLimit(null, normalizedMobile, 'phone');
     if (rateLimitExceeded) {
@@ -142,7 +78,7 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
     if (mobile && !mobile.startsWith('+')) {
       normalizedMobile = '+91' + mobile; // Default to India +91
     }
-    
+
     // Verify OTP
     const verification = await otpService.verifyOTP(null, normalizedMobile, otp, 'phone');
 
@@ -252,7 +188,7 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
     if (mobile && !mobile.startsWith('+')) {
       normalizedMobile = '+91' + mobile; // Default to India +91
     }
-    
+
     // Check if user already exists (try both formats)
     let existingUser = await User.findOne({ mobile: normalizedMobile });
     if (!existingUser && mobile !== normalizedMobile) {
@@ -494,16 +430,10 @@ const updateProfile = async (userId, profileData) => {
 
 module.exports = {
   sendOTP,
-<<<<<<< HEAD
-  verifyOTPAndCompleteRegistration,
-  verifyMobileOTPAndLoginOrRegister,
-  completeMobileRegistration,
-  forgotPassword,
-  resetPassword,
-=======
   verifyOTP,
   completeProfile,
->>>>>>> 87393ab8441ae77f9658bd8e2f32b2026e3272ac
+  verifyMobileOTPAndLoginOrRegister,
+  completeMobileRegistration,
   getCurrentUser,
   updateProfile,
 };
