@@ -41,9 +41,16 @@ const getProfile = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        const profile = await UserProfile.findOne({ userId });
+        let profile = await UserProfile.findOne({ userId });
         if (!profile) {
-            return notFound(res, 'User profile not found');
+            // Auto-create profile if missing, getting details from user registration
+            profile = await UserProfile.create({
+                userId,
+                name: req.user.name || 'User',
+                phone: req.user.mobile || '',
+                email: req.user.email || null,
+            });
+            logger.info(`Auto-created user profile for userId: ${userId}`);
         }
 
         return success(res, 'User profile retrieved successfully', { profile });
