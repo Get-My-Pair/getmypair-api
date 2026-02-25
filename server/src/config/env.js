@@ -3,7 +3,7 @@ require('dotenv').config();
 const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || 3000,
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/getmypair',
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://kartiPChess:kartiChess%402026@cluster-001.6pvjgt0.mongodb.net/kpcomm?retryWrites=true&w=majority',
   JWT_SECRET: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
   JWT_EXPIRE: process.env.JWT_EXPIRE || '7d',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key-change-in-production',
@@ -22,9 +22,9 @@ const config = {
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 
   // Cloudinary
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || 'gmp_root',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '129882573636256',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || 'TrCNS7gLoZ3JyWQKC4ACCx68NjA',
 };
 
 if (config.NODE_ENV === 'production') {
