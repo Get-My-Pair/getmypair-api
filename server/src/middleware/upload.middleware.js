@@ -7,8 +7,9 @@ const multer = require('multer');
 
 // Memory storage (no disk writes - files go to req.file.buffer)
 const memoryStorage = multer.memoryStorage();
+const logger = require('../utils/logger');
 
-// File filter for images — allow all common image MIME types
+// File filter for images — allow common image MIME types; fallback to extension check
 const imageFileFilter = (req, file, cb) => {
     const allowedTypes = [
         'image/jpeg',
@@ -23,11 +24,26 @@ const imageFileFilter = (req, file, cb) => {
         'image/avif',
         'image/x-icon',
     ];
-    if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('image/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only image files are allowed'), false);
+
+    const allowedExtensions = [
+        '.jpeg', '.jpg', '.png', '.webp', '.gif', '.svg', '.tif', '.tiff', '.bmp', '.heic', '.avif', '.ico'
+    ];
+
+    // If mimetype exists and indicates image, accept
+    if (file.mimetype && (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('image/'))) {
+        return cb(null, true);
     }
+
+    // Fallback: check file extension from originalname
+    const originalName = (file.originalname || '').toLowerCase();
+    const matchedExt = allowedExtensions.find(ext => originalName.endsWith(ext));
+    if (matchedExt) {
+        return cb(null, true);
+    }
+
+    // If no mimetype and no extension match, log and reject with helpful message
+    logger.warn(`Rejected upload attempt - not an image. ip=${req.ip || req.connection.remoteAddress} originalname=${file.originalname} mimetype=${file.mimetype}`);
+    cb(new Error('Only image files are allowed (supported: jpg, jpeg, png, webp, gif, svg, tiff, bmp, heic, avif, ico)'), false);
 };
 
 // File filter for documents (images + PDF)
@@ -96,6 +112,10 @@ const handleUpload = (uploadMiddleware) => {
                     message: err.message,
                     statusCode: 400,
                 });
+            }
+            // Log successful upload metadata for debugging
+            if (req.file) {
+                logger.info(`Received upload: fieldname=${req.file.fieldname} originalname=${req.file.originalname} mimetype=${req.file.mimetype} size=${req.file.size}`);
             }
             next();
         });
