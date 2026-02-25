@@ -11,6 +11,7 @@ const userProfileRoutes = require('./routes/userProfile.routes');
 const cobblerProfileRoutes = require('./routes/cobblerProfile.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
 const adminProfileRoutes = require('./routes/adminProfile.routes');
+const geocodeRoutes = require('./routes/geocode.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
@@ -146,6 +147,8 @@ app.use('/api/user/profile', userProfileRoutes);
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
 app.use('/api/delivery/profile', deliveryProfileRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
+// Geocoding (reverse lookup)
+app.use('/api/geocode', geocodeRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
