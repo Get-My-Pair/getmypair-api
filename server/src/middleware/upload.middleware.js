@@ -8,13 +8,25 @@ const multer = require('multer');
 // Memory storage (no disk writes - files go to req.file.buffer)
 const memoryStorage = multer.memoryStorage();
 
-// File filter for images
+// File filter for images — allow all common image MIME types
 const imageFileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const allowedTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+        'image/svg+xml',
+        'image/tiff',
+        'image/bmp',
+        'image/heic',
+        'image/avif',
+        'image/x-icon',
+    ];
+    if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('image/')) {
         cb(null, true);
     } else {
-        cb(new Error('Only JPEG, JPG, PNG, and WEBP image files are allowed'), false);
+        cb(new Error('Only image files are allowed'), false);
     }
 };
 
