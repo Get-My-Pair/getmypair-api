@@ -1,3 +1,4 @@
+const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const config = require('./env');
 
@@ -226,7 +227,7 @@ const options = {
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
     ],
   },
-  apis: ['./src/routes/*.js', './src/app.js'],
+  apis: [path.join(__dirname, '../docs/*.paths.js')],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
