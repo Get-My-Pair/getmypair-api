@@ -16,7 +16,11 @@ const options = {
     servers: [
       {
         url: `http://localhost:${config.PORT}`,
-        description: 'Development server',
+        description: 'Development (Local)',
+      },
+      {
+        url: 'https://getmypair-api.onrender.com',
+        description: 'Production',
       },
     ],
     components: {
