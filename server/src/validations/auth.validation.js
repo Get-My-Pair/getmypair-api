@@ -1,13 +1,17 @@
 const { body } = require('express-validator');
-const { isValidPhone, handleValidationErrors } = require('../utils/validators');
+const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/validators');
 
-// Send OTP validation (mobile number only)
+// Send OTP validation (mobile number only, minimum 10 digits)
 const sendOTPValidation = [
   body('mobile')
     .trim()
     .notEmpty()
     .withMessage('Mobile number is required')
     .custom((value) => {
+      const digitsOnly = (value || '').replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        throw new Error('Mobile number must be at least 10 digits');
+      }
       if (!isValidPhone(value)) {
         throw new Error('Please provide a valid mobile number');
       }
@@ -23,6 +27,10 @@ const verifyOTPValidation = [
     .notEmpty()
     .withMessage('Mobile number is required')
     .custom((value) => {
+      const digitsOnly = (value || '').replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        throw new Error('Mobile number must be at least 10 digits');
+      }
       if (!isValidPhone(value)) {
         throw new Error('Please provide a valid mobile number');
       }
@@ -45,6 +53,10 @@ const completeProfileValidation = [
     .notEmpty()
     .withMessage('Mobile number is required')
     .custom((value) => {
+      const digitsOnly = (value || '').replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        throw new Error('Mobile number must be at least 10 digits');
+      }
       if (!isValidPhone(value)) {
         throw new Error('Please provide a valid mobile number');
       }
@@ -55,7 +67,13 @@ const completeProfileValidation = [
     .notEmpty()
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .withMessage('Name must be between 2 and 100 characters')
+    .custom((value) => {
+      if (!isValidName(value)) {
+        throw new Error('Name must contain only letters (no special characters or numbers)');
+      }
+      return true;
+    }),
   body('dateOfBirth')
     .notEmpty()
     .withMessage('Date of birth is required')
@@ -72,9 +90,14 @@ const completeProfileValidation = [
       }
       
       const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const dobDate = new Date(dob.getFullYear(), dob.getMonth(), dob.getDate());
+      if (dobDate > todayStart) {
+        throw new Error('Date of birth cannot be in the future');
+      }
+      
       let age = today.getFullYear() - dob.getFullYear();
       const monthDiff = today.getMonth() - dob.getMonth();
-      
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
         age--;
       }

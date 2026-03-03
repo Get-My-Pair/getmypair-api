@@ -10,17 +10,37 @@ const isValidEmail = (value) => {
 
 /**
  * Custom phone validator
- * Accepts: +1234567890 or 1234567890 (must start with 1-9, not 0)
+ * Accepts: +1234567890 or 1234567890 (must have at least 10 digits, max 15)
  */
 const isValidPhone = (value) => {
   if (!value || typeof value !== 'string') {
     return false;
   }
-  // Remove any whitespace
   const cleaned = value.trim();
-  // Accept + followed by 1-9 and digits, OR just 1-9 and digits (without +)
+  const digitsOnly = cleaned.replace(/\D/g, '');
+  if (digitsOnly.length < 10) {
+    return false;
+  }
+  if (digitsOnly.length > 15) {
+    return false;
+  }
   const phoneRegex = /^(\+?[1-9]\d{1,14}|[1-9]\d{9,14})$/;
   return phoneRegex.test(cleaned);
+};
+
+/**
+ * Custom name validator - only letters and spaces (no special characters or numbers)
+ */
+const isValidName = (value) => {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) {
+    return false;
+  }
+  const nameRegex = /^[a-zA-Z\s]+$/;
+  return nameRegex.test(trimmed);
 };
 
 /**
@@ -52,5 +72,6 @@ const handleValidationErrors = (req, res, next) => {
 module.exports = {
   isValidEmail,
   isValidPhone,
+  isValidName,
   handleValidationErrors,
 };
