@@ -1,3 +1,22 @@
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : role.middleware.js
+ * Description: Role-based auth – restrict routes by USER, COBBER, DELIVERY, ADMIN
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
+ */
+
 const { forbidden } = require('../utils/response');
 const { VALID_ROLES } = require('../config/roles');
 

@@ -1,3 +1,22 @@
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : auth.validation.js
+ * Description: Auth request validation – send OTP, verify OTP, complete profile, refresh token
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
+ */
+
 const { body } = require('express-validator');
 const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/validators');
 

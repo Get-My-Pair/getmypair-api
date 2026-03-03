@@ -1,4 +1,23 @@
 /**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : roles.js
+ * Description: Role mapping – app source to role; seed roles (USER, COBBER, etc.)
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
+ */
+
+/**
  * Application to Role Mapping
  * Role is assigned based on app source during registration.
  * Client CANNOT send or modify role - it is derived from app identifier.

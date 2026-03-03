@@ -1,3 +1,22 @@
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : otp.service.js
+ * Description: OTP service – create, verify, rate limit, hash
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
+ */
+
 const OTP = require('../models/otp.model');
 const config = require('../config/env');
 const logger = require('../utils/logger');

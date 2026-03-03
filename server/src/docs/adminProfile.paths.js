@@ -1,6 +1,20 @@
 /**
- * Centralized Swagger path definitions – Admin Profile
- * All API path docs live under server/src/docs/ – do not add @swagger in route files.
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : adminProfile.paths.js
+ * Description: Swagger path definitions – Admin Profile (users, cobblers, delivery, verify, status)
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
  */
 
 /**

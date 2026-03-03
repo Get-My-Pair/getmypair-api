@@ -1,3 +1,22 @@
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : cloudinary.js
+ * Description: Cloudinary config and upload helpers for images/docs
+ * ----------------------------------------------------------------------------
+ * Developer  : C Ranjith Kumar
+ * Role       : Backend and Database Developer, Team Lead
+ * ----------------------------------------------------------------------------
+ * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
+ * Personal GitHub  : https://github.com/CodingRanjith
+ * Project GitHub   : https://github.com/Ranjithgmp
+ * Personal Email   : ranjith.c96me@gmail.com
+ * Project Email    : ranjith.kumar@getmypair.com
+ * ----------------------------------------------------------------------------
+ * Last modified : 2025-03-03
+ * ----------------------------------------------------------------------------
+ */
+
 const cloudinary = require('cloudinary').v2;
 const config = require('./env');
 const logger = require('../utils/logger');
