@@ -5,8 +5,6 @@
  * Description: OTP schema – email/phone, code, expiry, rate limiting
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp
@@ -55,7 +53,7 @@ const otpSchema = new mongoose.Schema(
     attempts: {
       type: Number,
       default: 0,
-      max: 5,
+      max: 3,
     },
     isUsed: {
       type: Boolean,

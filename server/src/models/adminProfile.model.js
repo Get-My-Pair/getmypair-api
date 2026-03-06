@@ -5,8 +5,6 @@
  * Description: Admin profile schema – userId, name, email, role
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp

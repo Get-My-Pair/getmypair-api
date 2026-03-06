@@ -5,8 +5,6 @@
  * Description: Cobbler profile schema – userId, shop, services, tools, KYC, verification
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp

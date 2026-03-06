@@ -5,8 +5,6 @@
  * Description: Standard API response helpers – success, error, notFound, forbidden, unauthorized
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp

@@ -5,8 +5,6 @@
  * Description: OTP service – create, verify, rate limit, hash
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp
@@ -141,8 +139,9 @@ const verifyOTP = async (email, phone, otpCode, type) => {
       };
     }
 
-    // Check attempts
-    if (otp.attempts >= 5) {
+    // Check attempts (max 3)
+    const maxAttempts = config.OTP_MAX_ATTEMPTS ?? 3;
+    if (otp.attempts >= maxAttempts) {
       return {
         valid: false,
         message: 'Maximum verification attempts exceeded',
@@ -157,7 +156,7 @@ const verifyOTP = async (email, phone, otpCode, type) => {
       return {
         valid: false,
         message: 'Invalid OTP',
-        attemptsRemaining: 5 - otp.attempts - 1,
+        attemptsRemaining: Math.max(0, maxAttempts - otp.attempts - 1),
       };
     }
 

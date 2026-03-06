@@ -5,8 +5,6 @@
  * Description: Environment config – NODE_ENV, PORT, JWT, MongoDB, CORS, etc.
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp
@@ -26,9 +24,10 @@ const config = {
   JWT_SECRET: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
   JWT_EXPIRE: process.env.JWT_EXPIRE || '7d',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key-change-in-production',
-  JWT_REFRESH_EXPIRE: process.env.JWT_REFRESH_EXPIRE || '30d',
-  OTP_EXPIRE_MINUTES: parseInt(process.env.OTP_EXPIRE_MINUTES) || 10,
+  JWT_REFRESH_EXPIRE: process.env.JWT_REFRESH_EXPIRE || '5m',
+  OTP_EXPIRE_MINUTES: parseInt(process.env.OTP_EXPIRE_MINUTES) || 5,
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH) || 6,
+  OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS) || 3,
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
   SMTP_USER: process.env.SMTP_USER || '',

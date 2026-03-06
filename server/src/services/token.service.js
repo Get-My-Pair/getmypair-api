@@ -5,8 +5,6 @@
  * Description: JWT token service – generate/verify access & refresh, session management
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
- * Role       : Backend and Database Developer, Team Lead
- * ----------------------------------------------------------------------------
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
  * Personal GitHub  : https://github.com/CodingRanjith
  * Project GitHub   : https://github.com/Ranjithgmp
@@ -50,9 +48,9 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     const accessToken = generateAccessToken(accessTokenPayload);
     const refreshToken = generateRefreshToken(refreshTokenPayload);
 
-    // Calculate expiration
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    // Calculate expiration (5 min - matches refresh token expiry)
+    const refreshExpireMinutes = 5;
+    const expiresAt = new Date(Date.now() + refreshExpireMinutes * 60 * 1000);
 
     // Create session (tokens will be hashed by pre-save hook)
     const session = new Session({
@@ -70,7 +68,7 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
+      expiresIn: refreshExpireMinutes * 60, // 5 min in seconds
       session,
     };
   } catch (error) {
@@ -127,7 +125,7 @@ const refreshAccessToken = async (refreshToken) => {
 
     return {
       accessToken,
-      expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
+      expiresIn: 5 * 60, // 5 min in seconds (matches refresh token)
       userId: user._id.toString(),
     };
   } catch (error) {
