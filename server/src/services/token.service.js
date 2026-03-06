@@ -48,9 +48,10 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     const accessToken = generateAccessToken(accessTokenPayload);
     const refreshToken = generateRefreshToken(refreshTokenPayload);
 
-    // Calculate expiration (5 min - matches refresh token expiry)
-    const refreshExpireMinutes = 5;
-    const expiresAt = new Date(Date.now() + refreshExpireMinutes * 60 * 1000);
+    // Session expiry: 7 days (matches refresh token lifetime)
+    const sessionExpireDays = 7;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + sessionExpireDays);
 
     // Create session (tokens will be hashed by pre-save hook)
     const session = new Session({
@@ -65,10 +66,12 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
 
     await session.save();
 
+    // expiresIn = access token TTL (5 min) for client to know when to refresh
+    const accessTokenExpireSeconds = 5 * 60;
     return {
       accessToken,
       refreshToken,
-      expiresIn: refreshExpireMinutes * 60, // 5 min in seconds
+      expiresIn: accessTokenExpireSeconds,
       session,
     };
   } catch (error) {
@@ -125,7 +128,7 @@ const refreshAccessToken = async (refreshToken) => {
 
     return {
       accessToken,
-      expiresIn: 5 * 60, // 5 min in seconds (matches refresh token)
+      expiresIn: 5 * 60, // 5 min (access token TTL)
       userId: user._id.toString(),
     };
   } catch (error) {
