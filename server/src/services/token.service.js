@@ -31,9 +31,9 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     const accessToken = generateAccessToken(accessTokenPayload);
     const refreshToken = generateRefreshToken(refreshTokenPayload);
 
-    // Calculate expiration
+    // Calculate expiration (match refresh token: 7 days)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     // Create session (tokens will be hashed by pre-save hook)
     const session = new Session({
@@ -51,7 +51,7 @@ const createSession = async (user, deviceInfo, ipAddress, userAgent) => {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
+      expiresIn: 15 * 60, // access token: 15 minutes in seconds
       session,
     };
   } catch (error) {
@@ -108,7 +108,7 @@ const refreshAccessToken = async (refreshToken) => {
 
     return {
       accessToken,
-      expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
+      expiresIn: 15 * 60, // access token: 15 minutes in seconds
       userId: user._id.toString(),
     };
   } catch (error) {
