@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.routes.js
- * Description: Cobbler profile routes – create, me, update, shop, services, tools, upload, verification
+ * Description: Cobbler profile routes – create, me, update, booth, services, tools, upload, verification
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -52,7 +52,7 @@ router.get('/me', cobblerProfileController.getProfile);
 router.put('/update', updateProfileValidation, cobblerProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Update Shop Details
+// 4. Update Booth Details (Booth name with number, Booth address)
 // ─────────────────────────────────────────────────────────────
 router.put('/shop', updateShopValidation, cobblerProfileController.updateShopDetails);
 

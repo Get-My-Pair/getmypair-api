@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.validation.js
- * Description: Cobbler profile validation – create, update, shop, services, tools
+ * Description: Cobbler profile validation – create, update, booth, services, tools
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -17,6 +17,9 @@
 
 const { body } = require('express-validator');
 const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/validators');
+
+// Allowed cobbler services (must match app: Repair, Maintenance, Wash, Donate, Dispose)
+const ALLOWED_SERVICES = ['Repair', 'Maintenance', 'Wash', 'Donate', 'Dispose'];
 
 // Create profile validation
 const createProfileValidation = [
@@ -48,7 +51,18 @@ const createProfileValidation = [
         }),
     body('shopName').optional().trim().isLength({ max: 200 }),
     body('shopAddress').optional().trim().isLength({ max: 500 }),
-    body('servicesOffered').optional().isArray(),
+    body('servicesOffered')
+        .optional()
+        .isArray()
+        .withMessage('servicesOffered must be an array')
+        .custom((arr) => {
+            if (!Array.isArray(arr)) return true;
+            const invalid = arr.find((s) => typeof s !== 'string' || !ALLOWED_SERVICES.includes(s));
+            if (invalid !== undefined) {
+                throw new Error(`Each service must be one of: ${ALLOWED_SERVICES.join(', ')}`);
+            }
+            return true;
+        }),
     body('serviceAreas').optional().isArray(),
     body('toolsOwned').optional().isArray(),
     body('toolsNeeded').optional().isArray(),
@@ -86,27 +100,35 @@ const updateProfileValidation = [
     handleValidationErrors,
 ];
 
-// Update shop details validation
+// Update booth details validation (Booth name with number, Booth address)
 const updateShopValidation = [
     body('shopName')
         .optional()
         .trim()
         .isLength({ max: 200 })
-        .withMessage('Shop name must be less than 200 characters'),
+        .withMessage('Booth name with number must be less than 200 characters'),
     body('shopAddress')
         .optional()
         .trim()
         .isLength({ max: 500 })
-        .withMessage('Shop address must be less than 500 characters'),
+        .withMessage('Booth address must be less than 500 characters'),
     handleValidationErrors,
 ];
 
-// Update services validation
+// Update services validation (servicesOffered: Repair, Maintenance, Wash, Donate, Dispose)
 const updateServicesValidation = [
     body('servicesOffered')
         .optional()
         .isArray()
-        .withMessage('servicesOffered must be an array'),
+        .withMessage('servicesOffered must be an array')
+        .custom((arr) => {
+            if (!Array.isArray(arr)) return true;
+            const invalid = arr.find((s) => typeof s !== 'string' || !ALLOWED_SERVICES.includes(s));
+            if (invalid !== undefined) {
+                throw new Error(`Each service must be one of: ${ALLOWED_SERVICES.join(', ')}`);
+            }
+            return true;
+        }),
     body('serviceAreas')
         .optional()
         .isArray()

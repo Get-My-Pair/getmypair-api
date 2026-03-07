@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.controller.js
- * Description: Cobbler profile CRUD – create, update, shop, services, tools, KYC, image
+ * Description: Cobbler profile CRUD – create, update, booth, services, tools, KYC, image
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -114,7 +114,7 @@ const updateProfile = async (req, res) => {
 };
 
 /**
- * Update Shop Details
+ * Update Booth Details (Booth name with number, Booth address)
  * PUT /api/cobbler/profile/shop
  */
 const updateShopDetails = async (req, res) => {
@@ -132,13 +132,13 @@ const updateShopDetails = async (req, res) => {
 
         await profile.save();
 
-        logger.info(`Shop details updated for cobbler userId: ${userId}`);
-        return success(res, 'Shop details updated successfully', {
+        logger.info(`Booth details updated for cobbler userId: ${userId}`);
+        return success(res, 'Booth details updated successfully', {
             shopName: profile.shopName,
             shopAddress: profile.shopAddress,
         });
     } catch (err) {
-        logger.error(`Update shop details error: ${err.message}`);
+        logger.error(`Update booth details error: ${err.message}`);
         return errorResponse(res, err.message, 500);
     }
 };
