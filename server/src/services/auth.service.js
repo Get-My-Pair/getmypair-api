@@ -16,6 +16,7 @@
  */
 
 const User = require('../models/user.model');
+const Role = require('../models/role.model');
 const AuditLog = require('../models/auditLog.model');
 const { getRoleFromAppSource } = require('../config/roles');
 const otpService = require('./otp.service');
@@ -120,13 +121,26 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
 
     if (user) {
       // Existing user - Login
-      user.isPhoneVerified = true;
-      user.lastLogin = new Date();
-      await user.save();
+      const update = { isPhoneVerified: true, lastLogin: new Date() };
+      // If role is legacy string (e.g. "user"), resolve to Role ObjectId and set via update
+      if (typeof user.role === 'string') {
+        const roleName = (user.role || 'user').toUpperCase();
+        let roleDoc = await Role.findOne({ name: roleName });
+        if (!roleDoc) {
+          await Role.initializeDefaultRoles();
+          roleDoc = await Role.findOne({ name: roleName }) || await Role.findOne({ name: 'USER' });
+        }
+        if (roleDoc) update.role = roleDoc._id;
+      }
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $set: update },
+        { new: true }
+      );
 
       // Create session and generate tokens
       const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
-        user,
+        updatedUser,
         deviceInfo || 'mobile',
         ipAddress || '127.0.0.1',
         userAgent || 'unknown'
@@ -134,7 +148,7 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
 
       // Log successful login
       await AuditLog.createLog({
-        userId: user._id,
+        userId: updatedUser._id,
         action: 'login',
         resource: 'auth',
         ipAddress,
@@ -145,7 +159,7 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
 
       return {
         isExistingUser: true,
-        user: user.toJSON(),
+        user: updatedUser.toJSON(),
         tokens: {
           accessToken,
           refreshToken,
@@ -190,15 +204,19 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
  */
 const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo, appSource = 'USER_APP', location = null) => {
   try {
-    // Role from app source (client sends X-App-Source header; backend sets role)
-    let role = 'user';
+    // Role from app source (USER_APP -> USER, COBBER_APP -> COBBER, etc.)
+    let roleDoc = null;
     try {
       const roleName = getRoleFromAppSource(appSource);
-      role = roleName ? roleName.toLowerCase() : 'user';
-      if (!['user', 'admin', 'moderator'].includes(role)) role = 'user';
+      roleDoc = await Role.findOne({ name: roleName });
+      if (!roleDoc) {
+        await Role.initializeDefaultRoles();
+        roleDoc = await Role.findOne({ name: roleName });
+      }
     } catch (_) {
-      role = 'user';
+      roleDoc = await Role.findOne({ name: 'USER' });
     }
+    if (!roleDoc) roleDoc = await Role.findOne({ name: 'USER' });
 
     // Normalize mobile number format
     let normalizedMobile = mobile;
@@ -229,7 +247,7 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
       name,
       dateOfBirth,
       gender,
-      role,
+      role: roleDoc ? roleDoc._id : undefined,
       isPhoneVerified: true,
     };
     if (location && typeof location === 'object' && (location.lat != null || location.lng != null || location.address)) {

@@ -28,6 +28,7 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const userProfileRoutes = require('./routes/userProfile.routes');
 const cobblerProfileRoutes = require('./routes/cobblerProfile.routes');
+const cobblerHomeRoutes = require('./routes/cobblerHome.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
 const adminProfileRoutes = require('./routes/adminProfile.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
@@ -111,6 +112,7 @@ app.use('/api/auth', authRoutes);
 // Module 2: Profile APIs
 app.use('/api/user/profile', userProfileRoutes);
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
+app.use('/api/cobbler/home', cobblerHomeRoutes);
 app.use('/api/delivery/profile', deliveryProfileRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
 // Geocoding (reverse lookup)

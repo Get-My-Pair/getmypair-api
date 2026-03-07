@@ -46,6 +46,12 @@ const createProfileValidation = [
             }
             return true;
         }),
+    body('shopName').optional().trim().isLength({ max: 200 }),
+    body('shopAddress').optional().trim().isLength({ max: 500 }),
+    body('servicesOffered').optional().isArray(),
+    body('serviceAreas').optional().isArray(),
+    body('toolsOwned').optional().isArray(),
+    body('toolsNeeded').optional().isArray(),
     handleValidationErrors,
 ];
 
@@ -126,6 +132,39 @@ const updateToolsNeededValidation = [
     handleValidationErrors,
 ];
 
+// Update bank details validation
+const updateBankValidation = [
+    body('accountHolderName')
+        .optional()
+        .trim()
+        .isLength({ max: 100 })
+        .withMessage('Account holder name must be less than 100 characters'),
+    body('accountNumber')
+        .optional()
+        .trim()
+        .isLength({ max: 34 })
+        .withMessage('Account number must be less than 34 characters'),
+    body('ifscCode')
+        .optional()
+        .trim()
+        .isLength({ max: 11 })
+        .withMessage('IFSC code must be less than 11 characters'),
+    body('bankName')
+        .optional()
+        .trim()
+        .isLength({ max: 200 })
+        .withMessage('Bank name must be less than 200 characters'),
+    handleValidationErrors,
+];
+
+const updateStatusValidation = [
+    body('isOnline')
+        .optional()
+        .isBoolean()
+        .withMessage('isOnline must be a boolean'),
+    handleValidationErrors,
+];
+
 module.exports = {
     createProfileValidation,
     updateProfileValidation,
@@ -133,4 +172,6 @@ module.exports = {
     updateServicesValidation,
     updateToolsValidation,
     updateToolsNeededValidation,
+    updateBankValidation,
+    updateStatusValidation,
 };

@@ -92,6 +92,17 @@ const cobblerProfileSchema = new mongoose.Schema(
             default: [],
         },
 
+        // Bank Details (for payouts)
+        bankDetails: {
+            type: new mongoose.Schema({
+                accountHolderName: { type: String, trim: true, maxlength: 100 },
+                accountNumber: { type: String, trim: true, maxlength: 34 },
+                ifscCode: { type: String, trim: true, maxlength: 11 },
+                bankName: { type: String, trim: true, maxlength: 200 },
+            }, { _id: false }),
+            default: null,
+        },
+
         // KYC & Verification
         kycDocs: {
             type: [kycDocSchema],
@@ -101,6 +112,11 @@ const cobblerProfileSchema = new mongoose.Schema(
             type: String,
             enum: ['pending', 'verified', 'rejected'],
             default: 'pending',
+            index: true,
+        },
+        isOnline: {
+            type: Boolean,
+            default: true,
             index: true,
         },
     },

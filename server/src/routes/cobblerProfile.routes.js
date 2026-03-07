@@ -28,6 +28,8 @@ const {
     updateServicesValidation,
     updateToolsValidation,
     updateToolsNeededValidation,
+    updateBankValidation,
+    updateStatusValidation,
 } = require('../validations/cobblerProfile.validation');
 
 // All routes require authentication + COBBER role
@@ -70,17 +72,27 @@ router.put('/tools-owned', updateToolsValidation, cobblerProfileController.updat
 router.put('/tools-needed', updateToolsNeededValidation, cobblerProfileController.updateToolsNeeded);
 
 // ─────────────────────────────────────────────────────────────
-// 8. Upload Profile Image (Cloudinary)
+// 8. Update Bank Details
+// ─────────────────────────────────────────────────────────────
+router.put('/bank', updateBankValidation, cobblerProfileController.updateBankDetails);
+
+// ─────────────────────────────────────────────────────────────
+// 9. Upload Profile Image (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-image', uploadProfileImage, cobblerProfileController.uploadProfileImage);
 
 // ─────────────────────────────────────────────────────────────
-// 9. Upload KYC Document (Cloudinary)
+// 10. Upload KYC Document (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-doc', uploadKycDoc, cobblerProfileController.uploadKycDoc);
 
 // ─────────────────────────────────────────────────────────────
-// 10. Get Verification Status
+// 11. Update online status
+// ─────────────────────────────────────────────────────────────
+router.put('/update-status', updateStatusValidation, cobblerProfileController.updateStatus);
+
+// ─────────────────────────────────────────────────────────────
+// 12. Get Verification Status
 // ─────────────────────────────────────────────────────────────
 router.get('/verification', cobblerProfileController.getVerificationStatus);
 
