@@ -2,7 +2,7 @@
 
 ## Overview
 
-Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile management, plus **geocode** (reverse lookup). All profile routes require **JWT** (`Authorization: Bearer <accessToken>`) and the correct **role** (USER, COBBER, DELIVERY, ADMIN).
+Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile management, plus **geocode** (reverse lookup). All profile routes require **JWT** (`Authorization: Bearer <accessToken>`) and the correct **role** (USER, COBBER, DELIVERY, ADMIN). User profile is implemented in `server/src/routes/userProfile.routes.js`, `server/src/controllers/userProfile.controller.js`, and `server/src/validations/userProfile.validation.js`.
 
 ---
 
@@ -56,7 +56,7 @@ Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile manag
 **GET** `/api/user/profile/me`  
 **Auth:** Bearer JWT, role USER
 
-**Response:** 200 — `{ success, message, data: { profile } }`. 404 if no profile.
+**Response:** 200 — `{ success, message, data: { profile } }`. If no profile exists, one is **auto-created** from the authenticated user (name, mobile, email) and then returned (200).
 
 ---
 
@@ -81,9 +81,9 @@ Only provided fields are updated.
 **POST** `/api/user/profile/upload-image`  
 **Auth:** Bearer JWT, role USER  
 **Content-Type:** `multipart/form-data`  
-**Body:** `file` (image). Allowed: JPEG, JPG, PNG, WEBP. Max 5MB.
+**Body:** `file` (image). Allowed: JPEG, JPG, PNG, WEBP. Max 5MB. Stored in Cloudinary folder `getmypair/profiles`. Old image is deleted when uploading a new one.
 
-**Response:** 200 — `{ success, message, data: { profileImage, cloudinaryId } }`
+**Response:** 200 — `{ success, message, data: { profileImage, cloudinaryId } }` (no full `profile` in response).
 
 ---
 
@@ -101,9 +101,9 @@ Only provided fields are updated.
   "pincode": "400001"
 }
 ```
-- `addressLine1`, `city`, `state`, `pincode` required.
+**Validation:** `addressLine1` (required, max 500), `city` (required, max 100), `state` (required, max 100), `pincode` (required, 4–10 digits).
 
-**Response:** 201 — `{ success, message, data: { address, totalAddresses } }`
+**Response:** 201 — `{ success, message, data: { address, totalAddresses } }`. 404 if profile not found (create profile first).
 
 ---
 
@@ -510,6 +510,19 @@ Used for cobbler/delivery verification.
 ```
 
 **Errors:** 400 if `lat` or `lon` missing. 500 on geocode failure.
+
+---
+
+## Backend Files (Module 2 — User Profile)
+
+| Layer | File |
+|-------|------|
+| Routes | `server/src/routes/userProfile.routes.js` |
+| Controller | `server/src/controllers/userProfile.controller.js` |
+| Validation | `server/src/validations/userProfile.validation.js` |
+| Model | `server/src/models/userProfile.model.js` |
+| Upload | `server/src/middleware/upload.middleware.js`, `server/src/config/cloudinary.js` |
+| App mount | `server/src/app.js` — `/api/user/profile` |
 
 ---
 

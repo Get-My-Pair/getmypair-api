@@ -2,7 +2,7 @@
 
 ## Overview
 
-Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/version**. All auth is mobile OTP–based with no passwords.
+Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/version**. All auth is mobile OTP–based with no passwords. Implemented in `server/src/routes/auth.routes.js`, `server/src/controllers/auth.controller.js`, `server/src/services/auth.service.js`, and validated via `server/src/validations/auth.validation.js`.
 
 ---
 
@@ -10,6 +10,7 @@ Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/vers
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
+| GET | `/health` | Server health + version | No |
 | GET | `/api/version` | Get API version (for app/update checks) | No |
 | POST | `/api/auth/send-otp` | Send OTP to mobile number | No |
 | POST | `/api/auth/verify-otp` | Verify OTP and check if user exists | No |
@@ -20,11 +21,29 @@ Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/vers
 
 ---
 
-## 1. Get API Version
+## 1. Health Check
+
+**GET** `/health`
+
+Returns server health and version. No authentication.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Server is running",
+  "timestamp": "2025-03-09T12:00:00.000Z",
+  "version": "1.0.0"
+}
+```
+
+---
+
+## 2. Get API Version
 
 **GET** `/api/version`
 
-Returns current API version and name. No authentication.
+Returns current API version and package name. No authentication.
 
 **Response (200):**
 ```json
@@ -37,45 +56,53 @@ Returns current API version and name. No authentication.
 
 ---
 
-## 2. Send OTP
+## 3. Send OTP
 
 **POST** `/api/auth/send-otp`
 
-Send OTP to the given mobile number. OTP is stored (hashed) and rate-limited.
+Send OTP to the given mobile number. OTP is stored (hashed) and rate-limited. Mobile is normalized (e.g. `+91` prefix for India if not provided).
 
 **Request:**
 ```json
 {
-  "mobile": "+1234567890"
+  "mobile": "+919876543210"
 }
 ```
+
+**Validation:** `mobile` required, at least 10 digits, valid phone format.
 
 **Response (200):**
 ```json
 {
   "success": true,
   "message": "OTP sent successfully",
-  "data": {}
+  "data": {
+    "expiresIn": 600
+  }
 }
 ```
 
-**Notes:** Rate limited (e.g. 5 OTP requests per hour in prod). OTP expires in 10 minutes (configurable).
+**Development only:** In `NODE_ENV=development`, `data` may include `otp` for testing.
+
+**Notes:** Rate limited via `otpRateLimiter`. OTP expiry and max attempts configured in env (e.g. 10 min). Failed attempts are audit-logged.
 
 ---
 
-## 3. Verify OTP
+## 4. Verify OTP
 
 **POST** `/api/auth/verify-otp`
 
-Verify OTP. If user exists → login (returns JWT). If new user → returns flag to complete profile.
+Verify OTP. If user exists → login (returns user + JWT tokens). If new user → returns flag to complete profile. Optional header `device-info` (e.g. `mobile`).
 
 **Request:**
 ```json
 {
-  "mobile": "+1234567890",
+  "mobile": "+919876543210",
   "otp": "123456"
 }
 ```
+
+**Validation:** `mobile` required (min 10 digits); `otp` required, 6 digits, numeric.
 
 **Response — Existing user (login success):**
 ```json
@@ -83,9 +110,9 @@ Verify OTP. If user exists → login (returns JWT). If new user → returns flag
   "success": true,
   "message": "Login successful",
   "data": {
-    "user": { ... },
+    "user": { "_id": "...", "mobile": "+919876543210", "name": "John", "dateOfBirth": "1990-01-01", "gender": "male", "role": "user", "isPhoneVerified": true, "isActive": true, ... },
     "tokens": {
-      "accessToken": "...",
+      "accessToken": "eyJ...",
       "refreshToken": "...",
       "expiresIn": "7d"
     }
@@ -100,34 +127,46 @@ Verify OTP. If user exists → login (returns JWT). If new user → returns flag
   "message": "Please complete your profile",
   "data": {
     "requiresProfileCompletion": true,
-    "mobile": "+1234567890"
+    "mobile": "+919876543210"
   }
 }
 ```
 
 ---
 
-## 4. Complete Profile (New Users Only)
+## 5. Complete Profile (New Users Only)
 
 **POST** `/api/auth/complete-profile`
 
-Create account for new user after OTP verification. Returns JWT on success.
+Create account for new user after OTP verification. Returns user + JWT on success. Role is derived from `X-App-Source` (e.g. `USER_APP` → user, `COBBER_APP` → user/cobbler per backend config).
+
+**Headers (optional):**
+- `X-App-Source`: e.g. `USER_APP`, `COBBER_APP`
+- `X-App-Version`: app version string
+- `device-info`: e.g. `mobile`
 
 **Request:**
 ```json
 {
-  "mobile": "+1234567890",
+  "mobile": "+919876543210",
   "name": "John Doe",
   "dateOfBirth": "1990-01-01",
-  "gender": "male"
+  "gender": "male",
+  "location": {
+    "lat": 13.0827,
+    "lng": 80.2707,
+    "address": "Chennai, Tamil Nadu"
+  }
 }
 ```
+
+**Validation:** `mobile` (required, min 10 digits), `name` (required, 2–100 chars, letters only), `dateOfBirth` (required, YYYY-MM-DD, 18+ years), `gender` (required: `male` | `female` | `other`). `location` optional object; `location.lat`/`lng`/`address` optional.
 
 **Response (201):**
 ```json
 {
   "success": true,
-  "message": "Profile completed successfully",
+  "message": "Profile completed successfully. Login successful.",
   "data": {
     "user": { ... },
     "tokens": {
@@ -141,11 +180,11 @@ Create account for new user after OTP verification. Returns JWT on success.
 
 ---
 
-## 5. Refresh Token
+## 6. Refresh Token
 
 **POST** `/api/auth/refresh-token`
 
-Get a new access token using a valid refresh token.
+Get a new access token using a valid refresh token. Session is validated and audit-logged.
 
 **Request:**
 ```json
@@ -153,6 +192,8 @@ Get a new access token using a valid refresh token.
   "refreshToken": "..."
 }
 ```
+
+**Validation:** `refreshToken` required.
 
 **Response (200):**
 ```json
@@ -168,11 +209,11 @@ Get a new access token using a valid refresh token.
 
 ---
 
-## 6. Logout
+## 7. Logout
 
 **POST** `/api/auth/logout`
 
-Invalidate current session. Requires valid JWT.
+Invalidate session. Requires valid JWT. If `refreshToken` is sent in body, that session is revoked.
 
 **Headers:** `Authorization: Bearer <accessToken>`
 
@@ -187,13 +228,13 @@ Invalidate current session. Requires valid JWT.
 ```json
 {
   "success": true,
-  "message": "Logged out successfully"
+  "message": "Logout successful"
 }
 ```
 
 ---
 
-## 7. Get Current User
+## 8. Get Current User
 
 **GET** `/api/auth/me`
 
@@ -209,11 +250,11 @@ Return the authenticated user. Requires valid JWT.
   "data": {
     "user": {
       "_id": "...",
-      "mobile": "+1234567890",
+      "mobile": "+919876543210",
       "name": "John Doe",
       "dateOfBirth": "1990-01-01",
       "gender": "male",
-      "role": "USER",
+      "role": "user",
       "isPhoneVerified": true,
       "isActive": true,
       ...
@@ -226,7 +267,8 @@ Return the authenticated user. Requires valid JWT.
 
 ## Standard Response Format
 
-**Success:**
+**Success:** `server/src/utils/response.js` — `success(res, message, data, statusCode)`
+
 ```json
 {
   "success": true,
@@ -235,14 +277,14 @@ Return the authenticated user. Requires valid JWT.
 }
 ```
 
-**Error:**
+**Error:** `error(res, message, statusCode, error, errors)`
+
 ```json
 {
   "success": false,
   "message": "Error message",
-  "errors": [
-    { "field": "mobile", "message": "Mobile number is required" }
-  ]
+  "statusCode": 400,
+  "errors": []
 }
 ```
 
@@ -277,3 +319,16 @@ OTP_EXPIRE_MINUTES=10
 OTP_LENGTH=6
 RATE_LIMIT_MAX_REQUESTS=100
 ```
+
+---
+
+## Backend Files (Module 1)
+
+| Layer | File |
+|-------|------|
+| Routes | `server/src/routes/auth.routes.js` |
+| Controller | `server/src/controllers/auth.controller.js` |
+| Service | `server/src/services/auth.service.js` |
+| Validation | `server/src/validations/auth.validation.js` |
+| Middleware | `server/src/middleware/auth.middleware.js`, `server/src/middleware/rateLimit.js` |
+| App mount | `server/src/app.js` — `/api/auth`, `/api/version`, `/health` |
