@@ -185,8 +185,8 @@ void 0;
  * @swagger
  * /api/cobbler/profile/shop:
  *   put:
- *     summary: Update shop details
- *     description: Update the cobbler's shop name and shop address.
+ *     summary: Update booth details
+ *     description: Update the cobbler's booth name with number and booth address.
  *     tags: [Cobbler Profile]
  *     security:
  *       - bearerAuth: []
@@ -200,14 +200,16 @@ void 0;
  *               shopName:
  *                 type: string
  *                 maxLength: 200
- *                 example: "Raju Shoe Repair"
+ *                 description: Booth name with number
+ *                 example: "Booth 12, Stall 5"
  *               shopAddress:
  *                 type: string
  *                 maxLength: 500
+ *                 description: Booth address
  *                 example: "123 Main Street, Connaught Place, Delhi"
  *     responses:
  *       200:
- *         description: Shop details updated successfully
+ *         description: Booth details updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -218,13 +220,13 @@ void 0;
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Shop details updated successfully"
+ *                   example: "Booth details updated successfully"
  *                 data:
  *                   type: object
  *                   properties:
  *                     shopName:
  *                       type: string
- *                       example: "Raju Shoe Repair"
+ *                       example: "Booth 12, Stall 5"
  *                     shopAddress:
  *                       type: string
  *                       example: "123 Main Street, Connaught Place, Delhi"
@@ -242,7 +244,7 @@ void 0;
  * /api/cobbler/profile/services:
  *   put:
  *     summary: Update services
- *     description: Update the cobbler's services offered and service areas. Both fields accept arrays of strings.
+ *     description: Update the cobbler's services offered (Repair, Maintenance, Wash, Donate, Dispose) and service areas. servicesOffered must be an array of allowed values.
  *     tags: [Cobbler Profile]
  *     security:
  *       - bearerAuth: []
@@ -257,7 +259,8 @@ void 0;
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["shoe repair", "polish", "sole replacement", "stitching"]
+ *                   enum: [Repair, Maintenance, Wash, Donate, Dispose]
+ *                 example: ["Repair", "Maintenance", "Wash"]
  *               serviceAreas:
  *                 type: array
  *                 items:
@@ -284,7 +287,8 @@ void 0;
  *                       type: array
  *                       items:
  *                         type: string
- *                       example: ["shoe repair", "polish", "sole replacement", "stitching"]
+ *                         enum: [Repair, Maintenance, Wash, Donate, Dispose]
+ *                       example: ["Repair", "Maintenance", "Wash"]
  *                     serviceAreas:
  *                       type: array
  *                       items:

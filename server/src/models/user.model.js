@@ -49,10 +49,9 @@ const userSchema = new mongoose.Schema(
       default: undefined,
     },
     role: {
-      type: String,
-      enum: ['user', 'admin', 'moderator'],
-      default: 'user',
-      lowercase: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+      required: false,
       index: true,
     },
     isPhoneVerified: {

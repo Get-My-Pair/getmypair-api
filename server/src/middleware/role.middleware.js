@@ -17,6 +17,7 @@
 
 const { forbidden } = require('../utils/response');
 const { VALID_ROLES } = require('../config/roles');
+const Role = require('../models/role.model');
 
 /**
  * Role-based authorization middleware
@@ -25,13 +26,21 @@ const { VALID_ROLES } = require('../config/roles');
  * @returns {Function} Middleware function
  */
 const roleMiddleware = (allowedRoles) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.user) {
       return forbidden(res, 'Authentication required');
     }
 
-    const userRole = req.user.role?.name || req.user.role;
-    const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : userRole;
+    let userRole = req.user.role?.name || req.user.role;
+
+    // If role is ObjectId (not populated), fetch Role document to get name
+    if (userRole != null && typeof userRole !== 'string') {
+      const roleId = userRole._id || userRole;
+      const roleDoc = await Role.findById(roleId).lean();
+      userRole = roleDoc ? roleDoc.name : null;
+    }
+
+    const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : (userRole || '');
 
     if (!roleUpper || !VALID_ROLES.includes(roleUpper)) {
       return forbidden(res, 'User role not found');

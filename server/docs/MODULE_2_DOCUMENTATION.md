@@ -144,7 +144,7 @@ Only provided fields are updated.
 | POST   | `/api/cobbler/profile/create` | Create cobbler profile |
 | GET    | `/api/cobbler/profile/me` | Get own profile |
 | PUT    | `/api/cobbler/profile/update` | Update profile (name, phone) |
-| PUT    | `/api/cobbler/profile/shop` | Update shop details |
+| PUT    | `/api/cobbler/profile/shop` | Update booth details |
 | PUT    | `/api/cobbler/profile/services` | Update services & service areas |
 | PUT    | `/api/cobbler/profile/tools-owned` | Update tools owned |
 | PUT    | `/api/cobbler/profile/tools-needed` | Update tools needed |
@@ -176,7 +176,7 @@ Only provided fields are updated.
 **GET** `/api/cobbler/profile/me`  
 **Auth:** Bearer JWT, role COBBER
 
-**Response:** 200 — full profile (shop, services, tools, KYC, verification). 404 if no profile.
+**Response:** 200 — full profile (booth, services, tools, KYC, verification). 404 if no profile.
 
 ---
 
@@ -195,7 +195,7 @@ Only provided fields are updated.
 
 ---
 
-## Cobbler — Update Shop
+## Cobbler — Update Booth Details
 
 **PUT** `/api/cobbler/profile/shop`  
 **Auth:** Bearer JWT, role COBBER
@@ -203,11 +203,12 @@ Only provided fields are updated.
 **Request:**
 ```json
 {
-  "shopName": "Raju Shoe Repair",
+  "shopName": "Booth 12, Stall 5",
   "shopAddress": "123 Main Street, Connaught Place, Delhi"
 }
 ```
-- Max length: shopName 200, shopAddress 500.
+- `shopName`: Booth name with number (max 200 chars).
+- `shopAddress`: Booth address (max 500 chars).
 
 ---
 
@@ -219,11 +220,12 @@ Only provided fields are updated.
 **Request:**
 ```json
 {
-  "servicesOffered": ["shoe repair", "polish", "sole replacement", "stitching"],
+  "servicesOffered": ["Repair", "Maintenance", "Wash", "Donate", "Dispose"],
   "serviceAreas": ["Connaught Place", "Karol Bagh", "Rajouri Garden"]
 }
 ```
-Both are arrays of strings.
+- `servicesOffered`: array of strings; each must be one of **Repair**, **Maintenance**, **Wash**, **Donate**, **Dispose**.
+- `serviceAreas`: array of strings (areas you serve).
 
 ---
 

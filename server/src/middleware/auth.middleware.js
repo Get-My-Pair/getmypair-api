@@ -17,7 +17,9 @@
 
 const { verifyAccessToken } = require('../config/jwt');
 const User = require('../models/user.model');
+const Role = require('../models/role.model');
 const Session = require('../models/session.model');
+const { getRoleFromAppSource } = require('../config/roles');
 const { unauthorized } = require('../utils/response');
 const crypto = require('crypto');
 
@@ -61,8 +63,8 @@ const authMiddleware = async (req, res, next) => {
     // Verify token
     const decoded = verifyAccessToken(token);
 
-    // Find user
-    const user = await User.findById(decoded.userId);
+    // Find user and populate role (required for role middleware)
+    let user = await User.findById(decoded.userId).populate('role');
 
     if (!user) {
       const AuditLog = require('../models/auditLog.model');
@@ -117,6 +119,21 @@ const authMiddleware = async (req, res, next) => {
 
     // Update last activity
     await session.updateActivity();
+
+    // If user has no role (legacy or missing), assign role from X-App-Source or USER
+    if (!user.role || (typeof user.role === 'object' && !user.role.name)) {
+      await Role.initializeDefaultRoles();
+      let roleName = 'USER';
+      try {
+        const appSource = req.get('X-App-Source');
+        if (appSource) roleName = getRoleFromAppSource(appSource);
+      } catch (_) {}
+      const defaultRole = await Role.findOne({ name: roleName }) || await Role.findOne({ name: 'USER' });
+      if (defaultRole) {
+        await User.findByIdAndUpdate(user._id, { $set: { role: defaultRole._id } });
+        user.role = defaultRole;
+      }
+    }
 
     // Attach user to request
     req.user = user;

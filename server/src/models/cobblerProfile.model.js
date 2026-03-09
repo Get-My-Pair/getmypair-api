@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.model.js
- * Description: Cobbler profile schema – userId, shop, services, tools, KYC, verification
+ * Description: Cobbler profile schema – userId, booth, services, tools, KYC, verification
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -62,7 +62,7 @@ const cobblerProfileSchema = new mongoose.Schema(
             default: null,
         },
 
-        // Shop Details
+        // Booth Details (Booth name with number, Booth address)
         shopName: {
             type: String,
             trim: true,
@@ -79,8 +79,9 @@ const cobblerProfileSchema = new mongoose.Schema(
             type: [String],
             default: [],
         },
+        // Allowed: Repair, Maintenance, Wash, Donate, Dispose
         servicesOffered: {
-            type: [String],
+            type: [{ type: String, enum: ['Repair', 'Maintenance', 'Wash', 'Donate', 'Dispose'] }],
             default: [],
         },
         toolsOwned: {
@@ -92,6 +93,17 @@ const cobblerProfileSchema = new mongoose.Schema(
             default: [],
         },
 
+        // Bank Details (for payouts)
+        bankDetails: {
+            type: new mongoose.Schema({
+                accountHolderName: { type: String, trim: true, maxlength: 100 },
+                accountNumber: { type: String, trim: true, maxlength: 34 },
+                ifscCode: { type: String, trim: true, maxlength: 11 },
+                bankName: { type: String, trim: true, maxlength: 200 },
+            }, { _id: false }),
+            default: null,
+        },
+
         // KYC & Verification
         kycDocs: {
             type: [kycDocSchema],
@@ -101,6 +113,11 @@ const cobblerProfileSchema = new mongoose.Schema(
             type: String,
             enum: ['pending', 'verified', 'rejected'],
             default: 'pending',
+            index: true,
+        },
+        isOnline: {
+            type: Boolean,
+            default: true,
             index: true,
         },
     },

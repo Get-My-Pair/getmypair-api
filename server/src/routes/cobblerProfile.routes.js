@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.routes.js
- * Description: Cobbler profile routes – create, me, update, shop, services, tools, upload, verification
+ * Description: Cobbler profile routes – create, me, update, booth, services, tools, upload, verification
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -28,6 +28,8 @@ const {
     updateServicesValidation,
     updateToolsValidation,
     updateToolsNeededValidation,
+    updateBankValidation,
+    updateStatusValidation,
 } = require('../validations/cobblerProfile.validation');
 
 // All routes require authentication + COBBER role
@@ -50,7 +52,7 @@ router.get('/me', cobblerProfileController.getProfile);
 router.put('/update', updateProfileValidation, cobblerProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Update Shop Details
+// 4. Update Booth Details (Booth name with number, Booth address)
 // ─────────────────────────────────────────────────────────────
 router.put('/shop', updateShopValidation, cobblerProfileController.updateShopDetails);
 
@@ -70,17 +72,27 @@ router.put('/tools-owned', updateToolsValidation, cobblerProfileController.updat
 router.put('/tools-needed', updateToolsNeededValidation, cobblerProfileController.updateToolsNeeded);
 
 // ─────────────────────────────────────────────────────────────
-// 8. Upload Profile Image (Cloudinary)
+// 8. Update Bank Details
+// ─────────────────────────────────────────────────────────────
+router.put('/bank', updateBankValidation, cobblerProfileController.updateBankDetails);
+
+// ─────────────────────────────────────────────────────────────
+// 9. Upload Profile Image (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-image', uploadProfileImage, cobblerProfileController.uploadProfileImage);
 
 // ─────────────────────────────────────────────────────────────
-// 9. Upload KYC Document (Cloudinary)
+// 10. Upload KYC Document (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-doc', uploadKycDoc, cobblerProfileController.uploadKycDoc);
 
 // ─────────────────────────────────────────────────────────────
-// 10. Get Verification Status
+// 11. Update online status
+// ─────────────────────────────────────────────────────────────
+router.put('/update-status', updateStatusValidation, cobblerProfileController.updateStatus);
+
+// ─────────────────────────────────────────────────────────────
+// 12. Get Verification Status
 // ─────────────────────────────────────────────────────────────
 router.get('/verification', cobblerProfileController.getVerificationStatus);
 

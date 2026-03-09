@@ -32,13 +32,14 @@ const sendOTP = async (req, res) => {
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
     const config = require('../config/env');
 
-    // In development mode, include OTP in response for testing
     const responseData = {
       expiresIn: result.expiresIn,
     };
-    
-    if (config.NODE_ENV === 'development' && result.otp) {
-      responseData.otp = result.otp; // Include OTP in development only
+
+    // Include OTP in response when: development mode OR RETURN_OTP_IN_RESPONSE=true (for app popup / testing)
+    const includeOtp = (config.NODE_ENV === 'development' || config.RETURN_OTP_IN_RESPONSE) && result.otp;
+    if (includeOtp) {
+      responseData.otp = result.otp;
     }
 
     return success(res, 'OTP sent successfully', responseData);

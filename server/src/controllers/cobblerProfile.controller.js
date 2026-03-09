@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.controller.js
- * Description: Cobbler profile CRUD – create, update, shop, services, tools, KYC, image
+ * Description: Cobbler profile CRUD – create, update, booth, services, tools, KYC, image
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -26,7 +26,16 @@ const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require
  */
 const createProfile = async (req, res) => {
     try {
-        const { name, phone } = req.body;
+        const {
+            name,
+            phone,
+            shopName,
+            shopAddress,
+            servicesOffered,
+            serviceAreas,
+            toolsOwned,
+            toolsNeeded,
+        } = req.body;
         const userId = req.user._id;
 
         // Check if profile already exists
@@ -35,11 +44,19 @@ const createProfile = async (req, res) => {
             return errorResponse(res, 'Cobbler profile already exists', 409);
         }
 
-        const profile = await CobblerProfile.create({
+        const profileData = {
             userId,
             name,
             phone,
-        });
+        };
+        if (shopName !== undefined) profileData.shopName = shopName;
+        if (shopAddress !== undefined) profileData.shopAddress = shopAddress;
+        if (Array.isArray(servicesOffered)) profileData.servicesOffered = servicesOffered;
+        if (Array.isArray(serviceAreas)) profileData.serviceAreas = serviceAreas;
+        if (Array.isArray(toolsOwned)) profileData.toolsOwned = toolsOwned;
+        if (Array.isArray(toolsNeeded)) profileData.toolsNeeded = toolsNeeded;
+
+        const profile = await CobblerProfile.create(profileData);
 
         logger.info(`Cobbler profile created for userId: ${userId}`);
         return success(res, 'Cobbler profile created successfully', { profile }, 201);
@@ -97,7 +114,7 @@ const updateProfile = async (req, res) => {
 };
 
 /**
- * Update Shop Details
+ * Update Booth Details (Booth name with number, Booth address)
  * PUT /api/cobbler/profile/shop
  */
 const updateShopDetails = async (req, res) => {
@@ -115,13 +132,13 @@ const updateShopDetails = async (req, res) => {
 
         await profile.save();
 
-        logger.info(`Shop details updated for cobbler userId: ${userId}`);
-        return success(res, 'Shop details updated successfully', {
+        logger.info(`Booth details updated for cobbler userId: ${userId}`);
+        return success(res, 'Booth details updated successfully', {
             shopName: profile.shopName,
             shopAddress: profile.shopAddress,
         });
     } catch (err) {
-        logger.error(`Update shop details error: ${err.message}`);
+        logger.error(`Update booth details error: ${err.message}`);
         return errorResponse(res, err.message, 500);
     }
 };
@@ -316,6 +333,69 @@ const uploadKycDoc = async (req, res) => {
 };
 
 /**
+ * Update Bank Details
+ * PUT /api/cobbler/profile/bank
+ */
+const updateBankDetails = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { accountHolderName, accountNumber, ifscCode, bankName } = req.body;
+
+        const profile = await CobblerProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'Cobbler profile not found');
+        }
+
+        if (!profile.bankDetails) {
+            profile.bankDetails = {};
+        }
+        if (accountHolderName !== undefined) profile.bankDetails.accountHolderName = accountHolderName;
+        if (accountNumber !== undefined) profile.bankDetails.accountNumber = accountNumber;
+        if (ifscCode !== undefined) profile.bankDetails.ifscCode = ifscCode;
+        if (bankName !== undefined) profile.bankDetails.bankName = bankName;
+
+        await profile.save();
+
+        logger.info(`Bank details updated for cobbler userId: ${userId}`);
+        return success(res, 'Bank details updated successfully', {
+            bankDetails: profile.bankDetails,
+        });
+    } catch (err) {
+        logger.error(`Update bank details error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Update online status
+ * PUT /api/cobbler/profile/update-status
+ */
+const updateStatus = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { isOnline } = req.body;
+
+        const profile = await CobblerProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'Cobbler profile not found');
+        }
+
+        if (typeof isOnline === 'boolean') {
+            profile.isOnline = isOnline;
+            await profile.save();
+        }
+
+        logger.info(`Cobbler status updated for userId: ${userId}, isOnline: ${profile.isOnline}`);
+        return success(res, 'Status updated successfully', {
+            isOnline: profile.isOnline,
+        });
+    } catch (err) {
+        logger.error(`Update status error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
  * Get Verification Status
  * GET /api/cobbler/profile/verification
  */
@@ -349,6 +429,8 @@ module.exports = {
     updateServices,
     updateToolsOwned,
     updateToolsNeeded,
+    updateBankDetails,
+    updateStatus,
     uploadProfileImage,
     uploadKycDoc,
     getVerificationStatus,
