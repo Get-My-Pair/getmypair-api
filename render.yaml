@@ -1,0 +1,12 @@
+# Render Blueprint – GetMyPair API
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: getmypair-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production

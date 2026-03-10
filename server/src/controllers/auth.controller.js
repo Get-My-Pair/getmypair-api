@@ -36,10 +36,14 @@ const sendOTP = async (req, res) => {
       expiresIn: result.expiresIn,
     };
 
-    // Include OTP in response when: development mode OR RETURN_OTP_IN_RESPONSE=true (for app popup / testing)
-    const includeOtp = (config.NODE_ENV === 'development' || config.RETURN_OTP_IN_RESPONSE) && result.otp;
-    if (includeOtp) {
-      responseData.otp = result.otp;
+    // Include OTP so app can show popup when: dev mode, RETURN_OTP_IN_RESPONSE=true, or app sends X-App-Source: COBBER_APP
+    const appSource = req.get('X-App-Source') || '';
+    const allowOtpInResponse =
+      config.NODE_ENV === 'development' ||
+      config.RETURN_OTP_IN_RESPONSE ||
+      String(appSource).toUpperCase() === 'COBBER_APP';
+    if (allowOtpInResponse && result.otp) {
+      responseData.otp = String(result.otp);
     }
 
     return success(res, 'OTP sent successfully', responseData);
