@@ -16,12 +16,14 @@
  */
 
 const { forbidden } = require('../utils/response');
-const { VALID_ROLES } = require('../config/roles');
+const { VALID_ROLES, getRoleFromAppSource } = require('../config/roles');
 const Role = require('../models/role.model');
 
 /**
  * Role-based authorization middleware
- * Validates JWT, extracts role, checks if role is allowed for the API
+ * Validates JWT, extracts role, checks if role is allowed for the API.
+ * If user's DB role is not allowed, allows access when X-App-Source maps to an allowed role
+ * (e.g. USER_APP -> USER so user app profile works even if user has COBBER role from cobbler app).
  * @param {Array<String>} allowedRoles - Allowed roles (USER, COBBER, DELIVERY, ADMIN)
  * @returns {Function} Middleware function
  */
@@ -41,16 +43,30 @@ const roleMiddleware = (allowedRoles) => {
     }
 
     const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : (userRole || '');
+    const allowedUpper = allowedRoles.map((r) => r.toUpperCase());
 
     if (!roleUpper || !VALID_ROLES.includes(roleUpper)) {
       return forbidden(res, 'User role not found');
     }
 
-    if (!allowedRoles.map((r) => r.toUpperCase()).includes(roleUpper)) {
-      return forbidden(res, 'Access denied. Insufficient permissions.');
+    if (allowedUpper.includes(roleUpper)) {
+      return next();
     }
 
-    next();
+    // User's DB role not allowed – allow if request is from an app that maps to an allowed role
+    try {
+      const appSource = req.get('X-App-Source');
+      if (appSource) {
+        const roleFromApp = getRoleFromAppSource(appSource);
+        if (roleFromApp && allowedUpper.includes(roleFromApp.toUpperCase())) {
+          return next();
+        }
+      }
+    } catch (_) {
+      // Invalid app source, fall through to forbidden
+    }
+
+    return forbidden(res, 'Access denied. Insufficient permissions.');
   };
 };
 
