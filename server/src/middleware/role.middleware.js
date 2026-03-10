@@ -45,7 +45,21 @@ const roleMiddleware = (allowedRoles) => {
     const roleUpper = typeof userRole === 'string' ? userRole.toUpperCase() : (userRole || '');
     const allowedUpper = allowedRoles.map((r) => r.toUpperCase());
 
+    // Helper: allow if X-App-Source maps to an allowed role (case-insensitive header)
+    const allowByAppSource = () => {
+      try {
+        const raw = req.get('X-App-Source');
+        const appSource = (raw && typeof raw === 'string' ? raw.trim() : '').toUpperCase();
+        if (!appSource) return false;
+        const roleFromApp = getRoleFromAppSource(appSource);
+        return roleFromApp && allowedUpper.includes(roleFromApp.toUpperCase());
+      } catch (_) {
+        return false;
+      }
+    };
+
     if (!roleUpper || !VALID_ROLES.includes(roleUpper)) {
+      if (allowByAppSource()) return next();
       return forbidden(res, 'User role not found');
     }
 
@@ -53,17 +67,8 @@ const roleMiddleware = (allowedRoles) => {
       return next();
     }
 
-    // User's DB role not allowed – allow if request is from an app that maps to an allowed role
-    try {
-      const appSource = req.get('X-App-Source');
-      if (appSource) {
-        const roleFromApp = getRoleFromAppSource(appSource);
-        if (roleFromApp && allowedUpper.includes(roleFromApp.toUpperCase())) {
-          return next();
-        }
-      }
-    } catch (_) {
-      // Invalid app source, fall through to forbidden
+    if (allowByAppSource()) {
+      return next();
     }
 
     return forbidden(res, 'Access denied. Insufficient permissions.');

@@ -32,12 +32,13 @@ const VALID_APP_SOURCES = Object.keys(APP_ROLES);
 const VALID_ROLES = Object.values(APP_ROLES);
 
 /**
- * Get role from app source
+ * Get role from app source (case-insensitive)
  * @param {String} appSource - App identifier (USER_APP, COBBER_APP, etc.)
  * @returns {String} Role name
  */
 const getRoleFromAppSource = (appSource) => {
-  const role = APP_ROLES[appSource];
+  const key = (appSource && typeof appSource === 'string' ? appSource.trim() : '').toUpperCase();
+  const role = key ? APP_ROLES[key] : undefined;
   if (!role) {
     throw new Error(`Invalid app source. Must be one of: ${VALID_APP_SOURCES.join(', ')}`);
   }
