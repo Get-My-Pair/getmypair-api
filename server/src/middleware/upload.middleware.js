@@ -104,6 +104,15 @@ const uploadDeliveryDoc = multer({
     },
 }).single('file');
 
+// Article (shoe) image – single file, 5MB
+const uploadArticleImage = multer({
+    storage: memoryStorage,
+    fileFilter: imageFileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+    },
+}).single('file');
+
 /**
  * Wrapper to handle multer errors gracefully
  */
@@ -143,4 +152,5 @@ module.exports = {
     uploadProfileImage: handleUpload(uploadProfileImage),
     uploadKycDoc: handleUpload(uploadKycDoc),
     uploadDeliveryDoc: handleUpload(uploadDeliveryDoc),
+    uploadArticleImage: handleUpload(uploadArticleImage),
 };

@@ -32,6 +32,7 @@ const cobblerHomeRoutes = require('./routes/cobblerHome.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
 const adminProfileRoutes = require('./routes/adminProfile.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
+const articleRoutes = require('./routes/article.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
@@ -117,6 +118,8 @@ app.use('/api/delivery/profile', deliveryProfileRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
 // Geocoding (reverse lookup)
 app.use('/api/geocode', geocodeRoutes);
+// Module 3: Articles (Digital Shoe Passport)
+app.use('/api/articles', articleRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
