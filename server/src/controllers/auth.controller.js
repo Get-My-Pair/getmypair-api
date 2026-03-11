@@ -18,6 +18,8 @@
 const authService = require('../services/auth.service');
 const { success, error: errorResponse } = require('../utils/response');
 const logger = require('../utils/logger');
+const User = require('../models/user.model');
+const { getRoleFromAppSource } = require('../config/roles');
 
 /**
  * Send OTP to mobile number
@@ -28,6 +30,54 @@ const sendOTP = async (req, res) => {
     const { mobile } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
+    const rawAppSource = req.get('X-App-Source') || 'USER_APP';
+    const appSource = String(rawAppSource).trim().toUpperCase();
+
+    // Normalize mobile (match auth.service sendOTP logic)
+    let normalizedMobile = mobile;
+    if (mobile && !mobile.startsWith('+')) {
+      normalizedMobile = '+91' + mobile;
+    }
+
+    // If this mobile already belongs to a user with a different app role,
+    // block OTP and show a clear error instead of creating a conflicting account.
+    // Example: number already used in Cobbler app, now trying to register in User app.
+    if (mobile) {
+      let existingUser = await User.findOne({ mobile: normalizedMobile }).populate('role');
+      if (!existingUser && mobile !== normalizedMobile) {
+        existingUser = await User.findOne({ mobile }).populate('role');
+      }
+
+      if (existingUser) {
+        let existingRoleName = existingUser.role?.name || existingUser.role;
+        if (existingRoleName && typeof existingRoleName === 'object') {
+          existingRoleName = existingRoleName.name;
+        }
+        existingRoleName = existingRoleName
+          ? String(existingRoleName).trim().toUpperCase()
+          : null;
+
+        let desiredRoleName = null;
+        try {
+          desiredRoleName = getRoleFromAppSource(appSource);
+        } catch (_) {
+          desiredRoleName = null;
+        }
+        if (desiredRoleName) {
+          desiredRoleName = String(desiredRoleName).trim().toUpperCase();
+        }
+
+        // If the existing role is different from the role implied by this app,
+        // do not generate OTP – inform the user that this mobile is already registered.
+        if (existingRoleName && desiredRoleName && existingRoleName !== desiredRoleName) {
+          return errorResponse(
+            res,
+            'This mobile number is already registered in another GetMyPair app (user or cobbler). Please use a different number.',
+            400
+          );
+        }
+      }
+    }
 
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
     const config = require('../config/env');
@@ -37,7 +87,6 @@ const sendOTP = async (req, res) => {
     };
 
     // Include OTP so app can show popup when: dev mode, RETURN_OTP_IN_RESPONSE=true, or app sends X-App-Source: COBBER_APP
-    const appSource = req.get('X-App-Source') || '';
     const allowOtpInResponse =
       config.NODE_ENV === 'development' ||
       config.RETURN_OTP_IN_RESPONSE ||
