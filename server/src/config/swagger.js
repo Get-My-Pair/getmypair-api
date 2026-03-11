@@ -176,6 +176,48 @@ const options = {
           },
         },
 
+        // ─── Article (Digital Shoe Passport) – Module 3 ──
+        ArticleMaterial: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', example: 'rubber', description: 'Material type' },
+            percentage: { type: 'integer', minimum: 0, maximum: 100, example: 40, description: 'Percentage (0–100)' },
+          },
+        },
+        Article: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d20', description: 'Article ID' },
+            ownerId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d01', description: 'User ID (owner)' },
+            brand: { type: 'string', example: 'Nike' },
+            model: { type: 'string', example: 'Air Max 90' },
+            category: {
+              type: 'string',
+              enum: ['sports_shoe', 'casual', 'formal', 'sandal', 'boot', 'slipper', 'other'],
+              example: 'sports_shoe',
+            },
+            color: { type: 'string', example: 'black', nullable: true },
+            purchaseYear: { type: 'integer', minimum: 1900, maximum: 2100, example: 2023, nullable: true },
+            materials: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ArticleMaterial' },
+              description: 'Material composition',
+            },
+            condition: {
+              type: 'string',
+              enum: ['excellent', 'good', 'fair', 'worn'],
+              example: 'good',
+            },
+            images: {
+              type: 'array',
+              items: { type: 'string', format: 'uri' },
+              example: ['https://res.cloudinary.com/xxx/image/upload/v1/getmypair/articles/shoe1.jpg'],
+            },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
         // ─── Common Responses ───────────────────────────
         SuccessResponse: {
           type: 'object',
@@ -239,6 +281,7 @@ const options = {
       { name: 'Health', description: 'Health check endpoints' },
       { name: 'Authentication', description: 'OTP-based authentication endpoints' },
       { name: 'User Profile', description: 'User profile management (7 APIs) — Role: USER' },
+      { name: 'Articles', description: 'Article / Digital Shoe Passport (Module 3) — Role: USER' },
       { name: 'Cobbler Profile', description: 'Cobbler profile management (10 APIs) — Role: COBBER' },
       { name: 'Delivery Profile', description: 'Delivery partner profile management (7 APIs) — Role: DELIVERY' },
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
