@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : deliveryProfile.paths.js
- * Description: Swagger path definitions – Delivery Profile (create, me, update, vehicle, upload, verification)
+ * Description: Swagger path definitions – Delivery Profile (me, update, vehicle, upload, verification; profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -19,38 +19,7 @@
  * @swagger
  * tags:
  *   name: Delivery Profile
- *   description: Delivery partner profile management APIs
- */
-void 0;
-
-/**
- * @swagger
- * /api/delivery/profile/create:
- *   post:
- *     summary: Create delivery profile
- *     description: Create a new delivery partner profile
- *     tags: [Delivery Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, phone]
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Suresh Kumar"
- *               phone:
- *                 type: string
- *                 example: "9876543210"
- *     responses:
- *       201:
- *         description: Profile created successfully
- *       409:
- *         description: Profile already exists
+ *   description: Delivery partner profile management APIs — Profile is created by auth (complete-profile)
  */
 void 0;
 

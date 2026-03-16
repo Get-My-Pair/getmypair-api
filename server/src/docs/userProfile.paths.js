@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : userProfile.paths.js
- * Description: Swagger path definitions – User Profile (create, me, update, address, upload-image)
+ * Description: Swagger path definitions – User Profile (me, update, address, upload-image; profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -19,80 +19,7 @@
  * @swagger
  * tags:
  *   name: User Profile
- *   description: User profile management APIs (7 APIs) — Role required **USER**
- */
-void 0;
-
-/**
- * @swagger
- * /api/user/profile/create:
- *   post:
- *     summary: Create user profile
- *     description: |
- *       Create a new user profile for the authenticated user.
- *       Each user can have only one profile. Returns `409` if profile already exists.
- *     tags: [User Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, phone]
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 example: "John Doe"
- *               phone:
- *                 type: string
- *                 minLength: 10
- *                 maxLength: 15
- *                 example: "9876543210"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "john@example.com"
- *     responses:
- *       201:
- *         description: Profile created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "User profile created successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     profile:
- *                       $ref: '#/components/schemas/UserProfile'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationErrorResponse'
- *       401:
- *         description: Unauthorized — missing or invalid JWT
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Profile already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *   description: User profile management APIs — Profile is created by auth (complete-profile). Role required **USER**
  */
 void 0;
 
@@ -254,7 +181,7 @@ void 0;
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Profile not found — create profile first
+ *         description: Profile not found
  */
 void 0;
 
@@ -318,7 +245,7 @@ void 0;
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Profile not found — create profile first
+ *         description: Profile not found
  */
 void 0;
 

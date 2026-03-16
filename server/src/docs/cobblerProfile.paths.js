@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.paths.js
- * Description: Swagger path definitions – Cobbler Profile (create, me, update, shop, services, tools, etc.)
+ * Description: Swagger path definitions – Cobbler Profile (me, update, shop, services, tools, etc.; profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -19,74 +19,7 @@
  * @swagger
  * tags:
  *   name: Cobbler Profile
- *   description: Cobbler profile management APIs (10 APIs) — Role required **COBBER**
- */
-void 0;
-
-/**
- * @swagger
- * /api/cobbler/profile/create:
- *   post:
- *     summary: Create cobbler profile
- *     description: |
- *       Create a new cobbler profile for the authenticated cobbler.
- *       Each cobbler can have only one profile. Returns `409` if profile already exists.
- *     tags: [Cobbler Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, phone]
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 2
- *                 maxLength: 100
- *                 example: "Raju Cobbler"
- *               phone:
- *                 type: string
- *                 minLength: 10
- *                 maxLength: 15
- *                 example: "9876543210"
- *     responses:
- *       201:
- *         description: Profile created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Cobbler profile created successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     profile:
- *                       $ref: '#/components/schemas/CobblerProfile'
- *       400:
- *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationErrorResponse'
- *       401:
- *         description: Unauthorized — missing or invalid JWT
- *       403:
- *         description: Forbidden — requires COBBER role
- *       409:
- *         description: Profile already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *   description: Cobbler profile management APIs — Profile is created by auth (complete-profile). Role required **COBBER**
  */
 void 0;
 
@@ -467,7 +400,7 @@ void 0;
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Profile not found — create profile first
+ *         description: Profile not found
  */
 void 0;
 
@@ -535,7 +468,7 @@ void 0;
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Profile not found — create profile first
+ *         description: Profile not found
  */
 void 0;
 

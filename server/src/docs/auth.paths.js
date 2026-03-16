@@ -146,8 +146,24 @@ void 0;
  * /api/auth/complete-profile:
  *   post:
  *     summary: Complete profile for new user
- *     description: Create user account with name, date of birth, and gender. Returns JWT tokens upon successful registration.
+ *     description: |
+ *       Create user account and **app-specific profile** in one step.
+ *       Send **X-App-Source** header to determine role and which profile is created:
+ *       - **USER_APP** → User + UserProfile
+ *       - **COBBER_APP** → User + CobblerProfile
+ *       - **DELIVERY_APP** → User + DeliveryProfile
+ *       No separate profile create endpoint is needed; use profile **PUT** endpoints to update.
+ *       Returns JWT tokens upon successful registration.
  *     tags: [Authentication]
+ *     parameters:
+ *       - in: header
+ *         name: X-App-Source
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [USER_APP, COBBER_APP, DELIVERY_APP, ADMIN_APP]
+ *           default: USER_APP
+ *         description: App identifier — determines user role and which profile collection is created
  *     requestBody:
  *       required: true
  *       content:
@@ -174,6 +190,16 @@ void 0;
  *                 type: string
  *                 enum: [male, female, other]
  *                 example: "male"
+ *               location:
+ *                 type: object
+ *                 description: Optional location (lat, lng, address)
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
+ *                   address:
+ *                     type: string
  *           example:
  *             mobile: "+1234567890"
  *             name: "John Doe"

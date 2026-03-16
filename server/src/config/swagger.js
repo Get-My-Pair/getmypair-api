@@ -280,10 +280,10 @@ const options = {
     tags: [
       { name: 'Health', description: 'Health check endpoints' },
       { name: 'Authentication', description: 'OTP-based authentication endpoints' },
-      { name: 'User Profile', description: 'User profile management (7 APIs) — Role: USER' },
+      { name: 'User Profile', description: 'User profile management — Profile created by auth; Role: USER' },
       { name: 'Articles', description: 'Article / Digital Shoe Passport (Module 3) — Role: USER' },
-      { name: 'Cobbler Profile', description: 'Cobbler profile management (10 APIs) — Role: COBBER' },
-      { name: 'Delivery Profile', description: 'Delivery partner profile management (7 APIs) — Role: DELIVERY' },
+      { name: 'Cobbler Profile', description: 'Cobbler profile management — Profile created by auth; Role: COBBER' },
+      { name: 'Delivery Profile', description: 'Delivery partner profile management — Profile created by auth; Role: DELIVERY' },
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
     ],
   },
