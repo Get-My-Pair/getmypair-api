@@ -18,6 +18,9 @@
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
 const AuditLog = require('../models/auditLog.model');
+const UserProfile = require('../models/userProfile.model');
+const CobblerProfile = require('../models/cobblerProfile.model');
+const DeliveryProfile = require('../models/deliveryProfile.model');
 const { getRoleFromAppSource } = require('../config/roles');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
@@ -261,6 +264,30 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
     const user = new User(userData);
 
     await user.save();
+
+    // Create app-specific profile (same as user collection – one profile per role)
+    const roleName = roleDoc ? String(roleDoc.name).toUpperCase() : 'USER';
+    if (roleName === 'USER') {
+      await UserProfile.create({
+        userId: user._id,
+        name: name || 'User',
+        phone: normalizedMobile,
+        email: null,
+      });
+    } else if (roleName === 'COBBER') {
+      await CobblerProfile.create({
+        userId: user._id,
+        name: name || 'Cobbler',
+        phone: normalizedMobile,
+      });
+    } else if (roleName === 'DELIVERY') {
+      await DeliveryProfile.create({
+        userId: user._id,
+        name: name || 'Delivery',
+        phone: normalizedMobile,
+      });
+    }
+    // ADMIN has no separate profile collection
 
     // Create session and generate tokens
     const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
