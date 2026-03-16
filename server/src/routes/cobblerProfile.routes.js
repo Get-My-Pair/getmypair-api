@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : cobblerProfile.routes.js
- * Description: Cobbler profile routes – create, me, update, booth, services, tools, upload, verification
+ * Description: Cobbler profile routes – me, update, booth, services, tools, upload, verification (profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -22,7 +22,6 @@ const roleMiddleware = require('../middleware/role.middleware');
 const { uploadProfileImage, uploadKycDoc } = require('../middleware/upload.middleware');
 const cobblerProfileController = require('../controllers/cobblerProfile.controller');
 const {
-    createProfileValidation,
     updateProfileValidation,
     updateShopValidation,
     updateServicesValidation,
@@ -37,62 +36,57 @@ router.use(authMiddleware);
 router.use(roleMiddleware(['COBBER']));
 
 // ─────────────────────────────────────────────────────────────
-// 1. Create Profile
-// ─────────────────────────────────────────────────────────────
-router.post('/create', createProfileValidation, cobblerProfileController.createProfile);
-
-// ─────────────────────────────────────────────────────────────
-// 2. Get Profile
+// 1. Get Profile
 // ─────────────────────────────────────────────────────────────
 router.get('/me', cobblerProfileController.getProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 3. Update Profile
+// 2. Update Profile
 // ─────────────────────────────────────────────────────────────
 router.put('/update', updateProfileValidation, cobblerProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Update Booth Details (Booth name with number, Booth address)
+// 3. Update Booth Details (Booth name with number, Booth address)
 // ─────────────────────────────────────────────────────────────
 router.put('/shop', updateShopValidation, cobblerProfileController.updateShopDetails);
 
 // ─────────────────────────────────────────────────────────────
-// 5. Update Services
+// 4. Update Services
 // ─────────────────────────────────────────────────────────────
 router.put('/services', updateServicesValidation, cobblerProfileController.updateServices);
 
 // ─────────────────────────────────────────────────────────────
-// 6. Update Tools Owned
+// 5. Update Tools Owned
 // ─────────────────────────────────────────────────────────────
 router.put('/tools-owned', updateToolsValidation, cobblerProfileController.updateToolsOwned);
 
 // ─────────────────────────────────────────────────────────────
-// 7. Update Tools Needed
+// 6. Update Tools Needed
 // ─────────────────────────────────────────────────────────────
 router.put('/tools-needed', updateToolsNeededValidation, cobblerProfileController.updateToolsNeeded);
 
 // ─────────────────────────────────────────────────────────────
-// 8. Update Bank Details
+// 7. Update Bank Details
 // ─────────────────────────────────────────────────────────────
 router.put('/bank', updateBankValidation, cobblerProfileController.updateBankDetails);
 
 // ─────────────────────────────────────────────────────────────
-// 9. Upload Profile Image (Cloudinary)
+// 8. Upload Profile Image (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-image', uploadProfileImage, cobblerProfileController.uploadProfileImage);
 
 // ─────────────────────────────────────────────────────────────
-// 10. Upload KYC Document (Cloudinary)
+// 9. Upload KYC Document (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-doc', uploadKycDoc, cobblerProfileController.uploadKycDoc);
 
 // ─────────────────────────────────────────────────────────────
-// 11. Update online status
+// 10. Update online status
 // ─────────────────────────────────────────────────────────────
 router.put('/update-status', updateStatusValidation, cobblerProfileController.updateStatus);
 
 // ─────────────────────────────────────────────────────────────
-// 12. Get Verification Status
+// 11. Get Verification Status
 // ─────────────────────────────────────────────────────────────
 router.get('/verification', cobblerProfileController.getVerificationStatus);
 

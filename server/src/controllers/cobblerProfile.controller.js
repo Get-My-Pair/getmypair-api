@@ -21,52 +21,6 @@ const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
 
 /**
- * Create Cobbler Profile
- * POST /api/cobbler/profile/create
- */
-const createProfile = async (req, res) => {
-    try {
-        const {
-            name,
-            phone,
-            shopName,
-            shopAddress,
-            servicesOffered,
-            serviceAreas,
-            toolsOwned,
-            toolsNeeded,
-        } = req.body;
-        const userId = req.user._id;
-
-        // Check if profile already exists
-        const existingProfile = await CobblerProfile.findOne({ userId });
-        if (existingProfile) {
-            return errorResponse(res, 'Cobbler profile already exists', 409);
-        }
-
-        const profileData = {
-            userId,
-            name,
-            phone,
-        };
-        if (shopName !== undefined) profileData.shopName = shopName;
-        if (shopAddress !== undefined) profileData.shopAddress = shopAddress;
-        if (Array.isArray(servicesOffered)) profileData.servicesOffered = servicesOffered;
-        if (Array.isArray(serviceAreas)) profileData.serviceAreas = serviceAreas;
-        if (Array.isArray(toolsOwned)) profileData.toolsOwned = toolsOwned;
-        if (Array.isArray(toolsNeeded)) profileData.toolsNeeded = toolsNeeded;
-
-        const profile = await CobblerProfile.create(profileData);
-
-        logger.info(`Cobbler profile created for userId: ${userId}`);
-        return success(res, 'Cobbler profile created successfully', { profile }, 201);
-    } catch (err) {
-        logger.error(`Create cobbler profile error: ${err.message}`);
-        return errorResponse(res, err.message, 500);
-    }
-};
-
-/**
  * Get Cobbler Profile (own)
  * GET /api/cobbler/profile/me
  */
@@ -422,7 +376,6 @@ const getVerificationStatus = async (req, res) => {
 };
 
 module.exports = {
-    createProfile,
     getProfile,
     updateProfile,
     updateShopDetails,
