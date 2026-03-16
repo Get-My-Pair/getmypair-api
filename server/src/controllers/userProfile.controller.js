@@ -21,36 +21,6 @@ const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
 
 /**
- * Create User Profile
- * POST /api/user/profile/create
- */
-const createProfile = async (req, res) => {
-    try {
-        const { name, phone, email } = req.body;
-        const userId = req.user._id;
-
-        // Check if profile already exists
-        const existingProfile = await UserProfile.findOne({ userId });
-        if (existingProfile) {
-            return errorResponse(res, 'User profile already exists', 409);
-        }
-
-        const profile = await UserProfile.create({
-            userId,
-            name,
-            phone,
-            email: email || null,
-        });
-
-        logger.info(`User profile created for userId: ${userId}`);
-        return success(res, 'User profile created successfully', { profile }, 201);
-    } catch (err) {
-        logger.error(`Create user profile error: ${err.message}`);
-        return errorResponse(res, err.message, 500);
-    }
-};
-
-/**
  * Get User Profile (own)
  * GET /api/user/profile/me
  */
@@ -58,16 +28,9 @@ const getProfile = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        let profile = await UserProfile.findOne({ userId });
+        const profile = await UserProfile.findOne({ userId });
         if (!profile) {
-            // Auto-create profile if missing, getting details from user registration
-            profile = await UserProfile.create({
-                userId,
-                name: req.user.name || 'User',
-                phone: req.user.mobile || '',
-                email: req.user.email || null,
-            });
-            logger.info(`Auto-created user profile for userId: ${userId}`);
+            return notFound(res, 'User profile not found');
         }
 
         return success(res, 'User profile retrieved successfully', { profile });
@@ -253,7 +216,6 @@ const deleteAddress = async (req, res) => {
 };
 
 module.exports = {
-    createProfile,
     getProfile,
     updateProfile,
     uploadProfileImage,

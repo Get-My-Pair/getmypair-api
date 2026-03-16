@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : userProfile.routes.js
- * Description: User profile routes – create, me, update, upload-image, address CRUD
+ * Description: User profile routes – me, update, upload-image, address CRUD (profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -22,7 +22,6 @@ const roleMiddleware = require('../middleware/role.middleware');
 const { uploadProfileImage } = require('../middleware/upload.middleware');
 const userProfileController = require('../controllers/userProfile.controller');
 const {
-    createProfileValidation,
     updateProfileValidation,
     addAddressValidation,
     updateAddressValidation,
@@ -33,37 +32,32 @@ router.use(authMiddleware);
 router.use(roleMiddleware(['USER']));
 
 // ─────────────────────────────────────────────────────────────
-// 1. Create Profile
-// ─────────────────────────────────────────────────────────────
-router.post('/create', createProfileValidation, userProfileController.createProfile);
-
-// ─────────────────────────────────────────────────────────────
-// 2. Get Profile
+// 1. Get Profile
 // ─────────────────────────────────────────────────────────────
 router.get('/me', userProfileController.getProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 3. Update Profile
+// 2. Update Profile
 // ─────────────────────────────────────────────────────────────
 router.put('/update', updateProfileValidation, userProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Upload Profile Image (Cloudinary)
+// 3. Upload Profile Image (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-image', uploadProfileImage, userProfileController.uploadProfileImage);
 
 // ─────────────────────────────────────────────────────────────
-// 5. Add Address
+// 4. Add Address
 // ─────────────────────────────────────────────────────────────
 router.post('/address/add', addAddressValidation, userProfileController.addAddress);
 
 // ─────────────────────────────────────────────────────────────
-// 6. Update Address
+// 5. Update Address
 // ─────────────────────────────────────────────────────────────
 router.put('/address/update', updateAddressValidation, userProfileController.updateAddress);
 
 // ─────────────────────────────────────────────────────────────
-// 7. Delete Address
+// 6. Delete Address
 // ─────────────────────────────────────────────────────────────
 router.delete('/address/delete/:addressId', userProfileController.deleteAddress);
 
