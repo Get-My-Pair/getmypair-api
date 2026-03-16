@@ -21,35 +21,6 @@ const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
 
 /**
- * Create Delivery Profile
- * POST /api/delivery/profile/create
- */
-const createProfile = async (req, res) => {
-    try {
-        const { name, phone } = req.body;
-        const userId = req.user._id;
-
-        // Check if profile already exists
-        const existingProfile = await DeliveryProfile.findOne({ userId });
-        if (existingProfile) {
-            return errorResponse(res, 'Delivery profile already exists', 409);
-        }
-
-        const profile = await DeliveryProfile.create({
-            userId,
-            name,
-            phone,
-        });
-
-        logger.info(`Delivery profile created for userId: ${userId}`);
-        return success(res, 'Delivery profile created successfully', { profile }, 201);
-    } catch (err) {
-        logger.error(`Create delivery profile error: ${err.message}`);
-        return errorResponse(res, err.message, 500);
-    }
-};
-
-/**
  * Get Delivery Profile (own)
  * GET /api/delivery/profile/me
  */
@@ -254,7 +225,6 @@ const getVerificationStatus = async (req, res) => {
 };
 
 module.exports = {
-    createProfile,
     getProfile,
     updateProfile,
     updateVehicleDetails,
