@@ -60,7 +60,9 @@ const serviceRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'],
+      // Module 4 status system (user-side)
+      // pending -> pickup_assigned -> in_service -> completed (+ cancelled)
+      enum: ['pending', 'pickup_assigned', 'in_service', 'completed', 'cancelled'],
       default: 'pending',
       index: true,
     },

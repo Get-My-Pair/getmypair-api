@@ -17,6 +17,7 @@ const { createServiceRequestValidation } = require('../validations/service.valid
 router.use(authMiddleware);
 router.use(roleMiddleware(['USER']));
 
+router.get('/my', serviceController.getMyServiceRequests);
 router.get('/estimation-defaults', serviceController.getEstimationDefaults);
 router.post('/create', createServiceRequestValidation, serviceController.createServiceRequest);
 

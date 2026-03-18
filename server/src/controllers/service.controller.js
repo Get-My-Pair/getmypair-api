@@ -70,6 +70,24 @@ const createServiceRequest = async (req, res) => {
 };
 
 /**
+ * Get my service requests
+ * GET /api/service/my
+ */
+const getMyServiceRequests = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const requests = await ServiceRequest.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return success(res, 'Service requests retrieved successfully', { requests });
+  } catch (err) {
+    logger.error(`Get my service requests error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * Get default estimation cost per service type (for auto-fill on frontend).
  * GET /api/service/estimation-defaults
  */
@@ -86,6 +104,7 @@ const getEstimationDefaults = async (req, res) => {
 
 module.exports = {
   createServiceRequest,
+  getMyServiceRequests,
   getEstimationDefaults,
 };
 
