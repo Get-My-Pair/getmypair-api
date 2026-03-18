@@ -33,6 +33,7 @@ const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
 const adminProfileRoutes = require('./routes/adminProfile.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
 const articleRoutes = require('./routes/article.routes');
+const serviceRoutes = require('./routes/service.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
@@ -120,6 +121,8 @@ app.use('/api/admin/profile', adminProfileRoutes);
 app.use('/api/geocode', geocodeRoutes);
 // Module 3: Articles (Digital Shoe Passport)
 app.use('/api/articles', articleRoutes);
+// Module 4: Service Requests
+app.use('/api/service', serviceRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
