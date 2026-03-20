@@ -60,5 +60,17 @@ const createServiceRequestValidation = [
 
 module.exports = {
   createServiceRequestValidation,
+  assignDeliveryValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('deliveryPartnerId')
+      .optional()
+      .isMongoId()
+      .withMessage('deliveryPartnerId must be a valid Mongo ID'),
+    handleValidationErrors,
+  ],
 };
 

@@ -12,14 +12,19 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth.middleware');
 const roleMiddleware = require('../middleware/role.middleware');
 const serviceController = require('../controllers/service.controller');
-const { createServiceRequestValidation } = require('../validations/service.validation');
+const { createServiceRequestValidation, assignDeliveryValidation } = require('../validations/service.validation');
 
 router.use(authMiddleware);
-router.use(roleMiddleware(['USER']));
 
-router.get('/my', serviceController.getMyServiceRequests);
-router.get('/estimation-defaults', serviceController.getEstimationDefaults);
-router.post('/create', createServiceRequestValidation, serviceController.createServiceRequest);
+router.get('/my', roleMiddleware(['USER']), serviceController.getMyServiceRequests);
+router.get('/estimation-defaults', roleMiddleware(['USER']), serviceController.getEstimationDefaults);
+router.post('/create', roleMiddleware(['USER']), createServiceRequestValidation, serviceController.createServiceRequest);
+router.post(
+  '/assign-delivery',
+  roleMiddleware(['ADMIN', 'COBBER']),
+  assignDeliveryValidation,
+  serviceController.assignDeliveryPartner
+);
 
 module.exports = router;
 

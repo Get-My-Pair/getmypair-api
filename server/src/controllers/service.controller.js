@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const { ServiceRequest, defaultEstimatedCostByServiceType } = require('../models/serviceRequest.model');
 const Article = require('../models/article.model');
 const UserProfile = require('../models/userProfile.model');
+const DeliveryProfile = require('../models/deliveryProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -102,9 +103,73 @@ const getEstimationDefaults = async (req, res) => {
   }
 };
 
+/**
+ * Assign delivery partner for pickup
+ * POST /api/service/assign-delivery
+ * Body: { requestId, deliveryPartnerId? }
+ *
+ * If deliveryPartnerId is omitted, system auto-picks first verified delivery partner.
+ */
+const assignDeliveryPartner = async (req, res) => {
+  try {
+    const { requestId, deliveryPartnerId } = req.body;
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+
+    if (request.status === 'cancelled' || request.status === 'completed') {
+      return errorResponse(res, `Cannot assign delivery for ${request.status} request`, 400);
+    }
+
+    let partnerProfile = null;
+    if (deliveryPartnerId) {
+      partnerProfile = await DeliveryProfile.findOne({
+        userId: deliveryPartnerId,
+        verificationStatus: 'verified',
+      }).lean();
+      if (!partnerProfile) {
+        return notFound(res, 'Verified delivery partner not found');
+      }
+    } else {
+      partnerProfile = await DeliveryProfile.findOne({ verificationStatus: 'verified' })
+        .sort({ updatedAt: -1 })
+        .lean();
+      if (!partnerProfile) {
+        return errorResponse(res, 'No verified delivery partner available', 404);
+      }
+    }
+
+    request.deliveryPartnerId = partnerProfile.userId;
+    request.deliveryProfileId = partnerProfile._id;
+    request.pickupAssignedAt = new Date();
+    request.status = 'pickup_assigned';
+
+    await request.save();
+
+    logger.info(`Delivery assigned for request=${requestId} partner=${partnerProfile.userId}`);
+    return success(res, 'Delivery partner assigned successfully', {
+      request: request.toObject(),
+      deliveryPartner: {
+        profileId: partnerProfile._id,
+        userId: partnerProfile.userId,
+        name: partnerProfile.name,
+        phone: partnerProfile.phone,
+        vehicleType: partnerProfile.vehicleType,
+        vehicleNumber: partnerProfile.vehicleNumber,
+      },
+    });
+  } catch (err) {
+    logger.error(`Assign delivery partner error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   createServiceRequest,
   getMyServiceRequests,
   getEstimationDefaults,
+  assignDeliveryPartner,
 };
 

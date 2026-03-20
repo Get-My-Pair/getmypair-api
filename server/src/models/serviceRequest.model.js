@@ -50,6 +50,21 @@ const serviceRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
+    deliveryPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    deliveryProfileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DeliveryProfile',
+      default: null,
+    },
+    pickupAssignedAt: {
+      type: Date,
+      default: null,
+    },
     photos: {
       type: [String],
       default: [],
@@ -88,6 +103,7 @@ const serviceRequestSchema = new mongoose.Schema(
 
 serviceRequestSchema.index({ userId: 1, createdAt: -1 });
 serviceRequestSchema.index({ articleId: 1, createdAt: -1 });
+serviceRequestSchema.index({ status: 1, deliveryPartnerId: 1, createdAt: -1 });
 
 const ServiceRequest = mongoose.model('ServiceRequest', serviceRequestSchema);
 
