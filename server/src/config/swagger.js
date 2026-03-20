@@ -218,6 +218,38 @@ const options = {
           },
         },
 
+        // ─── Service Request (Module 4) ─────────────────
+        ServiceRequest: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d99' },
+            userId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d01' },
+            articleId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d20' },
+            serviceType: { type: 'string', enum: ['repair', 'maintenance', 'wash', 'donate', 'dispose'], example: 'repair' },
+            addressId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d10' },
+            deliveryPartnerId: { type: 'string', nullable: true, example: '664a1b2c3d4e5f6a7b8c9d77' },
+            deliveryProfileId: { type: 'string', nullable: true, example: '664a1b2c3d4e5f6a7b8c9d88' },
+            pickupAssignedAt: { type: 'string', format: 'date-time', nullable: true },
+            routingType: { type: 'string', enum: ['dark_store', 'direct'], example: 'dark_store' },
+            darkStoreId: { type: 'string', nullable: true, example: 'STORE_21' },
+            darkStoreName: { type: 'string', nullable: true, example: 'Dark Store - T Nagar' },
+            darkStoreAssignedAt: { type: 'string', format: 'date-time', nullable: true },
+            trackingState: { type: 'string', example: 'request_created' },
+            trackingUpdatedAt: { type: 'string', format: 'date-time' },
+            photos: { type: 'array', items: { type: 'string' } },
+            videos: { type: 'array', items: { type: 'string' } },
+            status: {
+              type: 'string',
+              enum: ['pending', 'pickup_assigned', 'in_service', 'completed', 'cancelled'],
+              example: 'pending',
+            },
+            estimatedCost: { type: 'number', nullable: true, example: 500 },
+            actualCost: { type: 'number', nullable: true, example: 650 },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
         // ─── Common Responses ───────────────────────────
         SuccessResponse: {
           type: 'object',
@@ -282,6 +314,7 @@ const options = {
       { name: 'Authentication', description: 'OTP-based authentication endpoints' },
       { name: 'User Profile', description: 'User profile management — Profile created by auth; Role: USER' },
       { name: 'Articles', description: 'Article / Digital Shoe Passport (Module 3) — Role: USER' },
+      { name: 'Service Requests', description: 'Service request lifecycle APIs (Module 4)' },
       { name: 'Cobbler Profile', description: 'Cobbler profile management — Profile created by auth; Role: COBBER' },
       { name: 'Delivery Profile', description: 'Delivery partner profile management — Profile created by auth; Role: DELIVERY' },
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
