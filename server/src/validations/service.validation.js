@@ -72,5 +72,28 @@ module.exports = {
       .withMessage('deliveryPartnerId must be a valid Mongo ID'),
     handleValidationErrors,
   ],
+  assignDarkStoreValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('darkStoreId')
+      .trim()
+      .notEmpty()
+      .withMessage('darkStoreId is required')
+      .isLength({ max: 80 })
+      .withMessage('darkStoreId must be at most 80 characters'),
+    body('darkStoreName')
+      .optional()
+      .trim()
+      .isLength({ max: 160 })
+      .withMessage('darkStoreName must be at most 160 characters'),
+    body('routingType')
+      .optional()
+      .isIn(['dark_store', 'direct'])
+      .withMessage('routingType must be one of: dark_store, direct'),
+    handleValidationErrors,
+  ],
 };
 

@@ -12,7 +12,11 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth.middleware');
 const roleMiddleware = require('../middleware/role.middleware');
 const serviceController = require('../controllers/service.controller');
-const { createServiceRequestValidation, assignDeliveryValidation } = require('../validations/service.validation');
+const {
+  createServiceRequestValidation,
+  assignDeliveryValidation,
+  assignDarkStoreValidation,
+} = require('../validations/service.validation');
 
 router.use(authMiddleware);
 
@@ -24,6 +28,12 @@ router.post(
   roleMiddleware(['ADMIN', 'COBBER']),
   assignDeliveryValidation,
   serviceController.assignDeliveryPartner
+);
+router.post(
+  '/assign-darkstore',
+  roleMiddleware(['ADMIN', 'COBBER']),
+  assignDarkStoreValidation,
+  serviceController.assignDarkStore
 );
 
 module.exports = router;

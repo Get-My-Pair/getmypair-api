@@ -65,6 +65,37 @@ const serviceRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    routingType: {
+      type: String,
+      enum: ['dark_store', 'direct'],
+      default: 'dark_store',
+      index: true,
+    },
+    darkStoreId: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
+    darkStoreName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    darkStoreAssignedAt: {
+      type: Date,
+      default: null,
+    },
+    trackingState: {
+      type: String,
+      trim: true,
+      default: 'request_created',
+      index: true,
+    },
+    trackingUpdatedAt: {
+      type: Date,
+      default: Date.now,
+    },
     photos: {
       type: [String],
       default: [],
@@ -104,6 +135,7 @@ const serviceRequestSchema = new mongoose.Schema(
 serviceRequestSchema.index({ userId: 1, createdAt: -1 });
 serviceRequestSchema.index({ articleId: 1, createdAt: -1 });
 serviceRequestSchema.index({ status: 1, deliveryPartnerId: 1, createdAt: -1 });
+serviceRequestSchema.index({ darkStoreId: 1, status: 1, createdAt: -1 });
 
 const ServiceRequest = mongoose.model('ServiceRequest', serviceRequestSchema);
 

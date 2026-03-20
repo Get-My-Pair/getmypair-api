@@ -60,6 +60,9 @@ const createServiceRequest = async (req, res) => {
       status: 'pending',
       estimatedCost: estimated,
       actualCost: actualCost != null && Number(actualCost) >= 0 ? Number(actualCost) : null,
+      routingType: 'dark_store',
+      trackingState: 'request_created',
+      trackingUpdatedAt: new Date(),
     });
 
     logger.info(`Service request created: ${doc._id} user=${userId} article=${articleId} type=${serviceType}`);
@@ -145,6 +148,8 @@ const assignDeliveryPartner = async (req, res) => {
     request.deliveryProfileId = partnerProfile._id;
     request.pickupAssignedAt = new Date();
     request.status = 'pickup_assigned';
+    request.trackingState = 'pickup_assigned';
+    request.trackingUpdatedAt = new Date();
 
     await request.save();
 
@@ -166,10 +171,45 @@ const assignDeliveryPartner = async (req, res) => {
   }
 };
 
+/**
+ * Assign dark store to service request
+ * POST /api/service/assign-darkstore
+ * Body: { requestId, darkStoreId, darkStoreName?, routingType? }
+ */
+const assignDarkStore = async (req, res) => {
+  try {
+    const { requestId, darkStoreId, darkStoreName, routingType } = req.body;
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (request.status === 'cancelled' || request.status === 'completed') {
+      return errorResponse(res, `Cannot assign dark store for ${request.status} request`, 400);
+    }
+
+    request.darkStoreId = String(darkStoreId).trim();
+    request.darkStoreName = darkStoreName ? String(darkStoreName).trim() : request.darkStoreName;
+    request.routingType = routingType || 'dark_store';
+    request.darkStoreAssignedAt = new Date();
+    request.trackingState = 'dark_store_assigned';
+    request.trackingUpdatedAt = new Date();
+
+    await request.save();
+
+    logger.info(`Dark store assigned for request=${requestId} darkStore=${request.darkStoreId}`);
+    return success(res, 'Dark store assigned successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Assign dark store error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   createServiceRequest,
   getMyServiceRequests,
   getEstimationDefaults,
   assignDeliveryPartner,
+  assignDarkStore,
 };
 
