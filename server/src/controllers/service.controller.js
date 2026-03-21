@@ -11,6 +11,7 @@ const {
   ServiceRequest,
   defaultEstimatedCostByServiceType,
   serviceStatuses,
+  serviceTrackingStates,
 } = require('../models/serviceRequest.model');
 const Article = require('../models/article.model');
 const UserProfile = require('../models/userProfile.model');
@@ -18,6 +19,25 @@ const DeliveryProfile = require('../models/deliveryProfile.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
+
+const trackingStateOrder = serviceTrackingStates.reduce((acc, state, idx) => {
+  acc[state] = idx;
+  return acc;
+}, {});
+
+const stateToStatusMap = {
+  request_created: 'pending',
+  pickup_scheduled: 'pickup_assigned',
+  item_picked: 'pickup_assigned',
+  dark_store_received: 'in_service',
+  inspection_started: 'in_service',
+  repair_in_progress: 'in_service',
+  repair_completed: 'in_service',
+  dispatch_ready: 'in_service',
+  out_for_delivery: 'in_service',
+  delivered: 'completed',
+  cancelled: 'cancelled',
+};
 
 /**
  * Create Service Request
@@ -260,6 +280,7 @@ const updateServiceStatus = async (req, res) => {
       cobblerId,
       photos,
       videos,
+      actorType,
     } = req.body;
 
     const request = await ServiceRequest.findById(requestId);
@@ -286,12 +307,35 @@ const updateServiceStatus = async (req, res) => {
       }
     }
 
-    const nextStatus = status || request.status;
+    const nextState = state || request.trackingState || 'request_created';
+    if (!serviceTrackingStates.includes(nextState)) {
+      return errorResponse(res, `state must be one of: ${serviceTrackingStates.join(', ')}`, 400);
+    }
+
+    const currentState = request.trackingState || 'request_created';
+    if (nextState !== currentState) {
+      const currentOrder = trackingStateOrder[currentState] ?? -1;
+      const nextOrder = trackingStateOrder[nextState] ?? -1;
+      if (nextOrder < currentOrder) {
+        return errorResponse(res, 'Invalid state transition. Cannot move lifecycle backward.', 400);
+      }
+    }
+
+    const inferredStatus = stateToStatusMap[nextState] || request.status;
+    const nextStatus = status || inferredStatus;
     if (!serviceStatuses.includes(nextStatus)) {
       return errorResponse(res, `status must be one of: ${serviceStatuses.join(', ')}`, 400);
     }
-    const nextState = state || nextStatus;
-    const actorType = request.cobblerId ? 'cobbler' : 'system';
+
+    if (['inspection_started', 'repair_in_progress', 'repair_completed'].includes(nextState) && !request.cobblerId) {
+      return errorResponse(res, 'Cobbler must be assigned before moving to inspection or repair states', 400);
+    }
+
+    if (nextState === 'dark_store_received' && !request.darkStoreId) {
+      return errorResponse(res, 'Dark store must be assigned before dark_store_received state', 400);
+    }
+
+    const eventActorType = actorType || (request.cobblerId ? 'cobbler' : 'system');
 
     request.status = nextStatus;
     request.trackingState = nextState;
@@ -300,7 +344,7 @@ const updateServiceStatus = async (req, res) => {
     request.lifecycleEvents.push({
       state: nextState,
       status: nextStatus,
-      actorType,
+      actorType: eventActorType,
       actorId: String(req.user._id),
       note: note ? String(note).trim() : null,
       media: {
@@ -319,6 +363,85 @@ const updateServiceStatus = async (req, res) => {
   }
 };
 
+/**
+ * Cancel service request
+ * PUT /api/service/cancel/:requestId
+ */
+const cancelServiceRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const role = String(req.user?.role?.name || req.user?.role || '').toUpperCase();
+    const query = role === 'USER' ? { _id: requestId, userId: req.user._id } : { _id: requestId };
+
+    const request = await ServiceRequest.findOne(query);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (request.status === 'completed') {
+      return errorResponse(res, 'Completed request cannot be cancelled', 400);
+    }
+    if (request.status === 'cancelled') {
+      return success(res, 'Service request already cancelled', { request: request.toObject() });
+    }
+
+    request.status = 'cancelled';
+    request.trackingState = 'cancelled';
+    request.trackingUpdatedAt = new Date();
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: 'cancelled',
+      status: 'cancelled',
+      actorType: role === 'USER' ? 'customer' : 'system',
+      actorId: String(req.user._id),
+      note: 'Service request cancelled',
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+    await request.save();
+
+    return success(res, 'Service request cancelled successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Cancel service request error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Upload service request media evidence
+ * POST /api/service/upload-media
+ */
+const uploadServiceMedia = async (req, res) => {
+  try {
+    const { requestId, photos, videos, note, state, actorType } = req.body;
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+
+    const photoList = Array.isArray(photos) ? photos : [];
+    const videoList = Array.isArray(videos) ? videos : [];
+    request.photos = [...(request.photos || []), ...photoList];
+    request.videos = [...(request.videos || []), ...videoList];
+
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: state || request.trackingState || 'media_uploaded',
+      status: request.status,
+      actorType: actorType || 'system',
+      actorId: String(req.user._id),
+      note: note || 'Media evidence uploaded',
+      media: { photos: photoList, videos: videoList },
+      timestamp: new Date(),
+    });
+    await request.save();
+
+    return success(res, 'Service media uploaded successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Upload service media error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   createServiceRequest,
   getMyServiceRequests,
@@ -327,5 +450,7 @@ module.exports = {
   assignDeliveryPartner,
   assignDarkStore,
   updateServiceStatus,
+  cancelServiceRequest,
+  uploadServiceMedia,
 };
 

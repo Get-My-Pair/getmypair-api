@@ -8,7 +8,7 @@
 
 const { body, param } = require('express-validator');
 const { handleValidationErrors } = require('../utils/validators');
-const { serviceTypes, serviceStatuses } = require('../models/serviceRequest.model');
+const { serviceTypes, serviceStatuses, serviceTrackingStates } = require('../models/serviceRequest.model');
 
 const createServiceRequestValidation = [
   body('articleId')
@@ -118,8 +118,8 @@ module.exports = {
     body('state')
       .optional()
       .trim()
-      .isLength({ max: 80 })
-      .withMessage('state must be at most 80 characters'),
+      .isIn(serviceTrackingStates)
+      .withMessage(`state must be one of: ${serviceTrackingStates.join(', ')}`),
     body('note')
       .optional()
       .trim()
@@ -129,6 +129,60 @@ module.exports = {
       .optional()
       .isMongoId()
       .withMessage('cobblerId must be a valid Mongo ID'),
+    body('actorType')
+      .optional()
+      .isIn(['system', 'customer', 'delivery', 'dark_store', 'cobbler', 'admin'])
+      .withMessage('actorType must be one of: system, customer, delivery, dark_store, cobbler, admin'),
+    body('photos')
+      .optional()
+      .isArray()
+      .withMessage('photos must be an array'),
+    body('photos.*')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Each photo must be a non-empty string'),
+    body('videos')
+      .optional()
+      .isArray()
+      .withMessage('videos must be an array'),
+    body('videos.*')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Each video must be a non-empty string'),
+    handleValidationErrors,
+  ],
+  cancelServiceRequestValidation: [
+    param('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    handleValidationErrors,
+  ],
+  uploadServiceMediaValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('state')
+      .optional()
+      .trim()
+      .isIn([...serviceTrackingStates, 'media_uploaded'])
+      .withMessage(`state must be one of: ${[...serviceTrackingStates, 'media_uploaded'].join(', ')}`),
+    body('note')
+      .optional()
+      .trim()
+      .isLength({ max: 250 })
+      .withMessage('note must be at most 250 characters'),
+    body('actorType')
+      .optional()
+      .isIn(['system', 'customer', 'delivery', 'dark_store', 'cobbler', 'admin'])
+      .withMessage('actorType must be one of: system, customer, delivery, dark_store, cobbler, admin'),
     body('photos')
       .optional()
       .isArray()

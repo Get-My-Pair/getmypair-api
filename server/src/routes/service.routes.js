@@ -18,6 +18,8 @@ const {
   assignDeliveryValidation,
   assignDarkStoreValidation,
   updateServiceStatusValidation,
+  cancelServiceRequestValidation,
+  uploadServiceMediaValidation,
 } = require('../validations/service.validation');
 
 router.use(authMiddleware);
@@ -42,6 +44,18 @@ router.post(
   roleMiddleware(['ADMIN', 'COBBER']),
   updateServiceStatusValidation,
   serviceController.updateServiceStatus
+);
+router.put(
+  '/cancel/:requestId',
+  roleMiddleware(['USER', 'ADMIN', 'COBBER']),
+  cancelServiceRequestValidation,
+  serviceController.cancelServiceRequest
+);
+router.post(
+  '/upload-media',
+  roleMiddleware(['ADMIN', 'COBBER', 'DELIVERY']),
+  uploadServiceMediaValidation,
+  serviceController.uploadServiceMedia
 );
 router.get('/:requestId', roleMiddleware(['USER', 'ADMIN', 'COBBER']), getServiceRequestDetailsValidation, serviceController.getServiceRequestDetails);
 

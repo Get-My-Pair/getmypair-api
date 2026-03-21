@@ -242,6 +242,68 @@ void 0;
 
 /**
  * @swagger
+ * /api/service/cancel/{requestId}:
+ *   put:
+ *     summary: Cancel service request
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service request cancelled successfully
+ *       400:
+ *         description: Completed request cannot be cancelled
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/upload-media:
+ *   post:
+ *     summary: Upload service media evidence
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId]
+ *             properties:
+ *               requestId: { type: string }
+ *               state: { type: string, example: "inspection_started" }
+ *               note: { type: string }
+ *               actorType:
+ *                 type: string
+ *                 enum: [system, customer, delivery, dark_store, cobbler, admin]
+ *               photos:
+ *                 type: array
+ *                 items: { type: string }
+ *               videos:
+ *                 type: array
+ *                 items: { type: string }
+ *     responses:
+ *       200:
+ *         description: Service media uploaded successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/service/assign-delivery:
  *   post:
  *     summary: Assign delivery partner

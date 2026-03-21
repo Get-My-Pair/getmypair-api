@@ -25,6 +25,20 @@ const serviceStatuses = [
   'cancelled',
 ];
 
+const serviceTrackingStates = [
+  'request_created',
+  'pickup_scheduled',
+  'item_picked',
+  'dark_store_received',
+  'inspection_started',
+  'repair_in_progress',
+  'repair_completed',
+  'dispatch_ready',
+  'out_for_delivery',
+  'delivered',
+  'cancelled',
+];
+
 /** Default estimation cost (e.g. in smallest currency unit) per service type – for auto-fill. */
 const defaultEstimatedCostByServiceType = {
   repair: 500,
@@ -191,6 +205,7 @@ module.exports = {
   ServiceRequest,
   serviceTypes,
   serviceStatuses,
+  serviceTrackingStates,
   defaultEstimatedCostByServiceType,
 };
 
