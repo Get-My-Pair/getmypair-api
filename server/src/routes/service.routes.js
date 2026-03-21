@@ -14,8 +14,10 @@ const roleMiddleware = require('../middleware/role.middleware');
 const serviceController = require('../controllers/service.controller');
 const {
   createServiceRequestValidation,
+  getServiceRequestDetailsValidation,
   assignDeliveryValidation,
   assignDarkStoreValidation,
+  updateServiceStatusValidation,
 } = require('../validations/service.validation');
 
 router.use(authMiddleware);
@@ -35,6 +37,13 @@ router.post(
   assignDarkStoreValidation,
   serviceController.assignDarkStore
 );
+router.post(
+  '/update-status',
+  roleMiddleware(['ADMIN', 'COBBER']),
+  updateServiceStatusValidation,
+  serviceController.updateServiceStatus
+);
+router.get('/:requestId', roleMiddleware(['USER', 'ADMIN', 'COBBER']), getServiceRequestDetailsValidation, serviceController.getServiceRequestDetails);
 
 module.exports = router;
 

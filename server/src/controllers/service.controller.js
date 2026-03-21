@@ -7,10 +7,15 @@
  */
 
 const mongoose = require('mongoose');
-const { ServiceRequest, defaultEstimatedCostByServiceType } = require('../models/serviceRequest.model');
+const {
+  ServiceRequest,
+  defaultEstimatedCostByServiceType,
+  serviceStatuses,
+} = require('../models/serviceRequest.model');
 const Article = require('../models/article.model');
 const UserProfile = require('../models/userProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
+const CobblerProfile = require('../models/cobblerProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -63,12 +68,48 @@ const createServiceRequest = async (req, res) => {
       routingType: 'dark_store',
       trackingState: 'request_created',
       trackingUpdatedAt: new Date(),
+      lifecycleEvents: [
+        {
+          state: 'request_created',
+          status: 'pending',
+          actorType: 'customer',
+          actorId: String(userId),
+          note: 'Service request created',
+          timestamp: new Date(),
+        },
+      ],
     });
 
     logger.info(`Service request created: ${doc._id} user=${userId} article=${articleId} type=${serviceType}`);
     return success(res, 'Service request created successfully', { request: doc }, 201);
   } catch (err) {
     logger.error(`Create service request error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Get service request details
+ * GET /api/service/:requestId
+ */
+const getServiceRequestDetails = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const query = { _id: requestId };
+
+    const role = String(req.user?.role?.name || req.user?.role || '').toUpperCase();
+    if (role === 'USER') {
+      query.userId = req.user._id;
+    }
+
+    const request = await ServiceRequest.findOne(query).lean();
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+
+    return success(res, 'Service request details retrieved successfully', { request });
+  } catch (err) {
+    logger.error(`Get service request details error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -205,11 +246,86 @@ const assignDarkStore = async (req, res) => {
   }
 };
 
+/**
+ * Service status update API
+ * POST /api/service/update-status
+ */
+const updateServiceStatus = async (req, res) => {
+  try {
+    const {
+      requestId,
+      status,
+      state,
+      note,
+      cobblerId,
+      photos,
+      videos,
+    } = req.body;
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+
+    if (request.status === 'completed' || request.status === 'cancelled') {
+      return errorResponse(res, `Cannot update ${request.status} request`, 400);
+    }
+
+    if (cobblerId) {
+      const cobblerProfile = await CobblerProfile.findOne({
+        userId: cobblerId,
+        verificationStatus: 'verified',
+      }).lean();
+      if (!cobblerProfile) {
+        return notFound(res, 'Verified cobbler not found');
+      }
+      request.cobblerId = cobblerProfile.userId;
+      request.cobblerProfileId = cobblerProfile._id;
+      if (!request.cobblerAssignedAt) {
+        request.cobblerAssignedAt = new Date();
+      }
+    }
+
+    const nextStatus = status || request.status;
+    if (!serviceStatuses.includes(nextStatus)) {
+      return errorResponse(res, `status must be one of: ${serviceStatuses.join(', ')}`, 400);
+    }
+    const nextState = state || nextStatus;
+    const actorType = request.cobblerId ? 'cobbler' : 'system';
+
+    request.status = nextStatus;
+    request.trackingState = nextState;
+    request.trackingUpdatedAt = new Date();
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: nextState,
+      status: nextStatus,
+      actorType,
+      actorId: String(req.user._id),
+      note: note ? String(note).trim() : null,
+      media: {
+        photos: Array.isArray(photos) ? photos : [],
+        videos: Array.isArray(videos) ? videos : [],
+      },
+      timestamp: new Date(),
+    });
+
+    await request.save();
+
+    return success(res, 'Service status updated successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Update service status error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   createServiceRequest,
   getMyServiceRequests,
+  getServiceRequestDetails,
   getEstimationDefaults,
   assignDeliveryPartner,
   assignDarkStore,
+  updateServiceStatus,
 };
 

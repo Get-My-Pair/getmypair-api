@@ -161,6 +161,87 @@ void 0;
 
 /**
  * @swagger
+ * /api/service/{requestId}:
+ *   get:
+ *     summary: Get service request details
+ *     description: Returns full service request details including timeline/lifecycle events.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "664a1b2c3d4e5f6a7b8c9d99"
+ *     responses:
+ *       200:
+ *         description: Service request details retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Service request not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/update-status:
+ *   post:
+ *     summary: Update service request status and timeline
+ *     description: |
+ *       System-side API to update service lifecycle status.
+ *       Can optionally assign a verified cobbler and attach media evidence.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId, status]
+ *             properties:
+ *               requestId:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [pending, pickup_assigned, in_service, completed, cancelled]
+ *               state:
+ *                 type: string
+ *                 example: "inspection_completed"
+ *               note:
+ *                 type: string
+ *                 example: "Inspection completed with minor stitching needed"
+ *               cobblerId:
+ *                 type: string
+ *                 description: Optional verified cobbler user id
+ *               photos:
+ *                 type: array
+ *                 items: { type: string }
+ *               videos:
+ *                 type: array
+ *                 items: { type: string }
+ *     responses:
+ *       200:
+ *         description: Service status updated successfully
+ *       400:
+ *         description: Validation error or invalid request state
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires ADMIN or COBBER role
+ *       404:
+ *         description: Service request or cobbler not found
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/service/assign-delivery:
  *   post:
  *     summary: Assign delivery partner

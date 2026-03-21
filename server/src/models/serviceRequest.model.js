@@ -17,6 +17,14 @@ const serviceTypes = [
   'dispose',
 ];
 
+const serviceStatuses = [
+  'pending',
+  'pickup_assigned',
+  'in_service',
+  'completed',
+  'cancelled',
+];
+
 /** Default estimation cost (e.g. in smallest currency unit) per service type – for auto-fill. */
 const defaultEstimatedCostByServiceType = {
   repair: 500,
@@ -25,6 +33,26 @@ const defaultEstimatedCostByServiceType = {
   donate: 0,
   dispose: 0,
 };
+
+const lifecycleEventSchema = new mongoose.Schema(
+  {
+    state: { type: String, required: true, trim: true },
+    status: { type: String, enum: serviceStatuses, default: null },
+    actorType: {
+      type: String,
+      enum: ['system', 'customer', 'delivery', 'dark_store', 'cobbler', 'admin'],
+      default: 'system',
+    },
+    actorId: { type: String, default: null },
+    note: { type: String, trim: true, default: null },
+    media: {
+      photos: { type: [String], default: [] },
+      videos: { type: [String], default: [] },
+    },
+    timestamp: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const serviceRequestSchema = new mongoose.Schema(
   {
@@ -59,6 +87,21 @@ const serviceRequestSchema = new mongoose.Schema(
     deliveryProfileId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'DeliveryProfile',
+      default: null,
+    },
+    cobblerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    cobblerProfileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CobblerProfile',
+      default: null,
+    },
+    cobblerAssignedAt: {
+      type: Date,
       default: null,
     },
     pickupAssignedAt: {
@@ -108,7 +151,7 @@ const serviceRequestSchema = new mongoose.Schema(
       type: String,
       // Module 4 status system (user-side)
       // pending -> pickup_assigned -> in_service -> completed (+ cancelled)
-      enum: ['pending', 'pickup_assigned', 'in_service', 'completed', 'cancelled'],
+      enum: serviceStatuses,
       default: 'pending',
       index: true,
     },
@@ -124,6 +167,10 @@ const serviceRequestSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    lifecycleEvents: {
+      type: [lifecycleEventSchema],
+      default: [],
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: true },
@@ -136,12 +183,14 @@ serviceRequestSchema.index({ userId: 1, createdAt: -1 });
 serviceRequestSchema.index({ articleId: 1, createdAt: -1 });
 serviceRequestSchema.index({ status: 1, deliveryPartnerId: 1, createdAt: -1 });
 serviceRequestSchema.index({ darkStoreId: 1, status: 1, createdAt: -1 });
+serviceRequestSchema.index({ cobblerId: 1, status: 1, createdAt: -1 });
 
 const ServiceRequest = mongoose.model('ServiceRequest', serviceRequestSchema);
 
 module.exports = {
   ServiceRequest,
   serviceTypes,
+  serviceStatuses,
   defaultEstimatedCostByServiceType,
 };
 

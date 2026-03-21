@@ -6,9 +6,9 @@
  * ----------------------------------------------------------------------------
  */
 
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 const { handleValidationErrors } = require('../utils/validators');
-const { serviceTypes } = require('../models/serviceRequest.model');
+const { serviceTypes, serviceStatuses } = require('../models/serviceRequest.model');
 
 const createServiceRequestValidation = [
   body('articleId')
@@ -60,6 +60,14 @@ const createServiceRequestValidation = [
 
 module.exports = {
   createServiceRequestValidation,
+  getServiceRequestDetailsValidation: [
+    param('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    handleValidationErrors,
+  ],
   assignDeliveryValidation: [
     body('requestId')
       .notEmpty()
@@ -93,6 +101,54 @@ module.exports = {
       .optional()
       .isIn(['dark_store', 'direct'])
       .withMessage('routingType must be one of: dark_store, direct'),
+    handleValidationErrors,
+  ],
+  updateServiceStatusValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('status')
+      .trim()
+      .notEmpty()
+      .withMessage('status is required')
+      .isIn(serviceStatuses)
+      .withMessage(`status must be one of: ${serviceStatuses.join(', ')}`),
+    body('state')
+      .optional()
+      .trim()
+      .isLength({ max: 80 })
+      .withMessage('state must be at most 80 characters'),
+    body('note')
+      .optional()
+      .trim()
+      .isLength({ max: 250 })
+      .withMessage('note must be at most 250 characters'),
+    body('cobblerId')
+      .optional()
+      .isMongoId()
+      .withMessage('cobblerId must be a valid Mongo ID'),
+    body('photos')
+      .optional()
+      .isArray()
+      .withMessage('photos must be an array'),
+    body('photos.*')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Each photo must be a non-empty string'),
+    body('videos')
+      .optional()
+      .isArray()
+      .withMessage('videos must be an array'),
+    body('videos.*')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Each video must be a non-empty string'),
     handleValidationErrors,
   ],
 };
