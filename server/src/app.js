@@ -53,7 +53,7 @@ app.use(
         connectSrc: ["'self'"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
+        mediaSrc: ["'self'", "https:"],
         frameSrc: ["'none'"],
       },
     },

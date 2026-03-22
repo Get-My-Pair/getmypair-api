@@ -34,7 +34,8 @@ ADMIN_JWT_EXPIRE=12h
 | GET | `/api/sys-admin/articles/by-owner` | Bearer — owners with article counts |
 | GET | `/api/sys-admin/articles` | Bearer — optional `?ownerId=` to filter by owner |
 | GET | `/api/sys-admin/service-requests` | Bearer — items include `user` + `article` (populated) |
-| PATCH | `/api/sys-admin/service-requests/:id` | Bearer — workflow + assignments: `trackingState?`, `status?`, `note?`, `deliveryPartnerId?` (userId or `null`), `cobblerId?`, `darkStoreId?` (string or `null`), `darkStoreName?`, `routingType?` (`dark_store` / `direct`). At least one update required. Partners must be **verified** profiles. |
+| GET | `/api/sys-admin/service-requests/:id` | Bearer — full detail + resolved pickup `address` from user profile |
+| PATCH | `/api/sys-admin/service-requests/:id` | Bearer — workflow + assignments + **`estimatedCost` / `actualCost`** (number or `null`). Same optional fields as before. |
 | DELETE | `/api/sys-admin/service-requests/:id` | Bearer — hard delete |
 | GET | `/api/sys-admin/cobblers` | Bearer |
 | GET | `/api/sys-admin/delivery-partners` | Bearer |

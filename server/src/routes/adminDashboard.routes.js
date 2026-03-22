@@ -32,6 +32,11 @@ router.get(
 );
 router.get('/articles', adminMasterAuth, adminDashboardController.listArticles);
 router.get('/service-requests', adminMasterAuth, adminDashboardController.listServiceRequests);
+router.get(
+  '/service-requests/:id',
+  adminMasterAuth,
+  adminDashboardController.getServiceRequestById
+);
 router.patch(
   '/service-requests/:id',
   adminMasterAuth,

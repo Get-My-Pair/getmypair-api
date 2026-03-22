@@ -20,6 +20,7 @@ const {
 } = require('../models/serviceRequest.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
+const UserProfile = require('../models/userProfile.model');
 const mongoose = require('mongoose');
 const { success, error: errorResponse, unauthorized } = require('../utils/response');
 const logger = require('../utils/logger');
@@ -308,6 +309,7 @@ const mapServiceRequestRow = (doc) => {
   if (u && typeof u === 'object' && u._id) {
     row.user = {
       id: String(u._id),
+      _id: String(u._id),
       name: u.name || '—',
       mobile: u.mobile || '',
       email: u.email || '',
@@ -326,6 +328,11 @@ const mapServiceRequestRow = (doc) => {
       id: String(art._id),
       brand: art.brand || '',
       model: art.model || '',
+      category: art.category || '',
+      color: art.color || '',
+      purchaseYear: art.purchaseYear != null ? art.purchaseYear : null,
+      condition: art.condition || '',
+      images: Array.isArray(art.images) ? art.images : [],
     };
     row.articleId = row.article.id;
   } else if (art) {
@@ -374,6 +381,59 @@ const listServiceRequests = async (req, res) => {
 };
 
 /**
+ * GET /api/sys-admin/service-requests/:id
+ * Full detail for admin: user, article, resolved pickup address, media, costs, timeline.
+ */
+const getServiceRequestById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid request id', 400);
+    }
+
+    const raw = await ServiceRequest.findById(id)
+      .populate('userId', 'name mobile email')
+      .populate('articleId', 'brand model category color purchaseYear condition images')
+      .lean();
+
+    if (!raw) {
+      return errorResponse(res, 'Service request not found', 404);
+    }
+
+    const row = mapServiceRequestRow(raw);
+    const uid =
+      raw.userId && typeof raw.userId === 'object' && raw.userId._id
+        ? raw.userId._id
+        : raw.userId;
+
+    let address = null;
+    if (raw.addressId && uid) {
+      const profile = await UserProfile.findOne({ userId: uid }).lean();
+      if (profile && Array.isArray(profile.addresses)) {
+        const aid = String(raw.addressId);
+        const match = profile.addresses.find((a) => String(a._id) === aid);
+        if (match) {
+          address = {
+            id: String(match._id),
+            addressLine1: match.addressLine1,
+            city: match.city,
+            state: match.state,
+            pincode: match.pincode,
+          };
+        }
+      }
+    }
+    row.address = address;
+    row.addressId = raw.addressId ? String(raw.addressId) : '';
+
+    return success(res, 'Service request', { request: row });
+  } catch (err) {
+    logger.error(`Admin get service request error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * DELETE /api/sys-admin/service-requests/:id
  * Hard delete (testing / ops). User app will 404 on that request id.
  */
@@ -397,7 +457,8 @@ const deleteServiceRequest = async (req, res) => {
 /**
  * PATCH /api/sys-admin/service-requests/:id
  * Body (at least one of): trackingState?, status?, note?,
- *   deliveryPartnerId?, cobblerId?, darkStoreId?, darkStoreName?, routingType?
+ *   deliveryPartnerId?, cobblerId?, darkStoreId?, darkStoreName?, routingType?,
+ *   estimatedCost?, actualCost? (number or null to clear)
  * Partner ids: verified profile userId, or null to clear. darkStoreId: string or null to clear.
  */
 const patchServiceRequestWorkflow = async (req, res) => {
@@ -417,6 +478,8 @@ const patchServiceRequestWorkflow = async (req, res) => {
       darkStoreId: bodyDarkId,
       darkStoreName: bodyDarkName,
       routingType: bodyRouting,
+      estimatedCost: bodyEst,
+      actualCost: bodyAct,
     } = body;
 
     const request = await ServiceRequest.findById(id);
@@ -534,11 +597,40 @@ const patchServiceRequestWorkflow = async (req, res) => {
       assignmentNotes.push('dark store details updated');
     }
 
+    const parseMoneyField = (val, fieldName) => {
+      if (val === null || val === '') {
+        return { ok: true, value: null };
+      }
+      const n = Number(val);
+      if (!Number.isFinite(n) || n < 0) {
+        return { ok: false, error: `${fieldName} must be a non-negative number or null` };
+      }
+      return { ok: true, value: n };
+    };
+
+    if (Object.prototype.hasOwnProperty.call(body, 'estimatedCost')) {
+      const parsed = parseMoneyField(bodyEst, 'estimatedCost');
+      if (!parsed.ok) {
+        return errorResponse(res, parsed.error, 400);
+      }
+      request.estimatedCost = parsed.value;
+      assignmentNotes.push(`estimatedCost=${parsed.value === null ? 'cleared' : parsed.value}`);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'actualCost')) {
+      const parsed = parseMoneyField(bodyAct, 'actualCost');
+      if (!parsed.ok) {
+        return errorResponse(res, parsed.error, 400);
+      }
+      request.actualCost = parsed.value;
+      assignmentNotes.push(`actualCost=${parsed.value === null ? 'cleared' : parsed.value}`);
+    }
+
     const assignmentChanged = assignmentNotes.length > 0;
     if (!stateUpdated && !assignmentChanged) {
       return errorResponse(
         res,
-        'No updates: send trackingState/status and/or deliveryPartnerId, cobblerId, darkStoreId',
+        'No updates: send trackingState/status, assignments, dark store, and/or estimatedCost/actualCost',
         400
       );
     }
@@ -636,6 +728,7 @@ module.exports = {
   listArticleOwnersSummary,
   listArticles,
   listServiceRequests,
+  getServiceRequestById,
   deleteServiceRequest,
   patchServiceRequestWorkflow,
   listCobblers,
