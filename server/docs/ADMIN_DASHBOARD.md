@@ -1,0 +1,54 @@
+# Master Admin HTML Dashboard
+
+## URL
+
+- **Login / entry:** `http://localhost:3000/admin/` (or `/admin` → redirects to `/admin/`)
+
+## Default master account (first DB seed only)
+
+If the `adminmasters` collection is **empty**, the server creates **one** account:
+
+| Field    | Default value |
+|----------|----------------|
+| Email    | `ranjith.c96me@gmail.com` |
+| Password | `Admin@123` |
+
+Override via environment variables before first seed:
+
+```env
+MASTER_ADMIN_EMAIL=your@email.com
+MASTER_ADMIN_PASSWORD=YourStrongPassword
+ADMIN_JWT_EXPIRE=12h
+```
+
+**Production:** set strong `MASTER_ADMIN_PASSWORD` in `.env` and rotate after deploy. The seed runs only when there are **zero** documents in `AdminMaster`; it does not reset an existing password.
+
+## APIs (`/api/sys-admin`)
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/api/sys-admin/auth/login` | Body: `{ "email", "password" }` |
+| GET | `/api/sys-admin/auth/me` | Bearer master-admin JWT |
+| GET | `/api/sys-admin/dashboard/stats` | Bearer |
+| GET | `/api/sys-admin/users?page=1&limit=50` | Bearer |
+| GET | `/api/sys-admin/articles/by-owner` | Bearer — owners with article counts |
+| GET | `/api/sys-admin/articles` | Bearer — optional `?ownerId=` to filter by owner |
+| GET | `/api/sys-admin/service-requests` | Bearer — items include `user` + `article` (populated) |
+| PATCH | `/api/sys-admin/service-requests/:id` | Bearer — workflow + assignments: `trackingState?`, `status?`, `note?`, `deliveryPartnerId?` (userId or `null`), `cobblerId?`, `darkStoreId?` (string or `null`), `darkStoreName?`, `routingType?` (`dark_store` / `direct`). At least one update required. Partners must be **verified** profiles. |
+| DELETE | `/api/sys-admin/service-requests/:id` | Bearer — hard delete |
+| GET | `/api/sys-admin/cobblers` | Bearer |
+| GET | `/api/sys-admin/delivery-partners` | Bearer |
+
+JWT payload: `{ type: 'admin_master', adminMasterId }` — separate from mobile `User` + `Session` auth.
+
+## Static files
+
+Located under `server/public/admin/`:
+
+- `index.html` — login
+- `dashboard.html`, `users.html`, `articles.html`, `services.html`, `cobblers.html`, `delivery.html`
+- `css/admin.css`, `js/admin-core.js`, page scripts
+
+## Note
+
+This is **not** the same as `/api/admin/profile/*`, which uses the mobile **ADMIN** role and the standard `User` + session JWT.

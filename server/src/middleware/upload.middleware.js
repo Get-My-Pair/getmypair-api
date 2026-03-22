@@ -113,6 +113,42 @@ const uploadArticleImage = multer({
     },
 }).single('file');
 
+// Service request proof – image (max 5 per request on client), 5MB
+const uploadServiceProofImage = multer({
+    storage: memoryStorage,
+    fileFilter: imageFileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+}).single('file');
+
+const videoFileFilter = (req, file, cb) => {
+    const allowedTypes = [
+        'video/mp4',
+        'video/quicktime',
+        'video/webm',
+        'video/3gpp',
+        'video/x-msvideo',
+    ];
+    if (file.mimetype && (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('video/'))) {
+        return cb(null, true);
+    }
+    const name = (file.originalname || '').toLowerCase();
+    if (name.endsWith('.mp4') || name.endsWith('.mov') || name.endsWith('.webm')) {
+        return cb(null, true);
+    }
+    cb(new Error('Only video files are allowed (mp4, mov, webm)'), false);
+};
+
+// Service request proof – video (max 3 per request on client), 50MB
+const uploadServiceProofVideo = multer({
+    storage: memoryStorage,
+    fileFilter: videoFileFilter,
+    limits: {
+        fileSize: 50 * 1024 * 1024,
+    },
+}).single('file');
+
 /**
  * Wrapper to handle multer errors gracefully
  */
@@ -153,4 +189,6 @@ module.exports = {
     uploadKycDoc: handleUpload(uploadKycDoc),
     uploadDeliveryDoc: handleUpload(uploadDeliveryDoc),
     uploadArticleImage: handleUpload(uploadArticleImage),
+    uploadServiceProofImage: handleUpload(uploadServiceProofImage),
+    uploadServiceProofVideo: handleUpload(uploadServiceProofVideo),
 };

@@ -34,6 +34,7 @@ const adminProfileRoutes = require('./routes/adminProfile.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
 const articleRoutes = require('./routes/article.routes');
 const serviceRoutes = require('./routes/service.routes');
+const adminDashboardRoutes = require('./routes/adminDashboard.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
@@ -78,12 +79,13 @@ if (config.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Global rate limiter
-app.use(globalRateLimiter);
-
-// Serve static files (HTML frontend)
+// Static files BEFORE global rate limit — admin pages load many assets per view; throttling them caused 429 on /admin/*
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../public')));
+app.get('/admin', (req, res) => res.redirect(302, '/admin/'));
+
+// Global rate limiter (API + dynamic routes only; see skip in rateLimit.js for /api/sys-admin)
+app.use(globalRateLimiter);
 
 // Swagger API Documentation (path definitions in server/src/docs/*.paths.js)
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
@@ -123,6 +125,8 @@ app.use('/api/geocode', geocodeRoutes);
 app.use('/api/articles', articleRoutes);
 // Module 4: Service Requests
 app.use('/api/service', serviceRoutes);
+// Master admin HTML dashboard APIs (separate from /api/admin/profile mobile ADMIN JWT)
+app.use('/api/sys-admin', adminDashboardRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

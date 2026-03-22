@@ -18,6 +18,7 @@
 const { verifyAccessToken } = require('../config/jwt');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
+const { fixLegacyStringRoleOnUser } = require('../utils/fixUserRoleReference');
 const Session = require('../models/session.model');
 const { getRoleFromAppSource } = require('../config/roles');
 const { unauthorized } = require('../utils/response');
@@ -63,8 +64,9 @@ const authMiddleware = async (req, res, next) => {
     // Verify token
     const decoded = verifyAccessToken(token);
 
-    // Find user and populate role (required for role middleware)
-    let user = await User.findById(decoded.userId).populate('role');
+    // Find user without populate first — legacy data may store role as string "user" etc.,
+    // which throws CastError on populate before we can fix it.
+    let user = await User.findById(decoded.userId);
 
     if (!user) {
       const AuditLog = require('../models/auditLog.model');
@@ -94,6 +96,9 @@ const authMiddleware = async (req, res, next) => {
       });
       return unauthorized(res, 'User account is inactive');
     }
+
+    await fixLegacyStringRoleOnUser(user);
+    await user.populate('role');
 
     // Verify session exists and is active
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

@@ -19,6 +19,7 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const config = require('./config/env');
 const logger = require('./utils/logger');
+const { ensureMasterAdmin } = require('./services/adminMaster.seed');
 
 // Connect to database
 connectDB()
@@ -43,10 +44,17 @@ connectDB()
       logger.warn(`Could not fix email index: ${error.message}`);
     }
 
+    try {
+      await ensureMasterAdmin();
+    } catch (error) {
+      logger.warn(`Master admin seed skipped or failed: ${error.message}`);
+    }
+
     // Start server
     const server = app.listen(config.PORT, () => {
       const backendUrl = `http://localhost:${config.PORT}`;
       const apiDocsUrl = `${backendUrl}/api-docs`;
+      const adminUrl = `${backendUrl}/admin/`;
       const frontendUrl = backendUrl;
       
       logger.info(
@@ -56,29 +64,18 @@ connectDB()
       // Clear console and show success message
       console.clear();
       console.log('\n');
-      console.log('╔════════════════════════════════════════════════════════════╗');
-      console.log('║                                                            ║');
-      console.log('║          ✅  SERVER STARTED SUCCESSFULLY  ✅              ║');
-      console.log('║                                                            ║');
-      console.log('╠════════════════════════════════════════════════════════════╣');
-      console.log('║                                                            ║');
-      console.log('║  📊 Status:     Server is running                         ║');
-      console.log('║  🗄️  Database:   MongoDB connected                        ║');
-      console.log('║  🌍 Environment: ' + config.NODE_ENV.padEnd(43) + '║');
-      console.log('║  🔌 Port:       ' + config.PORT.toString().padEnd(43) + '║');
-      console.log('║                                                            ║');
-      console.log('╠════════════════════════════════════════════════════════════╣');
-      console.log('║                                                            ║');
-      console.log('║  🔗 Backend URL:                                           ║');
-      console.log('║     ' + backendUrl.padEnd(59) + '║');
-      console.log('║                                                            ║');
-      console.log('║  📚 API Docs:                                              ║');
-      console.log('║     ' + apiDocsUrl.padEnd(59) + '║');
-      console.log('║                                                            ║');
-      console.log('║  🖥️  Frontend:                                              ║');
-      console.log('║     ' + frontendUrl.padEnd(59) + '║');
-      console.log('║                                                            ║');
-      console.log('╚════════════════════════════════════════════════════════════╝');
+      console.log('============================================================');
+      console.log('  Server started successfully');
+      console.log('------------------------------------------------------------');
+      console.log('  Status:      running');
+      console.log('  Database:    MongoDB connected');
+      console.log('  Environment: ' + config.NODE_ENV);
+      console.log('  Port:        ' + config.PORT);
+      console.log('------------------------------------------------------------');
+      console.log('  Backend URL:  ' + backendUrl);
+      console.log('  API docs:     ' + apiDocsUrl);
+      console.log('  Admin panel:  ' + adminUrl);
+      console.log('============================================================');
       console.log('\n');
     });
 

@@ -17,6 +17,7 @@ const Article = require('../models/article.model');
 const UserProfile = require('../models/userProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
+const { uploadToCloudinary } = require('../config/cloudinary');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -410,6 +411,55 @@ const cancelServiceRequest = async (req, res) => {
  * Upload service request media evidence
  * POST /api/service/upload-media
  */
+/**
+ * Upload service request proof image (before create) — returns Cloudinary URL for photos[] on create.
+ * POST /api/service/upload-proof/image
+ */
+const uploadServiceProofImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 'No file uploaded', 400);
+    }
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'getmypair/service-requests/proof',
+      resource_type: 'image',
+      public_id: `svc-proof-img-${Date.now()}`,
+      transformation: [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto' }],
+    });
+    return success(res, 'Proof image uploaded successfully', {
+      url: result.secure_url,
+      mediaType: 'image',
+    });
+  } catch (err) {
+    logger.error(`Upload service proof image error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Upload service request proof video — returns Cloudinary URL for videos[] on create.
+ * POST /api/service/upload-proof/video
+ */
+const uploadServiceProofVideo = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 'No file uploaded', 400);
+    }
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'getmypair/service-requests/proof',
+      resource_type: 'video',
+      public_id: `svc-proof-vid-${Date.now()}`,
+    });
+    return success(res, 'Proof video uploaded successfully', {
+      url: result.secure_url,
+      mediaType: 'video',
+    });
+  } catch (err) {
+    logger.error(`Upload service proof video error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 const uploadServiceMedia = async (req, res) => {
   try {
     const { requestId, photos, videos, note, state, actorType } = req.body;
@@ -451,6 +501,8 @@ module.exports = {
   assignDarkStore,
   updateServiceStatus,
   cancelServiceRequest,
+  uploadServiceProofImage,
+  uploadServiceProofVideo,
   uploadServiceMedia,
 };
 

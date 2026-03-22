@@ -11,6 +11,10 @@ const router = express.Router();
 
 const authMiddleware = require('../middleware/auth.middleware');
 const roleMiddleware = require('../middleware/role.middleware');
+const {
+  uploadServiceProofImage: uploadServiceProofImageMw,
+  uploadServiceProofVideo: uploadServiceProofVideoMw,
+} = require('../middleware/upload.middleware');
 const serviceController = require('../controllers/service.controller');
 const {
   createServiceRequestValidation,
@@ -27,6 +31,18 @@ router.use(authMiddleware);
 router.get('/my', roleMiddleware(['USER']), serviceController.getMyServiceRequests);
 router.get('/estimation-defaults', roleMiddleware(['USER']), serviceController.getEstimationDefaults);
 router.post('/create', roleMiddleware(['USER']), createServiceRequestValidation, serviceController.createServiceRequest);
+router.post(
+  '/upload-proof/image',
+  roleMiddleware(['USER']),
+  uploadServiceProofImageMw,
+  serviceController.uploadServiceProofImage
+);
+router.post(
+  '/upload-proof/video',
+  roleMiddleware(['USER']),
+  uploadServiceProofVideoMw,
+  serviceController.uploadServiceProofVideo
+);
 router.post(
   '/assign-delivery',
   roleMiddleware(['ADMIN', 'COBBER']),

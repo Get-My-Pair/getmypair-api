@@ -45,6 +45,12 @@ const config = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || 'gmp_root',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '129882573636256',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || 'TrCNS7gLoZ3JyWQKC4ACCx68NjA',
+
+  /** Master admin HTML dashboard (/admin) – JWT lifetime */
+  ADMIN_JWT_EXPIRE: process.env.ADMIN_JWT_EXPIRE || '12h',
+  /** Seeded only if AdminMaster collection is empty; override in production via .env */
+  MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com',
+  MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || 'Admin@123',
 };
 
 if (config.NODE_ENV === 'production') {

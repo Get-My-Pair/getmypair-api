@@ -29,6 +29,11 @@ const globalRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  /** Master admin dashboard polls/lists heavily in dev; do not throttle these JWT-protected routes here. */
+  skip: (req) => {
+    const p = req.path || '';
+    return p.startsWith('/api/sys-admin');
+  },
 });
 
 // OTP rate limiter - more lenient for development
@@ -43,7 +48,21 @@ const otpRateLimiter = rateLimit({
   skipSuccessfulRequests: false,
 });
 
+/** Master admin login — global limiter skips /api/sys-admin, so login stays protected */
+const adminLoginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: config.NODE_ENV === 'development' ? 30 : 10,
+  message: {
+    success: false,
+    message: 'Too many login attempts, please try again later.',
+    statusCode: 429,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 module.exports = {
   globalRateLimiter,
   otpRateLimiter,
+  adminLoginRateLimiter,
 };
