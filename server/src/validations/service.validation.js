@@ -163,6 +163,20 @@ module.exports = {
       .withMessage('requestId must be a valid Mongo ID'),
     handleValidationErrors,
   ],
+  respondToActualCostValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('decision')
+      .trim()
+      .notEmpty()
+      .withMessage('decision is required')
+      .isIn(['accept', 'reject'])
+      .withMessage('decision must be accept or reject'),
+    handleValidationErrors,
+  ],
   uploadServiceMediaValidation: [
     body('requestId')
       .notEmpty()

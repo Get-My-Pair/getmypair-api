@@ -23,6 +23,7 @@ const {
   assignDarkStoreValidation,
   updateServiceStatusValidation,
   cancelServiceRequestValidation,
+  respondToActualCostValidation,
   uploadServiceMediaValidation,
 } = require('../validations/service.validation');
 
@@ -66,6 +67,12 @@ router.put(
   roleMiddleware(['USER', 'ADMIN', 'COBBER']),
   cancelServiceRequestValidation,
   serviceController.cancelServiceRequest
+);
+router.post(
+  '/respond-actual-cost',
+  roleMiddleware(['USER']),
+  respondToActualCostValidation,
+  serviceController.respondToActualCost
 );
 router.post(
   '/upload-media',

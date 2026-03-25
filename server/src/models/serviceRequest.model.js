@@ -181,6 +181,20 @@ const serviceRequestSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    /**
+     * After admin sets actualCost, user must accept/reject before workflow advances.
+     * null = not applicable (no actual cost yet, or cleared).
+     */
+    /** pending | accepted | rejected — null when no actual cost or cleared */
+    actualCostUserDecision: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    actualCostAcceptedAt: {
+      type: Date,
+      default: null,
+    },
     lifecycleEvents: {
       type: [lifecycleEventSchema],
       default: [],

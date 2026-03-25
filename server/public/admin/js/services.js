@@ -22,8 +22,8 @@
     '<div id="pageErr" class="err" style="display:none"></div>' +
       '<p class="muted" style="margin:0 0 16px">View full request (proof media, address, costs) or manage workflow & assignments. Amounts are stored in minor units (e.g. paise) like the app.</p>' +
       '<div class="table-wrap"><table class="data"><thead><tr>' +
-      '<th>User</th><th>Article</th><th>Type</th><th>Costs (est / act)</th><th>Status</th><th>Tracking</th><th>Created</th><th class="col-actions">Actions</th>' +
-      '</tr></thead><tbody id="tbody"><tr><td colspan="8" class="loading">Loading…</td></tr></tbody></table></div>' +
+      '<th>User</th><th>Article</th><th>Type</th><th>Costs (est / act)</th><th>User on cost</th><th>Status</th><th>Tracking</th><th>Created</th><th class="col-actions">Actions</th>' +
+      '</tr></thead><tbody id="tbody"><tr><td colspan="9" class="loading">Loading…</td></tr></tbody></table></div>' +
       '<div id="svcDetailModal" class="modal-root modal-root-high" style="display:none" aria-hidden="true">' +
       '<div class="modal-backdrop" id="svcDetailBackdrop"></div>' +
       '<div class="modal-panel modal-panel-xlarge" role="dialog" aria-labelledby="svcDetailTitle">' +
@@ -122,6 +122,23 @@
     return '<span class="mono">' + esc(e) + '</span> / <span class="mono">' + esc(a) + '</span>';
   }
 
+  function userCostDecisionCell(r) {
+    if (r.actualCost == null || r.actualCost === '') {
+      return '<span class="muted">—</span>';
+    }
+    var d = r.actualCostUserDecision;
+    if (d === 'pending') {
+      return '<strong style="color:#b45309">Awaiting user</strong>';
+    }
+    if (d === 'accepted') {
+      return '<strong style="color:#15803d">Accepted — start work</strong>';
+    }
+    if (d === 'rejected') {
+      return '<strong style="color:#b91c1c">Rejected</strong>';
+    }
+    return '<span class="muted">Legacy</span>';
+  }
+
   function fillStateSelect(current) {
     modalState.innerHTML = TRACKING_STATES.map(function (st) {
       return (
@@ -198,7 +215,15 @@
       editingId.slice(-8) +
       (curDel ? ' · delivery ' + curDel.slice(-6) : '') +
       (curCob ? ' · cobbler ' + curCob.slice(-6) : '') +
-      (row.darkStoreId ? ' · DS ' + String(row.darkStoreId).slice(0, 12) : '');
+      (row.darkStoreId ? ' · DS ' + String(row.darkStoreId).slice(0, 12) : '') +
+      (row.actualCost != null &&
+      row.actualCost !== '' &&
+      row.actualCostUserDecision === 'pending'
+        ? ' · Awaiting user accept/reject on final cost — workflow locked until then.'
+        : '') +
+      (row.actualCostUserDecision === 'accepted'
+        ? ' · User accepted final cost — OK to advance workflow.'
+        : '');
     fillStateSelect(row.trackingState || 'request_created');
     modalNote.value = '';
     manageCostInitial.est =
@@ -304,6 +329,34 @@
     );
     parts.push(
       '<button type="button" class="btn-ghost btn-sm" id="detailSaveCosts">Save costs only</button>'
+    );
+    parts.push('</div>');
+
+    parts.push('<h4 class="modal-section">Customer final cost</h4>');
+    parts.push('<div class="detail-grid">');
+    var ucd = r.actualCostUserDecision;
+    var ucdLabel = '—';
+    if (r.actualCost == null || r.actualCost === '') {
+      ucdLabel = '<span class="muted">No actual cost set</span>';
+    } else if (ucd === 'pending') {
+      ucdLabel =
+        '<strong style="color:#b45309">Awaiting accept/reject in user app</strong> — workflow updates are blocked.';
+    } else if (ucd === 'accepted') {
+      ucdLabel =
+        '<strong style="color:#15803d">User accepted</strong> — you may start / continue work.';
+    } else if (ucd === 'rejected') {
+      ucdLabel = '<strong style="color:#b91c1c">User rejected</strong> — request cancelled.';
+    } else {
+      ucdLabel = '<span class="muted">Legacy record (no approval state)</span>';
+    }
+    parts.push(dlRow('User response', ucdLabel));
+    parts.push(
+      dlRow(
+        'Accepted at',
+        r.actualCostAcceptedAt
+          ? '<span class="mono">' + esc(String(r.actualCostAcceptedAt).slice(0, 19)) + '</span>'
+          : '—'
+      )
     );
     parts.push('</div>');
 
@@ -466,12 +519,12 @@
   }
 
   async function loadTable() {
-    tbody.innerHTML = '<tr><td colspan="8" class="loading">Loading…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="loading">Loading…</td></tr>';
     errBox.style.display = 'none';
     var j = await AdminApp.apiGet('/service-requests?limit=100');
     var items = (j.data && j.data.items) || [];
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="muted">No service requests</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="muted">No service requests</td></tr>';
       rowById = {};
       return;
     }
@@ -508,6 +561,8 @@
           esc(r.serviceType) +
           '</td><td class="mono">' +
           moneyCell(r) +
+          '</td><td>' +
+          userCostDecisionCell(r) +
           '</td><td>' +
           esc(r.status) +
           '</td><td>' +

@@ -487,8 +487,49 @@ const patchServiceRequestWorkflow = async (req, res) => {
       return errorResponse(res, 'Service request not found', 404);
     }
 
+    const parseMoneyField = (val, fieldName) => {
+      if (val === null || val === '') {
+        return { ok: true, value: null };
+      }
+      const n = Number(val);
+      if (!Number.isFinite(n) || n < 0) {
+        return { ok: false, error: `${fieldName} must be a non-negative number or null` };
+      }
+      return { ok: true, value: n };
+    };
+
     let stateUpdated = false;
     const assignmentNotes = [];
+
+    if (Object.prototype.hasOwnProperty.call(body, 'estimatedCost')) {
+      const parsed = parseMoneyField(bodyEst, 'estimatedCost');
+      if (!parsed.ok) {
+        return errorResponse(res, parsed.error, 400);
+      }
+      request.estimatedCost = parsed.value;
+      assignmentNotes.push(`estimatedCost=${parsed.value === null ? 'cleared' : parsed.value}`);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'actualCost')) {
+      const parsed = parseMoneyField(bodyAct, 'actualCost');
+      if (!parsed.ok) {
+        return errorResponse(res, parsed.error, 400);
+      }
+      const prevAct = request.actualCost;
+      request.actualCost = parsed.value;
+      if (parsed.value === null) {
+        request.actualCostUserDecision = null;
+        request.actualCostAcceptedAt = null;
+      } else if (prevAct !== parsed.value) {
+        request.actualCostUserDecision = 'pending';
+        request.actualCostAcceptedAt = null;
+      }
+      assignmentNotes.push(`actualCost=${parsed.value === null ? 'cleared' : parsed.value}`);
+    }
+
+    const isAwaitingUserOnActualCost =
+      request.actualCost != null &&
+      request.actualCostUserDecision === 'pending';
 
     if (nextStateRaw !== undefined && nextStateRaw !== null && String(nextStateRaw).trim() !== '') {
       const trimmed = String(nextStateRaw).trim();
@@ -506,12 +547,41 @@ const patchServiceRequestWorkflow = async (req, res) => {
       if (!serviceStatuses.includes(nextStatus)) {
         nextStatus = request.status;
       }
+      const currentTs = request.trackingState || 'request_created';
+      if (trimmed !== currentTs && isAwaitingUserOnActualCost) {
+        return errorResponse(
+          res,
+          'User must accept or reject the final service cost before workflow can be updated.',
+          400
+        );
+      }
       request.status = nextStatus;
       request.trackingState = trimmed;
       stateUpdated = true;
     } else if (bodyStatus !== undefined && serviceStatuses.includes(bodyStatus)) {
+      if (bodyStatus !== request.status && isAwaitingUserOnActualCost) {
+        return errorResponse(
+          res,
+          'User must accept or reject the final service cost before status can be updated.',
+          400
+        );
+      }
       request.status = bodyStatus;
       stateUpdated = true;
+    }
+
+    const triesAssignmentPatch =
+      Object.prototype.hasOwnProperty.call(body, 'deliveryPartnerId') ||
+      Object.prototype.hasOwnProperty.call(body, 'cobblerId') ||
+      Object.prototype.hasOwnProperty.call(body, 'darkStoreId') ||
+      bodyDarkName !== undefined ||
+      bodyRouting !== undefined;
+    if (triesAssignmentPatch && isAwaitingUserOnActualCost) {
+      return errorResponse(
+        res,
+        'User must accept or reject the final service cost before assignments or routing can be updated.',
+        400
+      );
     }
 
     if (Object.prototype.hasOwnProperty.call(body, 'deliveryPartnerId')) {
@@ -595,35 +665,6 @@ const patchServiceRequestWorkflow = async (req, res) => {
         request.routingType = bodyRouting;
       }
       assignmentNotes.push('dark store details updated');
-    }
-
-    const parseMoneyField = (val, fieldName) => {
-      if (val === null || val === '') {
-        return { ok: true, value: null };
-      }
-      const n = Number(val);
-      if (!Number.isFinite(n) || n < 0) {
-        return { ok: false, error: `${fieldName} must be a non-negative number or null` };
-      }
-      return { ok: true, value: n };
-    };
-
-    if (Object.prototype.hasOwnProperty.call(body, 'estimatedCost')) {
-      const parsed = parseMoneyField(bodyEst, 'estimatedCost');
-      if (!parsed.ok) {
-        return errorResponse(res, parsed.error, 400);
-      }
-      request.estimatedCost = parsed.value;
-      assignmentNotes.push(`estimatedCost=${parsed.value === null ? 'cleared' : parsed.value}`);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(body, 'actualCost')) {
-      const parsed = parseMoneyField(bodyAct, 'actualCost');
-      if (!parsed.ok) {
-        return errorResponse(res, parsed.error, 400);
-      }
-      request.actualCost = parsed.value;
-      assignmentNotes.push(`actualCost=${parsed.value === null ? 'cleared' : parsed.value}`);
     }
 
     const assignmentChanged = assignmentNotes.length > 0;

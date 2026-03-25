@@ -26,6 +26,9 @@ const trackingStateOrder = serviceTrackingStates.reduce((acc, state, idx) => {
   return acc;
 }, {});
 
+const isAwaitingUserActualCost = (reqDoc) =>
+  reqDoc.actualCost != null && reqDoc.actualCostUserDecision === 'pending';
+
 const stateToStatusMap = {
   request_created: 'pending',
   pickup_scheduled: 'pickup_assigned',
@@ -188,6 +191,14 @@ const assignDeliveryPartner = async (req, res) => {
       return errorResponse(res, `Cannot assign delivery for ${request.status} request`, 400);
     }
 
+    if (isAwaitingUserActualCost(request)) {
+      return errorResponse(
+        res,
+        'User must accept or reject the final service cost before delivery can be assigned.',
+        400
+      );
+    }
+
     let partnerProfile = null;
     if (deliveryPartnerId) {
       partnerProfile = await DeliveryProfile.findOne({
@@ -250,6 +261,14 @@ const assignDarkStore = async (req, res) => {
       return errorResponse(res, `Cannot assign dark store for ${request.status} request`, 400);
     }
 
+    if (isAwaitingUserActualCost(request)) {
+      return errorResponse(
+        res,
+        'User must accept or reject the final service cost before dark store can be assigned.',
+        400
+      );
+    }
+
     request.darkStoreId = String(darkStoreId).trim();
     request.darkStoreName = darkStoreName ? String(darkStoreName).trim() : request.darkStoreName;
     request.routingType = routingType || 'dark_store';
@@ -291,6 +310,19 @@ const updateServiceStatus = async (req, res) => {
 
     if (request.status === 'completed' || request.status === 'cancelled') {
       return errorResponse(res, `Cannot update ${request.status} request`, 400);
+    }
+
+    const currentStateForGuard = request.trackingState || 'request_created';
+    const nextStateForGuard = state || currentStateForGuard;
+    if (
+      nextStateForGuard !== currentStateForGuard &&
+      isAwaitingUserActualCost(request)
+    ) {
+      return errorResponse(
+        res,
+        'User must accept or reject the final service cost before workflow can be updated.',
+        400
+      );
     }
 
     if (cobblerId) {
@@ -408,6 +440,97 @@ const cancelServiceRequest = async (req, res) => {
 };
 
 /**
+ * User accepts or rejects admin-set final actual cost.
+ * POST /api/service/respond-actual-cost
+ * Body: { requestId, decision: 'accept' | 'reject' }
+ */
+const respondToActualCost = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { requestId, decision } = req.body;
+
+    const request = await ServiceRequest.findOne({
+      _id: requestId,
+      userId,
+    });
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (request.status === 'completed' || request.status === 'cancelled') {
+      return errorResponse(res, `Cannot respond on a ${request.status} request`, 400);
+    }
+    if (request.actualCost == null) {
+      return errorResponse(res, 'No final service cost has been set yet', 400);
+    }
+
+    const dec = String(decision || '')
+      .trim()
+      .toLowerCase();
+    if (!['accept', 'reject'].includes(dec)) {
+      return errorResponse(res, 'decision must be accept or reject', 400);
+    }
+
+    if (request.actualCostUserDecision === 'accepted' && dec === 'accept') {
+      return success(res, 'Final cost already accepted', { request: request.toObject() });
+    }
+    if (request.actualCostUserDecision === 'rejected') {
+      return errorResponse(res, 'This request was rejected for the final cost', 400);
+    }
+    if (request.actualCostUserDecision !== 'pending') {
+      return errorResponse(
+        res,
+        'There is no pending final cost approval for this request',
+        400
+      );
+    }
+
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.trackingUpdatedAt = new Date();
+
+    if (dec === 'reject') {
+      request.status = 'cancelled';
+      request.trackingState = 'cancelled';
+      request.actualCostUserDecision = 'rejected';
+      request.actualCostAcceptedAt = null;
+      request.lifecycleEvents.push({
+        state: 'cancelled',
+        status: 'cancelled',
+        actorType: 'customer',
+        actorId: String(userId),
+        note: 'User rejected the final service cost',
+        media: { photos: [], videos: [] },
+        timestamp: new Date(),
+      });
+      await request.save();
+      logger.info(`User rejected actual cost for request=${requestId}`);
+      return success(res, 'Service request cancelled — final cost rejected', {
+        request: request.toObject(),
+      });
+    }
+
+    request.actualCostUserDecision = 'accepted';
+    request.actualCostAcceptedAt = new Date();
+    request.lifecycleEvents.push({
+      state: request.trackingState || 'request_created',
+      status: request.status,
+      actorType: 'customer',
+      actorId: String(userId),
+      note: `User accepted final service cost (${request.actualCost})`,
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+    await request.save();
+    logger.info(`User accepted actual cost for request=${requestId}`);
+    return success(res, 'Final service cost accepted — workflow may continue', {
+      request: request.toObject(),
+    });
+  } catch (err) {
+    logger.error(`Respond to actual cost error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * Upload service request media evidence
  * POST /api/service/upload-media
  */
@@ -501,6 +624,7 @@ module.exports = {
   assignDarkStore,
   updateServiceStatus,
   cancelServiceRequest,
+  respondToActualCost,
   uploadServiceProofImage,
   uploadServiceProofVideo,
   uploadServiceMedia,
