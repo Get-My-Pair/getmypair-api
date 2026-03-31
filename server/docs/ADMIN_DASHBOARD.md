@@ -3,6 +3,7 @@
 ## URL
 
 - **Login / entry:** `http://localhost:3000/admin/` (or `/admin` → redirects to `/admin/`)
+- **Swagger (Master Admin API):** `http://localhost:3000/api-docs/admin/`
 
 ## Default master account (first DB seed only)
 

@@ -23,6 +23,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
+const swaggerAdminSpec = require('./config/swagger.admin');
 const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
@@ -91,6 +92,12 @@ app.use(globalRateLimiter);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'GetMyPair API Documentation',
+}));
+
+// Master admin Swagger (sys-admin only)
+app.use('/api-docs/admin', swaggerUi.serve, swaggerUi.setup(swaggerAdminSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'GetMyPair Master Admin API',
 }));
 
 app.get('/health', (req, res) => {
