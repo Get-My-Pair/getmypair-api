@@ -14,10 +14,10 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'GetMyPair – Master Admin API',
+      title: 'GetMyPair – Admin APIs',
       version: '1.0.0',
       description:
-        'Master admin HTML dashboard APIs under /api/sys-admin. This is separate from mobile ADMIN role APIs.',
+        'Admin-only documentation: mobile ADMIN role APIs (/api/admin/...) and master admin HTML dashboard (/api/sys-admin/...).',
     },
     servers: [
       {
@@ -31,16 +31,25 @@ const options = {
     ],
     components: {
       securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT access token (mobile/web ADMIN role)',
+        },
         adminBearerAuth: {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Enter your master-admin JWT access token',
+          description: 'Master admin JWT access token (HTML dashboard)',
         },
       },
     },
   },
-  apis: [path.join(__dirname, '../docs/adminDashboard.paths.js')],
+  apis: [
+    path.join(__dirname, '../docs/adminProfile.paths.js'),
+    path.join(__dirname, '../docs/adminDashboard.paths.js'),
+  ],
 };
 
 module.exports = swaggerJsdoc(options);

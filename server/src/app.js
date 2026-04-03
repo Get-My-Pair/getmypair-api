@@ -88,16 +88,16 @@ app.get('/admin', (req, res) => res.redirect(302, '/admin/'));
 // Global rate limiter (API + dynamic routes only; see skip in rateLimit.js for /api/sys-admin)
 app.use(globalRateLimiter);
 
-// Swagger API Documentation (path definitions in server/src/docs/*.paths.js)
+// Swagger: register the narrower path first so /api-docs/admin is not swallowed by /api-docs
+app.use('/api-docs/admin', swaggerUi.serve, swaggerUi.setup(swaggerAdminSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'GetMyPair Admin APIs',
+}));
+
+// Full API catalog (all path definitions in server/src/docs/*.paths.js)
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'GetMyPair API Documentation',
-}));
-
-// Master admin Swagger (sys-admin only)
-app.use('/api-docs/admin', swaggerUi.serve, swaggerUi.setup(swaggerAdminSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GetMyPair Master Admin API',
 }));
 
 app.get('/health', (req, res) => {
