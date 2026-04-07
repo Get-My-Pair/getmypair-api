@@ -164,7 +164,9 @@ void 0;
  * /api/service/{requestId}:
  *   get:
  *     summary: Get service request details
- *     description: Returns full service request details including timeline/lifecycle events.
+ *     description: |
+ *       Returns service request details.
+ *       Response includes `request` plus enriched `article`, `user`, resolved `pickupAddress`, and `media`.
  *     tags: [Service Requests]
  *     security:
  *       - bearerAuth: []
@@ -178,12 +180,206 @@ void 0;
  *     responses:
  *       200:
  *         description: Service request details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Service request details retrieved successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     request:
+ *                       $ref: '#/components/schemas/ServiceRequest'
+ *                     article:
+ *                       $ref: '#/components/schemas/Article'
+ *                     user:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id: { type: string }
+ *                         name: { type: string }
+ *                         mobile: { type: string }
+ *                     pickupAddress:
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/Address'
+ *                       nullable: true
+ *                     media:
+ *                       type: object
+ *                       properties:
+ *                         photos:
+ *                           type: array
+ *                           items: { type: string, format: uri }
+ *                         videos:
+ *                           type: array
+ *                           items: { type: string, format: uri }
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
  *       404:
  *         description: Service request not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/cobbler/new-requests:
+ *   get:
+ *     summary: List available new requests for cobbler
+ *     description: |
+ *       Returns pending unassigned requests visible to authenticated cobbler.
+ *       Requests previously rejected by this cobbler are excluded.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: New requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "New requests retrieved successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ServiceRequest'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires COBBER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/cobbler/active:
+ *   get:
+ *     summary: List active requests assigned to cobbler
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Active requests retrieved successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ServiceRequest'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires COBBER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/cobbler/accept:
+ *   post:
+ *     summary: Cobbler accepts a request
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId]
+ *             properties:
+ *               requestId: { type: string, example: "664a1b2c3d4e5f6a7b8c9d99" }
+ *     responses:
+ *       200:
+ *         description: Request accepted successfully
+ *       400:
+ *         description: Invalid request state/already assigned
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires verified COBBER
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/cobbler/reject:
+ *   post:
+ *     summary: Cobbler rejects a request
+ *     description: |
+ *       Marks this request as declined by current cobbler.
+ *       Request is not cancelled globally; other cobblers can still accept it.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId]
+ *             properties:
+ *               requestId: { type: string, example: "664a1b2c3d4e5f6a7b8c9d99" }
+ *               reason: { type: string, example: "Too far from my location" }
+ *     responses:
+ *       200:
+ *         description: Request rejected successfully
+ *       400:
+ *         description: Invalid request state
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires COBBER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/cobbler/set-actual-cost:
+ *   post:
+ *     summary: Cobbler sets final actual cost
+ *     description: Sets final cost and marks user decision as pending.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId, actualCost]
+ *             properties:
+ *               requestId: { type: string, example: "664a1b2c3d4e5f6a7b8c9d99" }
+ *               actualCost: { type: number, minimum: 0, example: 650 }
+ *     responses:
+ *       200:
+ *         description: Actual cost set successfully
+ *       400:
+ *         description: Invalid request state or invalid amount
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — only assigned COBBER can set cost
  */
 void 0;
 

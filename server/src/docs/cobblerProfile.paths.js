@@ -515,3 +515,69 @@ void 0;
  *         description: Profile not found
  */
 void 0;
+
+/**
+ * @swagger
+ * /api/cobbler/profile/update-status:
+ *   put:
+ *     summary: Update online status and optional live location
+ *     description: |
+ *       Updates cobbler online/offline status.
+ *       Optionally send `lat` + `lon` to store lastKnownLocation.
+ *     tags: [Cobbler Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isOnline:
+ *                 type: boolean
+ *                 example: true
+ *               lat:
+ *                 type: number
+ *                 minimum: -90
+ *                 maximum: 90
+ *                 example: 12.9716
+ *               lon:
+ *                 type: number
+ *                 minimum: -180
+ *                 maximum: 180
+ *                 example: 77.5946
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Status updated successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isOnline: { type: boolean, example: true }
+ *                     lastKnownLocation:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         type: { type: string, enum: ['Point'], example: 'Point' }
+ *                         coordinates:
+ *                           type: array
+ *                           items: { type: number }
+ *                           minItems: 2
+ *                           maxItems: 2
+ *                           example: [77.5946, 12.9716]
+ *                         updatedAt: { type: string, format: date-time, nullable: true }
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
