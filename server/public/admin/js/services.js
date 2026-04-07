@@ -55,14 +55,14 @@
       '<p class="muted" style="font-size:0.75rem;margin:6px 0 0">Verified profiles only.</p></div>' +
       '<div class="form-group"><label for="svcModalCobbler">Cobbler</label>' +
       '<select id="svcModalCobbler" class="modal-select"></select></div>' +
-      '<div class="form-group"><label for="svcModalDarkMode">Dark store</label>' +
+      '<div class="form-group"><label for="svcModalDarkMode">Darkworkstore</label>' +
       '<select id="svcModalDarkMode" class="modal-select">' +
       '<option value="keep">No change</option>' +
-      '<option value="clear">Clear dark store</option>' +
+      '<option value="clear">Clear Darkworkstore</option>' +
       '<option value="set">Set id + name below</option>' +
       '</select></div>' +
       '<div id="svcDarkFields" class="form-group" style="display:none">' +
-      '<input type="text" id="svcModalDarkId" class="modal-select" placeholder="Dark store id" />' +
+      '<input type="text" id="svcModalDarkId" class="modal-select" placeholder="Darkworkstore id" />' +
       '<input type="text" id="svcModalDarkName" class="modal-select" style="margin-top:8px" placeholder="Display name (optional)" />' +
       '</div>' +
       '<div class="form-group"><label for="svcModalRouting">Routing</label>' +
@@ -297,7 +297,7 @@
     parts.push(dlRow('Address ID', '<span class="mono">' + esc(r.addressId || '') + '</span>'));
     parts.push(dlRow('Delivery partner', '<span class="mono">' + esc(r.deliveryPartnerId || '—') + '</span>'));
     parts.push(dlRow('Cobbler', '<span class="mono">' + esc(r.cobblerId || '—') + '</span>'));
-    parts.push(dlRow('Dark store', esc(r.darkStoreName || r.darkStoreId || '—')));
+    parts.push(dlRow('Darkworkstore', esc(r.darkStoreName || r.darkStoreId || '—')));
     parts.push(dlRow('Routing', esc(r.routingType || '—')));
     parts.push('</div>');
 
@@ -673,7 +673,7 @@
       else if (dm === 'set') {
         var did = modalDarkId.value.trim();
         if (!did) {
-          errBox.textContent = 'Enter a dark store id or choose another dark store option.';
+          errBox.textContent = 'Enter a Darkworkstore id or choose another option.';
           errBox.style.display = 'block';
           return;
         }

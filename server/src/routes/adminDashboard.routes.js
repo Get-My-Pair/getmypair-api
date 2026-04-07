@@ -48,6 +48,7 @@ router.delete(
   adminDashboardController.deleteServiceRequest
 );
 router.get('/cobblers', adminMasterAuth, adminDashboardController.listCobblers);
+router.patch('/cobblers/:id/verify', adminMasterAuth, adminDashboardController.verifyCobbler);
 router.get('/delivery-partners', adminMasterAuth, adminDashboardController.listDeliveryPartners);
 
 module.exports = router;

@@ -735,6 +735,42 @@ const listCobblers = async (req, res) => {
 };
 
 /**
+ * PATCH /api/sys-admin/cobblers/:id/verify
+ * Body: { status?: 'pending' | 'verified' | 'rejected' } (default: 'verified')
+ */
+const verifyCobbler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid cobbler profile id', 400);
+    }
+
+    const requested = String(req.body.status || 'verified').trim().toLowerCase();
+    const allowed = ['pending', 'verified', 'rejected'];
+    if (!allowed.includes(requested)) {
+      return errorResponse(res, `status must be one of: ${allowed.join(', ')}`, 400);
+    }
+
+    const profile = await CobblerProfile.findById(id);
+    if (!profile) {
+      return errorResponse(res, 'Cobbler profile not found', 404);
+    }
+
+    profile.verificationStatus = requested;
+    await profile.save();
+
+    return success(res, 'Cobbler verification updated', {
+      id: String(profile._id),
+      verificationStatus: profile.verificationStatus,
+      updatedAt: profile.updatedAt,
+    });
+  } catch (err) {
+    logger.error(`Verify cobbler error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * GET /api/sys-admin/delivery-partners?page=1&limit=50
  */
 const listDeliveryPartners = async (req, res) => {
@@ -773,5 +809,6 @@ module.exports = {
   deleteServiceRequest,
   patchServiceRequestWorkflow,
   listCobblers,
+  verifyCobbler,
   listDeliveryPartners,
 };

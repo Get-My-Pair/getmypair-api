@@ -1,5 +1,5 @@
 /**
- * GetMyPair Master Admin – shared API + layout helpers
+ * Darkworkstore Master Admin – shared API + layout helpers
  */
 (function () {
   'use strict';
@@ -208,7 +208,7 @@
         .join('');
       return (
         '<aside class="sidebar">' +
-        '<div class="brand"><span class="brand-mark">G</span> GetMyPair <small>Admin</small></div>' +
+        '<div class="brand"><span class="brand-mark">D</span> Darkworkstore <small>Admin</small></div>' +
         '<nav class="nav">' +
         nav +
         '</nav>' +
