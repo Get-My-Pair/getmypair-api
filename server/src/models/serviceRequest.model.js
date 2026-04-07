@@ -118,6 +118,16 @@ const serviceRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /**
+     * Cobblers who rejected/declined this request (so they don't see it again).
+     * This does NOT cancel the user's request; it stays pending for other cobblers.
+     */
+    cobblerDeclinedBy: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: 'User',
+      default: [],
+      index: true,
+    },
     pickupAssignedAt: {
       type: Date,
       default: null,
@@ -212,6 +222,7 @@ serviceRequestSchema.index({ articleId: 1, createdAt: -1 });
 serviceRequestSchema.index({ status: 1, deliveryPartnerId: 1, createdAt: -1 });
 serviceRequestSchema.index({ darkStoreId: 1, status: 1, createdAt: -1 });
 serviceRequestSchema.index({ cobblerId: 1, status: 1, createdAt: -1 });
+serviceRequestSchema.index({ status: 1, cobblerId: 1, cobblerDeclinedBy: 1, createdAt: -1 });
 
 const ServiceRequest = mongoose.model('ServiceRequest', serviceRequestSchema);
 

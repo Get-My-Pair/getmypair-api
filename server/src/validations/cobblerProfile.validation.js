@@ -184,6 +184,14 @@ const updateStatusValidation = [
         .optional()
         .isBoolean()
         .withMessage('isOnline must be a boolean'),
+    body('lat')
+        .optional()
+        .isFloat({ min: -90, max: 90 })
+        .withMessage('lat must be a valid latitude'),
+    body('lon')
+        .optional()
+        .isFloat({ min: -180, max: 180 })
+        .withMessage('lon must be a valid longitude'),
     handleValidationErrors,
 ];
 

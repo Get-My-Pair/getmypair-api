@@ -60,6 +60,43 @@ const createServiceRequestValidation = [
 
 module.exports = {
   createServiceRequestValidation,
+  cobblerListRequestsValidation: [
+    handleValidationErrors,
+  ],
+  cobblerAcceptRequestValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    handleValidationErrors,
+  ],
+  cobblerRejectRequestValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('reason')
+      .optional()
+      .trim()
+      .isLength({ max: 120 })
+      .withMessage('reason must be at most 120 characters'),
+    handleValidationErrors,
+  ],
+  cobblerSetActualCostValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('actualCost')
+      .notEmpty()
+      .withMessage('actualCost is required')
+      .isFloat({ min: 0 })
+      .withMessage('actualCost must be a non-negative number'),
+    handleValidationErrors,
+  ],
   getServiceRequestDetailsValidation: [
     param('requestId')
       .notEmpty()

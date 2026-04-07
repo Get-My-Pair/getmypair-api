@@ -327,7 +327,7 @@ const updateBankDetails = async (req, res) => {
 const updateStatus = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { isOnline } = req.body;
+        const { isOnline, lat, lon } = req.body;
 
         const profile = await CobblerProfile.findOne({ userId });
         if (!profile) {
@@ -336,12 +336,29 @@ const updateStatus = async (req, res) => {
 
         if (typeof isOnline === 'boolean') {
             profile.isOnline = isOnline;
-            await profile.save();
         }
 
-        logger.info(`Cobbler status updated for userId: ${userId}, isOnline: ${profile.isOnline}`);
+        const hasLatLon = lat !== undefined && lon !== undefined && lat !== null && lon !== null;
+        if (hasLatLon) {
+            const latNum = Number(lat);
+            const lonNum = Number(lon);
+            if (!Number.isNaN(latNum) && !Number.isNaN(lonNum)) {
+                profile.lastKnownLocation = {
+                    type: 'Point',
+                    coordinates: [lonNum, latNum],
+                    updatedAt: new Date(),
+                };
+            }
+        }
+
+        await profile.save();
+
+        logger.info(
+            `Cobbler status updated for userId: ${userId}, isOnline: ${profile.isOnline}, hasLocation: ${hasLatLon}`
+        );
         return success(res, 'Status updated successfully', {
             isOnline: profile.isOnline,
+            lastKnownLocation: profile.lastKnownLocation || null,
         });
     } catch (err) {
         logger.error(`Update status error: ${err.message}`);

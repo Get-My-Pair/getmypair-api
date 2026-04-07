@@ -126,12 +126,37 @@ const getServiceRequestDetails = async (req, res) => {
       query.userId = req.user._id;
     }
 
-    const request = await ServiceRequest.findOne(query).lean();
+    const request = await ServiceRequest.findOne(query)
+      .populate('articleId', 'brand model category color purchaseYear condition images')
+      .populate('userId', 'name mobile')
+      .lean();
     if (!request) {
       return notFound(res, 'Service request not found');
     }
 
-    return success(res, 'Service request details retrieved successfully', { request });
+    // Resolve pickup address from user profile (addresses are embedded)
+    let pickupAddress = null;
+    try {
+      const profile = await UserProfile.findOne({ userId: request.userId?._id || request.userId })
+        .select('addresses')
+        .lean();
+      const addrIdStr = String(request.addressId);
+      pickupAddress =
+        profile?.addresses?.find((a) => String(a._id) === addrIdStr) || null;
+    } catch (_) {
+      pickupAddress = null;
+    }
+
+    return success(res, 'Service request details retrieved successfully', {
+      request,
+      article: request.articleId || null,
+      user: request.userId || null,
+      pickupAddress,
+      media: {
+        photos: Array.isArray(request.photos) ? request.photos : [],
+        videos: Array.isArray(request.videos) ? request.videos : [],
+      },
+    });
   } catch (err) {
     logger.error(`Get service request details error: ${err.message}`);
     return errorResponse(res, err.message, 500);
@@ -615,6 +640,203 @@ const uploadServiceMedia = async (req, res) => {
   }
 };
 
+/**
+ * List new service requests for cobblers (unassigned).
+ * GET /api/service/cobbler/new-requests
+ */
+const cobblerListNewRequests = async (req, res) => {
+  try {
+    const cobblerId = req.user._id;
+    const requests = await ServiceRequest.find({
+      status: 'pending',
+      cobblerId: null,
+      cobblerDeclinedBy: { $ne: cobblerId },
+    })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    return success(res, 'New requests retrieved successfully', { requests });
+  } catch (err) {
+    logger.error(`Cobbler list new requests error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Cobbler rejects/declines a service request.
+ * POST /api/service/cobbler/reject
+ * Body: { requestId, reason? }
+ */
+const cobblerRejectRequest = async (req, res) => {
+  try {
+    const cobblerId = req.user._id;
+    const { requestId, reason } = req.body;
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (request.status === 'cancelled' || request.status === 'completed') {
+      return errorResponse(res, `Cannot reject a ${request.status} request`, 400);
+    }
+    if (request.cobblerId) {
+      return errorResponse(res, 'This request is already assigned to a cobbler', 400);
+    }
+
+    request.cobblerDeclinedBy = Array.isArray(request.cobblerDeclinedBy)
+      ? request.cobblerDeclinedBy
+      : [];
+    const alreadyDeclined = request.cobblerDeclinedBy.some(
+      (id) => String(id) === String(cobblerId)
+    );
+    if (!alreadyDeclined) {
+      request.cobblerDeclinedBy.push(cobblerId);
+    }
+
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: request.trackingState || 'request_created',
+      status: request.status,
+      actorType: 'cobbler',
+      actorId: String(cobblerId),
+      note: reason ? `Cobbler declined: ${String(reason).trim()}` : 'Cobbler declined the request',
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+
+    await request.save();
+    return success(res, 'Request rejected successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Cobbler reject request error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Cobbler accepts a service request (assigns to themselves).
+ * POST /api/service/cobbler/accept
+ * Body: { requestId }
+ */
+const cobblerAcceptRequest = async (req, res) => {
+  try {
+    const cobblerId = req.user._id;
+    const { requestId } = req.body;
+
+    const cobblerProfile = await CobblerProfile.findOne({
+      userId: cobblerId,
+      verificationStatus: 'verified',
+    }).lean();
+    if (!cobblerProfile) {
+      return errorResponse(res, 'Only verified cobblers can accept requests', 403);
+    }
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (request.status === 'cancelled' || request.status === 'completed') {
+      return errorResponse(res, `Cannot accept a ${request.status} request`, 400);
+    }
+    if (request.cobblerId) {
+      return errorResponse(res, 'This request is already assigned to a cobbler', 400);
+    }
+
+    request.cobblerId = cobblerId;
+    request.cobblerProfileId = cobblerProfile._id;
+    request.cobblerAssignedAt = new Date();
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: request.trackingState || 'request_created',
+      status: request.status,
+      actorType: 'cobbler',
+      actorId: String(cobblerId),
+      note: 'Cobbler accepted the request',
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+    await request.save();
+
+    return success(res, 'Request accepted successfully', { request: request.toObject() });
+  } catch (err) {
+    logger.error(`Cobbler accept request error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Cobbler sets the final actual cost (requires user acceptance later).
+ * POST /api/service/cobbler/set-actual-cost
+ * Body: { requestId, actualCost }
+ */
+const cobblerSetActualCost = async (req, res) => {
+  try {
+    const cobblerId = req.user._id;
+    const { requestId, actualCost } = req.body;
+
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+    if (String(request.cobblerId || '') !== String(cobblerId)) {
+      return errorResponse(res, 'You are not assigned to this request', 403);
+    }
+    if (request.status === 'cancelled' || request.status === 'completed') {
+      return errorResponse(res, `Cannot set actual cost for ${request.status} request`, 400);
+    }
+
+    const costNum = Number(actualCost);
+    if (Number.isNaN(costNum) || costNum < 0) {
+      return errorResponse(res, 'actualCost must be a non-negative number', 400);
+    }
+
+    request.actualCost = costNum;
+    request.actualCostUserDecision = 'pending';
+    request.actualCostAcceptedAt = null;
+    request.trackingUpdatedAt = new Date();
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
+    request.lifecycleEvents.push({
+      state: request.trackingState || 'request_created',
+      status: request.status,
+      actorType: 'cobbler',
+      actorId: String(cobblerId),
+      note: `Cobbler proposed final service cost (${costNum})`,
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+
+    await request.save();
+    return success(res, 'Actual cost set successfully. Awaiting user approval.', {
+      request: request.toObject(),
+    });
+  } catch (err) {
+    logger.error(`Cobbler set actual cost error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * List active requests assigned to cobbler.
+ * GET /api/service/cobbler/active
+ */
+const cobblerListActiveRequests = async (req, res) => {
+  try {
+    const cobblerId = req.user._id;
+    const requests = await ServiceRequest.find({
+      cobblerId,
+      status: { $nin: ['completed', 'cancelled'] },
+    })
+      .sort({ updatedAt: -1 })
+      .limit(200)
+      .lean();
+
+    return success(res, 'Active requests retrieved successfully', { requests });
+  } catch (err) {
+    logger.error(`Cobbler list active requests error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   createServiceRequest,
   getMyServiceRequests,
@@ -625,6 +847,11 @@ module.exports = {
   updateServiceStatus,
   cancelServiceRequest,
   respondToActualCost,
+  cobblerListNewRequests,
+  cobblerAcceptRequest,
+  cobblerRejectRequest,
+  cobblerSetActualCost,
+  cobblerListActiveRequests,
   uploadServiceProofImage,
   uploadServiceProofVideo,
   uploadServiceMedia,

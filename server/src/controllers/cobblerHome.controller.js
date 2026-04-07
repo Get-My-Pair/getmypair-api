@@ -4,7 +4,7 @@
  * If no cobbler profile exists, returns 200 with stub data and profileComplete: false.
  */
 const CobblerProfile = require('../models/cobblerProfile.model');
-const Job = require('../models/job.model');
+const { ServiceRequest } = require('../models/serviceRequest.model');
 const Payment = require('../models/payment.model');
 const { success, error: errorResponse } = require('../utils/response');
 const logger = require('../utils/logger');
@@ -65,9 +65,22 @@ const getDashboard = async (req, res) => {
                     },
                 },
             ]),
-            Job.countDocuments({ cobblerId: userId, status: 'new' }),
-            Job.countDocuments({ cobblerId: userId, status: 'accepted' }),
-            Job.countDocuments({ cobblerId: userId, status: 'completed' }),
+            // New requests = available jobs for this cobbler
+            ServiceRequest.countDocuments({
+                status: 'pending',
+                cobblerId: null,
+                cobblerDeclinedBy: { $ne: userId },
+            }),
+            // Active = assigned to this cobbler and not finished
+            ServiceRequest.countDocuments({
+                cobblerId: userId,
+                status: { $in: ['pending', 'pickup_assigned', 'in_service'] },
+            }),
+            // Completed = finished for this cobbler
+            ServiceRequest.countDocuments({
+                cobblerId: userId,
+                status: 'completed',
+            }),
         ]);
 
         const earnings = earningsResult[0] || { today: 0, weekly: 0, total: 0 };

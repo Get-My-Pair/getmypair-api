@@ -120,6 +120,26 @@ const cobblerProfileSchema = new mongoose.Schema(
             default: true,
             index: true,
         },
+        /**
+         * Last known cobbler location.
+         * Stored as GeoJSON Point for future nearby search.
+         */
+        lastKnownLocation: {
+            type: {
+                type: String,
+                enum: ['Point'],
+                default: 'Point',
+            },
+            coordinates: {
+                // [longitude, latitude]
+                type: [Number],
+                default: null,
+            },
+            updatedAt: {
+                type: Date,
+                default: null,
+            },
+        },
     },
     {
         timestamps: true,
@@ -136,6 +156,7 @@ const cobblerProfileSchema = new mongoose.Schema(
 
 cobblerProfileSchema.index({ userId: 1 }, { unique: true });
 cobblerProfileSchema.index({ verificationStatus: 1 });
+cobblerProfileSchema.index({ lastKnownLocation: '2dsphere' });
 
 const CobblerProfile = mongoose.model('CobblerProfile', cobblerProfileSchema);
 

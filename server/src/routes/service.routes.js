@@ -19,6 +19,10 @@ const serviceController = require('../controllers/service.controller');
 const {
   createServiceRequestValidation,
   getServiceRequestDetailsValidation,
+  cobblerListRequestsValidation,
+  cobblerAcceptRequestValidation,
+  cobblerRejectRequestValidation,
+  cobblerSetActualCostValidation,
   assignDeliveryValidation,
   assignDarkStoreValidation,
   updateServiceStatusValidation,
@@ -80,6 +84,39 @@ router.post(
   uploadServiceMediaValidation,
   serviceController.uploadServiceMedia
 );
+
+// Cobbler job flow (new requests -> accept -> set actual cost -> active list)
+router.get(
+  '/cobbler/new-requests',
+  roleMiddleware(['COBBER']),
+  cobblerListRequestsValidation,
+  serviceController.cobblerListNewRequests
+);
+router.get(
+  '/cobbler/active',
+  roleMiddleware(['COBBER']),
+  cobblerListRequestsValidation,
+  serviceController.cobblerListActiveRequests
+);
+router.post(
+  '/cobbler/accept',
+  roleMiddleware(['COBBER']),
+  cobblerAcceptRequestValidation,
+  serviceController.cobblerAcceptRequest
+);
+router.post(
+  '/cobbler/reject',
+  roleMiddleware(['COBBER']),
+  cobblerRejectRequestValidation,
+  serviceController.cobblerRejectRequest
+);
+router.post(
+  '/cobbler/set-actual-cost',
+  roleMiddleware(['COBBER']),
+  cobblerSetActualCostValidation,
+  serviceController.cobblerSetActualCost
+);
+
 router.get('/:requestId', roleMiddleware(['USER', 'ADMIN', 'COBBER']), getServiceRequestDetailsValidation, serviceController.getServiceRequestDetails);
 
 module.exports = router;
