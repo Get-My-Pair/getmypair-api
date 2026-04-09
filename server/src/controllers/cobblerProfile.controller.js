@@ -41,6 +41,40 @@ const getProfile = async (req, res) => {
 };
 
 /**
+ * Create Cobbler Profile (own)
+ * POST /api/cobbler/profile/create
+ */
+const createProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { name, phone, shopName, shopAddress, servicesOffered, serviceAreas, toolsOwned, toolsNeeded } = req.body;
+
+        const existing = await CobblerProfile.findOne({ userId });
+        if (existing) {
+            return success(res, 'Cobbler profile already exists', { profile: existing });
+        }
+
+        const profile = await CobblerProfile.create({
+            userId,
+            name,
+            phone,
+            shopName: shopName ?? null,
+            shopAddress: shopAddress ?? null,
+            servicesOffered: Array.isArray(servicesOffered) ? servicesOffered : [],
+            serviceAreas: Array.isArray(serviceAreas) ? serviceAreas : [],
+            toolsOwned: Array.isArray(toolsOwned) ? toolsOwned : [],
+            toolsNeeded: Array.isArray(toolsNeeded) ? toolsNeeded : [],
+        });
+
+        logger.info(`Cobbler profile created for userId: ${userId}`);
+        return success(res, 'Cobbler profile created successfully', { profile }, 201);
+    } catch (err) {
+        logger.error(`Create cobbler profile error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
  * Update Cobbler Profile
  * PUT /api/cobbler/profile/update
  */
@@ -393,6 +427,7 @@ const getVerificationStatus = async (req, res) => {
 };
 
 module.exports = {
+    createProfile,
     getProfile,
     updateProfile,
     updateShopDetails,

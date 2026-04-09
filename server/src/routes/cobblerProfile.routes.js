@@ -22,6 +22,7 @@ const roleMiddleware = require('../middleware/role.middleware');
 const { uploadProfileImage, uploadKycDoc } = require('../middleware/upload.middleware');
 const cobblerProfileController = require('../controllers/cobblerProfile.controller');
 const {
+    createProfileValidation,
     updateProfileValidation,
     updateShopValidation,
     updateServicesValidation,
@@ -36,17 +37,22 @@ router.use(authMiddleware);
 router.use(roleMiddleware(['COBBER']));
 
 // ─────────────────────────────────────────────────────────────
-// 1. Get Profile
+// 1. Create Profile
+// ─────────────────────────────────────────────────────────────
+router.post('/create', createProfileValidation, cobblerProfileController.createProfile);
+
+// ─────────────────────────────────────────────────────────────
+// 2. Get Profile
 // ─────────────────────────────────────────────────────────────
 router.get('/me', cobblerProfileController.getProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 2. Update Profile
+// 3. Update Profile
 // ─────────────────────────────────────────────────────────────
 router.put('/update', updateProfileValidation, cobblerProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 3. Update Booth Details (Booth name with number, Booth address)
+// 4. Update Booth Details (Booth name with number, Booth address)
 // ─────────────────────────────────────────────────────────────
 router.put('/shop', updateShopValidation, cobblerProfileController.updateShopDetails);
 

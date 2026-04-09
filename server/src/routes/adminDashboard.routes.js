@@ -25,6 +25,7 @@ router.post(
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 router.get('/dashboard/stats', adminMasterAuth, adminDashboardController.dashboardStats);
 router.get('/users', adminMasterAuth, adminDashboardController.listUsers);
+router.delete('/users/:id', adminMasterAuth, adminDashboardController.deleteUser);
 router.get(
   '/articles/by-owner',
   adminMasterAuth,

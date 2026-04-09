@@ -17,6 +17,7 @@
 
 const rateLimit = require('express-rate-limit');
 const config = require('../config/env');
+const isNonProduction = config.NODE_ENV !== 'production';
 
 // Global rate limiter
 const globalRateLimiter = rateLimit({
@@ -24,13 +25,14 @@ const globalRateLimiter = rateLimit({
   max: config.RATE_LIMIT_MAX_REQUESTS,
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again later.',
+    message: 'Too many requests, please try again later.',
     statusCode: 429,
   },
   standardHeaders: true,
   legacyHeaders: false,
   /** Master admin dashboard polls/lists heavily in dev; do not throttle these JWT-protected routes here. */
   skip: (req) => {
+    if (isNonProduction) return true;
     const p = req.path || '';
     return p.startsWith('/api/sys-admin');
   },
@@ -39,19 +41,20 @@ const globalRateLimiter = rateLimit({
 // OTP rate limiter - more lenient for development
 const otpRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: config.NODE_ENV === 'development' ? 20 : 5, // 20 in dev, 5 in production
+  max: isNonProduction ? 100000 : 5, // Effectively disabled for testing/dev
   message: {
     success: false,
     message: 'Too many OTP requests, please try again later.',
     statusCode: 429,
   },
+  skip: () => isNonProduction,
   skipSuccessfulRequests: false,
 });
 
 /** Master admin login — global limiter skips /api/sys-admin, so login stays protected */
 const adminLoginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: config.NODE_ENV === 'development' ? 30 : 10,
+  max: isNonProduction ? 100000 : 10,
   message: {
     success: false,
     message: 'Too many login attempts, please try again later.',
@@ -59,6 +62,7 @@ const adminLoginRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isNonProduction,
 });
 
 module.exports = {

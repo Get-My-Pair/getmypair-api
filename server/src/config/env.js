@@ -42,9 +42,9 @@ const config = {
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 
   // Cloudinary
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || 'gmp_root',
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '129882573636256',
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || 'TrCNS7gLoZ3JyWQKC4ACCx68NjA',
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 
   /** Master admin HTML dashboard (/admin) – JWT lifetime */
   ADMIN_JWT_EXPIRE: process.env.ADMIN_JWT_EXPIRE || '12h',

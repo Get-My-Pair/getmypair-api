@@ -19,12 +19,20 @@ const cloudinary = require('cloudinary').v2;
 const config = require('./env');
 const logger = require('../utils/logger');
 
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: config.CLOUDINARY_CLOUD_NAME,
-    api_key: config.CLOUDINARY_API_KEY,
-    api_secret: config.CLOUDINARY_API_SECRET,
-});
+const isCloudinaryConfigured =
+    Boolean(config.CLOUDINARY_CLOUD_NAME) &&
+    Boolean(config.CLOUDINARY_API_KEY) &&
+    Boolean(config.CLOUDINARY_API_SECRET);
+
+if (isCloudinaryConfigured) {
+    cloudinary.config({
+        cloud_name: config.CLOUDINARY_CLOUD_NAME,
+        api_key: config.CLOUDINARY_API_KEY,
+        api_secret: config.CLOUDINARY_API_SECRET,
+    });
+} else {
+    logger.warn('Cloudinary is not configured. Upload endpoints will return an error until env values are set.');
+}
 
 /**
  * Upload file buffer to Cloudinary
@@ -36,6 +44,9 @@ cloudinary.config({
  * @returns {Object} Cloudinary upload result { secure_url, public_id, ... }
  */
 const uploadToCloudinary = (fileBuffer, options = {}) => {
+    if (!isCloudinaryConfigured) {
+        return Promise.reject(new Error('Cloudinary is not configured'));
+    }
     return new Promise((resolve, reject) => {
         const uploadOptions = {
             folder: options.folder || 'getmypair',
@@ -66,6 +77,10 @@ const uploadToCloudinary = (fileBuffer, options = {}) => {
  * @returns {Object} Cloudinary deletion result
  */
 const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
+    if (!isCloudinaryConfigured) {
+        logger.warn('Cloudinary delete skipped: service not configured.');
+        return { result: 'not_configured' };
+    }
     try {
         const result = await cloudinary.uploader.destroy(publicId, {
             resource_type: resourceType,

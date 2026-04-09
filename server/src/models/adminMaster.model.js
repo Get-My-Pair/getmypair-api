@@ -26,7 +26,7 @@ const adminMasterSchema = new mongoose.Schema(
     name: {
       type: String,
       trim: true,
-      default: 'Master Admin',
+      default: 'Darkworkstore',
     },
     isActive: {
       type: Boolean,

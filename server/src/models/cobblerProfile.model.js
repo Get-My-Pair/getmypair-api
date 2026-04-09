@@ -125,20 +125,24 @@ const cobblerProfileSchema = new mongoose.Schema(
          * Stored as GeoJSON Point for future nearby search.
          */
         lastKnownLocation: {
-            type: {
-                type: String,
-                enum: ['Point'],
-                default: 'Point',
-            },
-            coordinates: {
-                // [longitude, latitude]
-                type: [Number],
-                default: null,
-            },
-            updatedAt: {
-                type: Date,
-                default: null,
-            },
+            type: new mongoose.Schema(
+                {
+                    type: {
+                        type: String,
+                        enum: ['Point'],
+                    },
+                    coordinates: {
+                        // [longitude, latitude]
+                        type: [Number],
+                    },
+                    updatedAt: {
+                        type: Date,
+                        default: null,
+                    },
+                },
+                { _id: false }
+            ),
+            default: null,
         },
     },
     {

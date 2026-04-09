@@ -21,6 +21,10 @@ const {
 const CobblerProfile = require('../models/cobblerProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
 const UserProfile = require('../models/userProfile.model');
+const Session = require('../models/session.model');
+const Job = require('../models/job.model');
+const Payment = require('../models/payment.model');
+const AuditLog = require('../models/auditLog.model');
 const mongoose = require('mongoose');
 const { success, error: errorResponse, unauthorized } = require('../utils/response');
 const logger = require('../utils/logger');
@@ -99,10 +103,67 @@ const dashboardStats = async (req, res) => {
       deliveryCount,
     ] = await Promise.all([
       User.countDocuments(),
-      Article.countDocuments(),
-      ServiceRequest.countDocuments(),
-      CobblerProfile.countDocuments(),
-      DeliveryProfile.countDocuments(),
+      Article.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'ownerId',
+            foreignField: '_id',
+            as: 'ownerUser',
+          },
+        },
+        { $match: { 'ownerUser.0': { $exists: true } } },
+        { $count: 'count' },
+      ]).then((rows) => (rows[0] ? rows[0].count : 0)),
+      ServiceRequest.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'requestUser',
+          },
+        },
+        {
+          $lookup: {
+            from: 'articles',
+            localField: 'articleId',
+            foreignField: '_id',
+            as: 'requestArticle',
+          },
+        },
+        {
+          $match: {
+            'requestUser.0': { $exists: true },
+            'requestArticle.0': { $exists: true },
+          },
+        },
+        { $count: 'count' },
+      ]).then((rows) => (rows[0] ? rows[0].count : 0)),
+      CobblerProfile.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'profileUser',
+          },
+        },
+        { $match: { 'profileUser.0': { $exists: true } } },
+        { $count: 'count' },
+      ]).then((rows) => (rows[0] ? rows[0].count : 0)),
+      DeliveryProfile.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'userId',
+            foreignField: '_id',
+            as: 'profileUser',
+          },
+        },
+        { $match: { 'profileUser.0': { $exists: true } } },
+        { $count: 'count' },
+      ]).then((rows) => (rows[0] ? rows[0].count : 0)),
     ]);
 
     return success(res, 'Dashboard stats', {
@@ -189,6 +250,62 @@ const listUsers = async (req, res) => {
 };
 
 /**
+ * DELETE /api/sys-admin/users/:id
+ * Remove a user from users collection.
+ */
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid user id', 400);
+    }
+    const userObjectId = new mongoose.Types.ObjectId(id);
+    const deleted = await User.findByIdAndDelete(userObjectId);
+    if (!deleted) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    // Remove all data owned by this user and clear references in shared records.
+    const ownedArticles = await Article.find({ ownerId: userObjectId }).select('_id').lean();
+    const ownedArticleIds = ownedArticles.map((a) => a._id);
+
+    await Promise.all([
+      UserProfile.deleteOne({ userId: userObjectId }),
+      CobblerProfile.deleteOne({ userId: userObjectId }),
+      DeliveryProfile.deleteOne({ userId: userObjectId }),
+      Session.deleteMany({ userId: userObjectId }),
+      AuditLog.deleteMany({ userId: userObjectId }),
+      Job.deleteMany({ cobblerId: userObjectId }),
+      Payment.deleteMany({ cobblerId: userObjectId }),
+      Article.deleteMany({ ownerId: userObjectId }),
+      ServiceRequest.deleteMany({
+        $or: [
+          { userId: userObjectId },
+          ...(ownedArticleIds.length ? [{ articleId: { $in: ownedArticleIds } }] : []),
+        ],
+      }),
+      ServiceRequest.updateMany(
+        { deliveryPartnerId: userObjectId },
+        { $set: { deliveryPartnerId: null, deliveryProfileId: null, pickupAssignedAt: null } }
+      ),
+      ServiceRequest.updateMany(
+        { cobblerId: userObjectId },
+        { $set: { cobblerId: null, cobblerProfileId: null, cobblerAssignedAt: null } }
+      ),
+      ServiceRequest.updateMany(
+        { cobblerDeclinedBy: userObjectId },
+        { $pull: { cobblerDeclinedBy: userObjectId } }
+      ),
+    ]);
+    logger.info(`Admin deleted user: ${id}`);
+    return success(res, 'User deleted', { id });
+  } catch (err) {
+    logger.error(`Delete user error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * Normalize article row: ownerId populated → flat `owner` + string ownerId
  */
 const mapArticleRow = (doc) => {
@@ -229,13 +346,12 @@ const listArticleOwnersSummary = async (req, res) => {
           as: 'userArr',
         },
       },
+      { $match: { 'userArr.0': { $exists: true } } },
       {
         $project: {
           ownerId: '$_id',
           articleCount: 1,
-          name: {
-            $ifNull: [{ $arrayElemAt: ['$userArr.name', 0] }, 'Unknown user'],
-          },
+          name: { $arrayElemAt: ['$userArr.name', 0] },
           email: { $arrayElemAt: ['$userArr.email', 0] },
           mobile: { $arrayElemAt: ['$userArr.mobile', 0] },
         },
@@ -258,22 +374,75 @@ const listArticles = async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const skip = (page - 1) * limit;
 
-    const filter = {};
-    if (req.query.ownerId && mongoose.Types.ObjectId.isValid(req.query.ownerId)) {
-      filter.ownerId = new mongoose.Types.ObjectId(req.query.ownerId);
-    }
+    const ownerFilter =
+      req.query.ownerId && mongoose.Types.ObjectId.isValid(req.query.ownerId)
+        ? new mongoose.Types.ObjectId(req.query.ownerId)
+        : null;
+    const pipeline = [
+      ...(ownerFilter ? [{ $match: { ownerId: ownerFilter } }] : []),
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'ownerId',
+          foreignField: '_id',
+          as: 'ownerUser',
+        },
+      },
+      { $match: { 'ownerUser.0': { $exists: true } } },
+    ];
 
-    const [rawItems, total] = await Promise.all([
-      Article.find(filter)
-        .populate('ownerId', 'name email mobile')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Article.countDocuments(filter),
+    const countRows = await Article.aggregate([
+      ...pipeline,
+      { $count: 'count' },
+    ]);
+    const total = countRows[0] ? countRows[0].count : 0;
+
+    const rawItems = await Article.aggregate([
+      ...pipeline,
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          ownerUser: 0,
+        },
+      },
     ]);
 
-    const items = rawItems.map(mapArticleRow);
+    const usersById = {};
+    if (rawItems.length) {
+      const ownerIds = [
+        ...new Set(
+          rawItems
+            .map((row) => row.ownerId)
+            .filter((v) => v != null)
+            .map((v) => String(v))
+        ),
+      ];
+      if (ownerIds.length) {
+        const ownerDocs = await User.find({ _id: { $in: ownerIds } })
+          .select('name email mobile')
+          .lean();
+        ownerDocs.forEach((u) => {
+          usersById[String(u._id)] = u;
+        });
+      }
+    }
+    const items = rawItems.map((row) => {
+      const owner = usersById[String(row.ownerId)] || null;
+      if (owner) {
+        return mapArticleRow({
+          ...row,
+          ownerId: {
+            _id: owner._id,
+            name: owner.name,
+            email: owner.email,
+            mobile: owner.mobile,
+          },
+        });
+      }
+      return mapArticleRow(row);
+    });
 
     return success(res, 'Articles list', {
       items,
@@ -716,10 +885,30 @@ const listCobblers = async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
-      CobblerProfile.find().sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
-      CobblerProfile.countDocuments(),
+    const result = await CobblerProfile.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userRef',
+        },
+      },
+      {
+        $match: {
+          'userRef.0': { $exists: true },
+        },
+      },
+      { $sort: { updatedAt: -1 } },
+      {
+        $facet: {
+          items: [{ $skip: skip }, { $limit: limit }, { $project: { userRef: 0 } }],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
     ]);
+    const items = (result[0] && result[0].items) || [];
+    const total = (result[0] && result[0].totalCount && result[0].totalCount[0] && result[0].totalCount[0].count) || 0;
 
     return success(res, 'Cobblers list', {
       items,
@@ -802,6 +991,7 @@ module.exports = {
   me,
   dashboardStats,
   listUsers,
+  deleteUser,
   listArticleOwnersSummary,
   listArticles,
   listServiceRequests,

@@ -33,7 +33,7 @@ const ensureMasterAdmin = async () => {
     await AdminMaster.create({
       email,
       passwordHash,
-      name: 'Master Admin',
+      name: 'Darkworkstore',
       isActive: true,
     });
 

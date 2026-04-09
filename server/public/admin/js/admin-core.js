@@ -1,5 +1,5 @@
 /**
- * Darkworkstore Master Admin – shared API + layout helpers
+ * Darkworkstore Admin – shared API + layout helpers
  */
 (function () {
   'use strict';
@@ -229,7 +229,7 @@
         '<h1 class="page-title">' +
         this.esc(title) +
         '</h1>' +
-        '<div class="topbar-meta"><span class="pill">Master Admin</span></div>' +
+        '<div class="topbar-meta"><span class="pill">Darkworkstore</span></div>' +
         '</header>' +
         '<div class="content">' +
         innerHtml +
