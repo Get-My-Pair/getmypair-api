@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : userProfile.controller.js
- * Description: User profile CRUD – create, get, update, image, addresses
+ * Description: User profile – get, update, image, addresses (profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -41,8 +41,31 @@ const getProfile = async (req, res) => {
 };
 
 /**
- * Update User Profile
- * PUT /api/user/profile/update
+ * List saved addresses (same data as profile.addresses on GET /me)
+ * GET /api/user/profile/addresses
+ */
+const listAddresses = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const profile = await UserProfile.findOne({ userId }).select('addresses');
+        if (!profile) {
+            return notFound(res, 'User profile not found');
+        }
+
+        return success(res, 'Addresses retrieved successfully', {
+            addresses: profile.addresses || [],
+            totalAddresses: (profile.addresses || []).length,
+        });
+    } catch (err) {
+        logger.error(`List user addresses error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Update User Profile (existing row only; profile is created by POST /api/auth/complete-profile)
+ * PUT /api/user/profile or PUT /api/user/profile/update
  */
 const updateProfile = async (req, res) => {
     try {
@@ -217,6 +240,7 @@ const deleteAddress = async (req, res) => {
 
 module.exports = {
     getProfile,
+    listAddresses,
     updateProfile,
     uploadProfileImage,
     addAddress,

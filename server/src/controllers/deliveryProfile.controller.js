@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : deliveryProfile.controller.js
- * Description: Delivery profile CRUD – create, update, vehicle, docs, image, verification
+ * Description: Delivery profile – get, update, vehicle, docs, image, verification (profile created by auth)
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -41,8 +41,8 @@ const getProfile = async (req, res) => {
 };
 
 /**
- * Update Delivery Profile
- * PUT /api/delivery/profile/update
+ * Update Delivery Profile (existing row only; profile is created by POST /api/auth/complete-profile)
+ * PUT /api/delivery/profile or PUT /api/delivery/profile/update
  */
 const updateProfile = async (req, res) => {
     try {

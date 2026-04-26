@@ -64,6 +64,38 @@ void 0;
 
 /**
  * @swagger
+ * /api/cobbler/profile:
+ *   put:
+ *     summary: Update cobbler profile (canonical)
+ *     description: Same as PUT /api/cobbler/profile/update. Updates an **existing** profile only (created by complete-profile); returns 404 if missing.
+ *     tags: [Cobbler Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/cobbler/profile/update:
  *   put:
  *     summary: Update cobbler profile

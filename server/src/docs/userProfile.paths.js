@@ -125,6 +125,58 @@ void 0;
 
 /**
  * @swagger
+ * /api/user/profile:
+ *   put:
+ *     summary: Update user profile (canonical)
+ *     description: Same as PUT /api/user/profile/update. Updates an **existing** profile only (created by complete-profile); returns 404 if missing.
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/addresses:
+ *   get:
+ *     summary: List saved addresses
+ *     description: Returns all addresses on the user profile (same as `profile.addresses` from GET /me).
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Addresses retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/user/profile/upload-image:
  *   post:
  *     summary: Upload profile image

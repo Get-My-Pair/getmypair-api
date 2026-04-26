@@ -22,7 +22,6 @@ const roleMiddleware = require('../middleware/role.middleware');
 const { uploadProfileImage, uploadKycDoc } = require('../middleware/upload.middleware');
 const cobblerProfileController = require('../controllers/cobblerProfile.controller');
 const {
-    createProfileValidation,
     updateProfileValidation,
     updateShopValidation,
     updateServicesValidation,
@@ -36,23 +35,21 @@ const {
 router.use(authMiddleware);
 router.use(roleMiddleware(['COBBER']));
 
-// ─────────────────────────────────────────────────────────────
-// 1. Create Profile
-// ─────────────────────────────────────────────────────────────
-router.post('/create', createProfileValidation, cobblerProfileController.createProfile);
+// Profile row is created only by POST /api/auth/complete-profile — use PUT below to edit.
 
 // ─────────────────────────────────────────────────────────────
-// 2. Get Profile
+// 1. Get Profile
 // ─────────────────────────────────────────────────────────────
 router.get('/me', cobblerProfileController.getProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 3. Update Profile
+// 2. Update Profile (does not create; 404 if profile missing)
 // ─────────────────────────────────────────────────────────────
+router.put('/', updateProfileValidation, cobblerProfileController.updateProfile);
 router.put('/update', updateProfileValidation, cobblerProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Update Booth Details (Booth name with number, Booth address)
+// 3. Update Booth Details (Booth name with number, Booth address)
 // ─────────────────────────────────────────────────────────────
 router.put('/shop', updateShopValidation, cobblerProfileController.updateShopDetails);
 

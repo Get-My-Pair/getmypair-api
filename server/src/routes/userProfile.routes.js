@@ -31,33 +31,41 @@ const {
 router.use(authMiddleware);
 router.use(roleMiddleware(['USER']));
 
+// Profile row is created only by POST /api/auth/complete-profile — use PUT below to edit.
+
 // ─────────────────────────────────────────────────────────────
 // 1. Get Profile
 // ─────────────────────────────────────────────────────────────
 router.get('/me', userProfileController.getProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 2. Update Profile
+// 2. List addresses
 // ─────────────────────────────────────────────────────────────
+router.get('/addresses', userProfileController.listAddresses);
+
+// ─────────────────────────────────────────────────────────────
+// 3. Update Profile (does not create; 404 if profile missing)
+// ─────────────────────────────────────────────────────────────
+router.put('/', updateProfileValidation, userProfileController.updateProfile);
 router.put('/update', updateProfileValidation, userProfileController.updateProfile);
 
 // ─────────────────────────────────────────────────────────────
-// 3. Upload Profile Image (Cloudinary)
+// 4. Upload Profile Image (Cloudinary)
 // ─────────────────────────────────────────────────────────────
 router.post('/upload-image', uploadProfileImage, userProfileController.uploadProfileImage);
 
 // ─────────────────────────────────────────────────────────────
-// 4. Add Address
+// 5. Add Address
 // ─────────────────────────────────────────────────────────────
 router.post('/address/add', addAddressValidation, userProfileController.addAddress);
 
 // ─────────────────────────────────────────────────────────────
-// 5. Update Address
+// 6. Update Address
 // ─────────────────────────────────────────────────────────────
 router.put('/address/update', updateAddressValidation, userProfileController.updateAddress);
 
 // ─────────────────────────────────────────────────────────────
-// 6. Delete Address
+// 7. Delete Address
 // ─────────────────────────────────────────────────────────────
 router.delete('/address/delete/:addressId', userProfileController.deleteAddress);
 

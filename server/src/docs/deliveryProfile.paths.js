@@ -42,6 +42,36 @@ void 0;
 
 /**
  * @swagger
+ * /api/delivery/profile:
+ *   put:
+ *     summary: Update delivery profile (canonical)
+ *     description: Same as PUT /api/delivery/profile/update. Updates an **existing** profile only (created by complete-profile); returns 404 if missing.
+ *     tags: [Delivery Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/delivery/profile/update:
  *   put:
  *     summary: Update delivery profile

@@ -21,54 +21,6 @@ const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/
 // Allowed cobbler services (must match app: Repair, Maintenance, Wash, Donate, Dispose)
 const ALLOWED_SERVICES = ['Repair', 'Maintenance', 'Wash', 'Donate', 'Dispose'];
 
-// Create profile validation
-const createProfileValidation = [
-    body('name')
-        .trim()
-        .notEmpty()
-        .withMessage('Name is required')
-        .isLength({ min: 2, max: 100 })
-        .withMessage('Name must be between 2 and 100 characters')
-        .custom((value) => {
-            if (!isValidName(value)) {
-                throw new Error('Name must contain only letters (no special characters or numbers)');
-            }
-            return true;
-        }),
-    body('phone')
-        .trim()
-        .notEmpty()
-        .withMessage('Phone is required')
-        .custom((value) => {
-            const digitsOnly = (value || '').replace(/\D/g, '');
-            if (digitsOnly.length < 10) {
-                throw new Error('Phone number must be at least 10 digits');
-            }
-            if (!isValidPhone(value)) {
-                throw new Error('Please provide a valid phone number');
-            }
-            return true;
-        }),
-    body('shopName').optional().trim().isLength({ max: 200 }),
-    body('shopAddress').optional().trim().isLength({ max: 500 }),
-    body('servicesOffered')
-        .optional()
-        .isArray()
-        .withMessage('servicesOffered must be an array')
-        .custom((arr) => {
-            if (!Array.isArray(arr)) return true;
-            const invalid = arr.find((s) => typeof s !== 'string' || !ALLOWED_SERVICES.includes(s));
-            if (invalid !== undefined) {
-                throw new Error(`Each service must be one of: ${ALLOWED_SERVICES.join(', ')}`);
-            }
-            return true;
-        }),
-    body('serviceAreas').optional().isArray(),
-    body('toolsOwned').optional().isArray(),
-    body('toolsNeeded').optional().isArray(),
-    handleValidationErrors,
-];
-
 // Update profile validation
 const updateProfileValidation = [
     body('name')
@@ -196,7 +148,6 @@ const updateStatusValidation = [
 ];
 
 module.exports = {
-    createProfileValidation,
     updateProfileValidation,
     updateShopValidation,
     updateServicesValidation,

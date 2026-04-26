@@ -31,6 +31,7 @@ router.use(authMiddleware);
 router.use(roleMiddleware(['DELIVERY']));
 
 router.get('/me', deliveryProfileController.getProfile);
+router.put('/', updateProfileValidation, deliveryProfileController.updateProfile);
 router.put('/update', updateProfileValidation, deliveryProfileController.updateProfile);
 router.put('/vehicle', updateVehicleValidation, deliveryProfileController.updateVehicleDetails);
 router.post('/upload-doc', uploadDeliveryDoc, deliveryProfileController.uploadDocument);
