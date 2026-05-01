@@ -63,6 +63,22 @@ const imageFileFilter = (req, file, cb) => {
     cb(new Error('Only image files are allowed (supported: jpg, jpeg, png, webp, gif, svg, tiff, bmp, heic, avif, ico)'), false);
 };
 
+/** Profile avatar: JPEG, JPG, PNG, WEBP only (matches product API spec) */
+const profileImageFileFilter = (req, file, cb) => {
+    const allowedTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+    const allowedExtensions = ['.jpeg', '.jpg', '.png', '.webp'];
+    const mime = (file.mimetype || '').toLowerCase();
+    if (allowedTypes.has(mime)) {
+        return cb(null, true);
+    }
+    const originalName = (file.originalname || '').toLowerCase();
+    if (allowedExtensions.some((ext) => originalName.endsWith(ext))) {
+        return cb(null, true);
+    }
+    logger.warn(`Rejected profile upload: mimetype=${file.mimetype} name=${file.originalname}`);
+    cb(new Error('Only JPEG, JPG, PNG, and WEBP images are allowed for profile photos'), false);
+};
+
 // File filter for documents (images + PDF)
 const documentFileFilter = (req, file, cb) => {
     const allowedTypes = [
@@ -80,13 +96,17 @@ const documentFileFilter = (req, file, cb) => {
 };
 
 // Upload middlewares (memoryStorage → buffer → Cloudinary in controller)
-const uploadProfileImage = multer({
+const uploadProfileImageRaw = multer({
     storage: memoryStorage,
-    fileFilter: imageFileFilter,
+    fileFilter: profileImageFileFilter,
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB
     },
-}).single('file');
+}).fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+    { name: 'profileImage', maxCount: 1 },
+]);
 
 const uploadKycDoc = multer({
     storage: memoryStorage,
@@ -184,8 +204,47 @@ const handleUpload = (uploadMiddleware) => {
     };
 };
 
+/**
+ * Profile image: accept file under `file`, `image`, or `profileImage` (Postman / clients vary).
+ */
+const handleProfileImageUpload = (req, res, next) => {
+    uploadProfileImageRaw(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'File too large. Maximum size allowed is 5MB.',
+                    statusCode: 400,
+                });
+            }
+            return res.status(400).json({
+                success: false,
+                message: `Upload error: ${err.message}`,
+                statusCode: 400,
+            });
+        }
+        if (err) {
+            return res.status(400).json({
+                success: false,
+                message: err.message,
+                statusCode: 400,
+            });
+        }
+        const files = req.files || {};
+        const file =
+            (files.file && files.file[0]) ||
+            (files.image && files.image[0]) ||
+            (files.profileImage && files.profileImage[0]);
+        if (file) {
+            req.file = file;
+            logger.info(`Received profile upload: fieldname=${file.fieldname} originalname=${file.originalname} mimetype=${file.mimetype} size=${file.size}`);
+        }
+        next();
+    });
+};
+
 module.exports = {
-    uploadProfileImage: handleUpload(uploadProfileImage),
+    uploadProfileImage: handleProfileImageUpload,
     uploadKycDoc: handleUpload(uploadKycDoc),
     uploadDeliveryDoc: handleUpload(uploadDeliveryDoc),
     uploadArticleImage: handleUpload(uploadArticleImage),

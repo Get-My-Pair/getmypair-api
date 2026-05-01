@@ -92,6 +92,37 @@ const serviceRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
+    /** Customer problem / service notes (matches app “describe the problem” field). */
+    problemDescription: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: null,
+    },
+    /** How the customer will hand over footwear: home pickup vs drop at cobbler. */
+    pickupMode: {
+      type: String,
+      enum: ['home_pickup', 'cobbler_nearby'],
+      default: 'home_pickup',
+    },
+    /** Requested pickup window start (from app date + time slot). */
+    requestedPickupAt: {
+      type: Date,
+      default: null,
+    },
+    /** Maintenance subscription selection from app (optional). */
+    maintenancePlanId: {
+      type: String,
+      trim: true,
+      maxlength: 32,
+      default: null,
+    },
+    maintenancePlanLabel: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: null,
+    },
     deliveryPartnerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

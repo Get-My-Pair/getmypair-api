@@ -12,7 +12,20 @@ const { handleValidationErrors } = require('../utils/validators');
 const categoryEnum = ['sports_shoe', 'casual', 'formal', 'sandal', 'boot', 'slipper', 'other'];
 const conditionEnum = ['excellent', 'good', 'fair', 'worn', ''];
 
+const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images'];
+
 const createArticleValidation = [
+  body('purchaseYear')
+    .custom((value) => {
+      if (value === null || value === undefined || value === '') {
+        throw new Error('Purchase year is required and cannot be null');
+      }
+      const n = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+      if (!Number.isInteger(n) || n < 1900 || n > 2100) {
+        throw new Error('Purchase year must be a valid integer between 1900 and 2100');
+      }
+      return true;
+    }),
   body('brand')
     .trim()
     .notEmpty()
@@ -36,10 +49,6 @@ const createArticleValidation = [
     .trim()
     .isLength({ max: 60 })
     .withMessage('Color must be at most 60 characters'),
-  body('purchaseYear')
-    .optional()
-    .isInt({ min: 1900, max: 2100 })
-    .withMessage('Purchase year must be between 1900 and 2100'),
   body('condition')
     .optional()
     .trim()
@@ -71,7 +80,7 @@ const createArticleValidation = [
   handleValidationErrors,
 ];
 
-/** Update: all fields optional (partial update) */
+/** Update: partial update; at least one field required */
 const updateArticleValidation = [
   body('brand')
     .optional()
@@ -129,6 +138,14 @@ const updateArticleValidation = [
     .trim()
     .isURL()
     .withMessage('Each image must be a valid URL'),
+  body().custom((value, { req }) => {
+    const b = req.body || {};
+    const hasField = updateArticleFieldKeys.some((k) => Object.prototype.hasOwnProperty.call(b, k));
+    if (!hasField) {
+      throw new Error('Please provide at least one field to update');
+    }
+    return true;
+  }),
   handleValidationErrors,
 ];
 

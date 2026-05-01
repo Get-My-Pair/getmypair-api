@@ -77,8 +77,34 @@ const updateProfile = async (req, res) => {
             return notFound(res, 'User profile not found');
         }
 
-        if (name !== undefined) profile.name = name;
-        if (email !== undefined) profile.email = email;
+        if (name !== undefined && String(name).trim() !== '') {
+            const trimmedName = String(name).trim();
+            if (trimmedName === String(profile.name || '').trim()) {
+                return errorResponse(res, 'This name is already associated with your profile', 400);
+            }
+        }
+
+        if (email !== undefined && String(email).trim() !== '') {
+            const normalizedEmail = String(email).trim().toLowerCase();
+            const currentEmail = (profile.email || '').trim().toLowerCase();
+            if (normalizedEmail === currentEmail) {
+                return errorResponse(res, 'This email is already associated with your profile', 400);
+            }
+            const taken = await UserProfile.findOne({
+                email: normalizedEmail,
+                userId: { $ne: userId },
+            }).lean();
+            if (taken) {
+                return errorResponse(res, 'This email is already registered to another account', 400);
+            }
+        }
+
+        if (name !== undefined && String(name).trim() !== '') {
+            profile.name = String(name).trim();
+        }
+        if (email !== undefined && String(email).trim() !== '') {
+            profile.email = String(email).trim().toLowerCase();
+        }
 
         await profile.save();
 

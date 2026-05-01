@@ -61,6 +61,20 @@ const isValidName = (value) => {
 };
 
 /**
+ * City / state: letters and spaces only (no digits or special characters)
+ */
+const isValidCityStateName = (value) => {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!trimmed.length || trimmed.length > 100) {
+    return false;
+  }
+  return /^[a-zA-Z\s]+$/.test(trimmed);
+};
+
+/**
  * Handle validation errors
  */
 const handleValidationErrors = (req, res, next) => {
@@ -90,5 +104,6 @@ module.exports = {
   isValidEmail,
   isValidPhone,
   isValidName,
+  isValidCityStateName,
   handleValidationErrors,
 };

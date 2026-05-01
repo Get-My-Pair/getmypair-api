@@ -46,14 +46,28 @@ const stateToStatusMap = {
 /**
  * Create Service Request
  * POST /api/service/create
- * Body: { articleId, serviceType, addressId, photos?, videos?, estimatedCost?, actualCost? }
+ * Body: { articleId, serviceType, addressId, photos?, videos?, estimatedCost?, actualCost?,
+ *   problemDescription?, pickupMode?, requestedPickupAt?, maintenancePlanId?, maintenancePlanLabel? }
  * estimatedCost: optional; if omitted, auto-filled from service-type default.
  * actualCost: optional; typically set by cobbler later.
  */
 const createServiceRequest = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { articleId, serviceType, addressId, photos, videos, estimatedCost, actualCost } = req.body;
+    const {
+      articleId,
+      serviceType,
+      addressId,
+      photos,
+      videos,
+      estimatedCost,
+      actualCost,
+      problemDescription,
+      pickupMode,
+      requestedPickupAt,
+      maintenancePlanId,
+      maintenancePlanLabel,
+    } = req.body;
 
     // Verify article belongs to current user
     const article = await Article.findOne({ _id: articleId, ownerId: userId }).lean();
@@ -79,6 +93,22 @@ const createServiceRequest = async (req, res) => {
         ? Number(estimatedCost)
         : (defaultEstimatedCostByServiceType[serviceType] ?? null);
 
+    const pickupModeNorm =
+      pickupMode === 'cobbler_nearby' ? 'cobbler_nearby' : 'home_pickup';
+
+    let requestedAt = null;
+    if (requestedPickupAt != null && String(requestedPickupAt).trim() !== '') {
+      const d = new Date(requestedPickupAt);
+      if (!Number.isNaN(d.getTime())) {
+        requestedAt = d;
+      }
+    }
+
+    const problemNorm =
+      problemDescription != null && String(problemDescription).trim() !== ''
+        ? String(problemDescription).trim()
+        : null;
+
     const doc = await ServiceRequest.create({
       userId,
       articleId: new mongoose.Types.ObjectId(articleId),
@@ -86,6 +116,17 @@ const createServiceRequest = async (req, res) => {
       addressId: new mongoose.Types.ObjectId(addressId),
       photos: Array.isArray(photos) ? photos : [],
       videos: Array.isArray(videos) ? videos : [],
+      problemDescription: problemNorm,
+      pickupMode: pickupModeNorm,
+      requestedPickupAt: requestedAt,
+      maintenancePlanId:
+        maintenancePlanId != null && String(maintenancePlanId).trim() !== ''
+          ? String(maintenancePlanId).trim()
+          : null,
+      maintenancePlanLabel:
+        maintenancePlanLabel != null && String(maintenancePlanLabel).trim() !== ''
+          ? String(maintenancePlanLabel).trim()
+          : null,
       status: 'pending',
       estimatedCost: estimated,
       actualCost: actualCost != null && Number(actualCost) >= 0 ? Number(actualCost) : null,

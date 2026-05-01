@@ -16,10 +16,24 @@
  */
 
 const { body } = require('express-validator');
-const { isValidEmail, isValidName, handleValidationErrors } = require('../utils/validators');
+const { isValidEmail, isValidName, isValidCityStateName, handleValidationErrors } = require('../utils/validators');
+
+const hasNonEmptyString = (v) => v !== undefined && v !== null && String(v).trim() !== '';
 
 // Update profile validation
 const updateProfileValidation = [
+    body().custom((value, { req }) => {
+        const b = req.body;
+        if (!b || typeof b !== 'object' || Array.isArray(b)) {
+            throw new Error('Please provide name or email to update');
+        }
+        const hasName = Object.prototype.hasOwnProperty.call(b, 'name') && hasNonEmptyString(b.name);
+        const hasEmail = Object.prototype.hasOwnProperty.call(b, 'email') && hasNonEmptyString(b.email);
+        if (!hasName && !hasEmail) {
+            throw new Error('Please provide name or email to update');
+        }
+        return true;
+    }),
     body('name')
         .optional()
         .trim()
@@ -56,13 +70,25 @@ const addAddressValidation = [
         .notEmpty()
         .withMessage('City is required')
         .isLength({ max: 100 })
-        .withMessage('City must be less than 100 characters'),
+        .withMessage('City must be less than 100 characters')
+        .custom((value) => {
+            if (!isValidCityStateName(value)) {
+                throw new Error('Please provide a valid City name');
+            }
+            return true;
+        }),
     body('state')
         .trim()
         .notEmpty()
         .withMessage('State is required')
         .isLength({ max: 100 })
-        .withMessage('State must be less than 100 characters'),
+        .withMessage('State must be less than 100 characters')
+        .custom((value) => {
+            if (!isValidCityStateName(value)) {
+                throw new Error('Please provide a valid state name');
+            }
+            return true;
+        }),
     body('pincode')
         .trim()
         .notEmpty()
@@ -77,6 +103,17 @@ const updateAddressValidation = [
     body('addressId')
         .notEmpty()
         .withMessage('addressId is required'),
+    body().custom((value, { req }) => {
+        const b = req.body || {};
+        const hasAddressLine1 = Object.prototype.hasOwnProperty.call(b, 'addressLine1') && hasNonEmptyString(b.addressLine1);
+        const hasCity = Object.prototype.hasOwnProperty.call(b, 'city') && hasNonEmptyString(b.city);
+        const hasState = Object.prototype.hasOwnProperty.call(b, 'state') && hasNonEmptyString(b.state);
+        const hasPincode = Object.prototype.hasOwnProperty.call(b, 'pincode') && hasNonEmptyString(b.pincode);
+        if (!hasAddressLine1 && !hasCity && !hasState && !hasPincode) {
+            throw new Error('Please provide at least one address field to update');
+        }
+        return true;
+    }),
     body('addressLine1')
         .optional()
         .trim()
@@ -86,12 +123,24 @@ const updateAddressValidation = [
         .optional()
         .trim()
         .isLength({ max: 100 })
-        .withMessage('City must be less than 100 characters'),
+        .withMessage('City must be less than 100 characters')
+        .custom((value) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '' && !isValidCityStateName(String(value))) {
+                throw new Error('Please provide a valid City name');
+            }
+            return true;
+        }),
     body('state')
         .optional()
         .trim()
         .isLength({ max: 100 })
-        .withMessage('State must be less than 100 characters'),
+        .withMessage('State must be less than 100 characters')
+        .custom((value) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '' && !isValidCityStateName(String(value))) {
+                throw new Error('Please provide a valid state name');
+            }
+            return true;
+        }),
     body('pincode')
         .optional()
         .trim()

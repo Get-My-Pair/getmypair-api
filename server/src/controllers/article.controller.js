@@ -32,6 +32,25 @@ const createArticle = async (req, res) => {
       images: Array.isArray(images) ? images : [],
     };
 
+    const currentYear = new Date().getFullYear();
+    if (articleData.purchaseYear > currentYear) {
+      return errorResponse(res, 'Purchase year cannot be in the future', 401);
+    }
+
+    const duplicate = await Article.findOne({
+      ownerId,
+      brand: articleData.brand,
+      model: articleData.model,
+      category: articleData.category,
+      color: articleData.color,
+      purchaseYear: articleData.purchaseYear,
+      condition: articleData.condition,
+    }).lean();
+
+    if (duplicate) {
+      return errorResponse(res, 'An article with these details already exists for your account', 401);
+    }
+
     const article = await Article.create(articleData);
     logger.info(`Article created: ${article._id} for owner ${ownerId}`);
     return success(res, 'Article created successfully', { article }, 201);

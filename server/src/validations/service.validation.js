@@ -55,6 +55,30 @@ const createServiceRequestValidation = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('actualCost must be a non-negative number'),
+  body('problemDescription')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('problemDescription must be at most 2000 characters'),
+  body('pickupMode')
+    .optional()
+    .trim()
+    .isIn(['home_pickup', 'cobbler_nearby'])
+    .withMessage('pickupMode must be one of: home_pickup, cobbler_nearby'),
+  body('requestedPickupAt')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('requestedPickupAt must be a valid ISO 8601 date'),
+  body('maintenancePlanId')
+    .optional()
+    .trim()
+    .isLength({ max: 32 })
+    .withMessage('maintenancePlanId must be at most 32 characters'),
+  body('maintenancePlanLabel')
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage('maintenancePlanLabel must be at most 120 characters'),
   handleValidationErrors,
 ];
 
