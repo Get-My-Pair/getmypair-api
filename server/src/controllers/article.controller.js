@@ -119,6 +119,13 @@ const updateArticle = async (req, res) => {
     if (condition !== undefined) article.condition = (condition || 'good').trim() || 'good';
     if (images !== undefined) article.images = Array.isArray(images) ? images : article.images;
 
+    if (article.purchaseYear != null) {
+      const currentYear = new Date().getFullYear();
+      if (article.purchaseYear > currentYear) {
+        return errorResponse(res, 'Purchase year cannot be in the future', 401);
+      }
+    }
+
     await article.save();
     logger.info(`Article updated: ${articleId} by owner ${ownerId}`);
     return success(res, 'Article updated successfully', { article });
