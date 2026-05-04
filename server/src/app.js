@@ -7,6 +7,7 @@ const swaggerSpec = require('./config/swagger');
 const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
+const cobblerProfileRoutes = require('./routes/cobbler.profile.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 
@@ -98,6 +99,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/cobbler/profile', cobblerProfileRoutes);
 
 // 404 handler
 app.use((req, res) => {
