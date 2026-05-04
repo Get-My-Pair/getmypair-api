@@ -5,12 +5,11 @@ const cobblerProfileController = require('../controllers/cobblerProfile.controll
 
 const router = express.Router();
 
-// Mobile customer app registers users as role `user`; some deployments use `customer`.
-// Cobblers must not use this discovery list (see SelectLocationPage 403 handling).
+// Any authenticated account may query nearby cobblers (still requires valid Bearer token).
 router.get(
   '/nearby',
   authMiddleware,
-  roleMiddleware(['user', 'customer']),
+  roleMiddleware(['user', 'customer', 'cobbler', 'admin', 'moderator']),
   cobblerProfileController.getNearby
 );
 
