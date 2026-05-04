@@ -1,16 +1,11 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth.middleware');
-const roleMiddleware = require('../middleware/role.middleware');
 const cobblerProfileController = require('../controllers/cobblerProfile.controller');
 
 const router = express.Router();
 
-// Any authenticated account may query nearby cobblers (still requires valid Bearer token).
-router.get(
-  '/nearby',
-  authMiddleware,
-  roleMiddleware(['user', 'customer', 'cobbler', 'admin', 'moderator']),
-  cobblerProfileController.getNearby
-);
+// Discovery list: any valid session may call (no role gate — avoids 403 when DB role
+// labels differ from the app, e.g. legacy values or deploy drift vs this repo).
+router.get('/nearby', authMiddleware, cobblerProfileController.getNearby);
 
 module.exports = router;

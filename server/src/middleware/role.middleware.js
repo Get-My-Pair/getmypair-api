@@ -11,13 +11,16 @@ const roleMiddleware = (allowedRoles) => {
       return forbidden(res, 'Authentication required');
     }
 
-    const userRole = req.user.role;
+    const userRole = (req.user.role != null && String(req.user.role).trim() !== '')
+      ? String(req.user.role).toLowerCase()
+      : null;
 
     if (!userRole) {
       return forbidden(res, 'User role not found');
     }
 
-    if (!allowedRoles.includes(userRole)) {
+    const allowed = allowedRoles.map((r) => String(r).toLowerCase());
+    if (!allowed.includes(userRole)) {
       return forbidden(res, 'Insufficient permissions');
     }
 
