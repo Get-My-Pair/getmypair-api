@@ -37,7 +37,7 @@ router.use(authMiddleware);
 // Nearby discovery route is used by mobile map for USER/ADMIN/COBBER roles.
 router.get(
     '/nearby',
-    roleMiddleware(['USER', 'ADMIN', 'COBBER']),
+    roleMiddleware(['USER', 'ADMIN', 'COBBER', 'DELIVERY']),
     cobblerProfileController.getNearbyCobblers
 );
 
