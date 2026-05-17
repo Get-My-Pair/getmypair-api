@@ -10,11 +10,14 @@ Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile manag
 
 | Role    | Base Path                 | APIs |
 |---------|---------------------------|------|
-| USER    | `/api/user/profile`       | 7 (create, me, update, upload-image, address add/update/delete) |
-| COBBER  | `/api/cobbler/profile`    | 10 (create, me, update, shop, services, tools-owned, tools-needed, upload-image, upload-doc, verification) |
-| DELIVERY| `/api/delivery/profile`   | 7 (create, me, update, vehicle, upload-doc, upload-image, verification) |
+| USER    | `/api/user/profile`       | 7 (me, addresses, update, upload-image, address add/update/delete) |
+| COBBER  | `/api/cobbler/profile`    | 11 (me, update, shop, services, tools, bank, upload-image/doc, status, verification) |
+| COBBER  | `/api/cobbler/home`       | 1 (`GET /dashboard`) |
+| DELIVERY| `/api/delivery/profile`   | 7 (me, update, vehicle, upload-doc, upload-image, verification) |
 | ADMIN   | `/api/admin/profile`      | 6 (users, cobblers, delivery, :id, verify, status) |
 | Public  | `/api/geocode`            | 1 (reverse) |
+
+**Profile creation:** Role-specific profile documents are created by **`POST /api/auth/complete-profile`** (Module 1), not by `POST /api/user/profile/create`. User/cobbler profile routes only **read/update** existing rows.
 
 ---
 
@@ -22,32 +25,13 @@ Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile manag
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST   | `/api/user/profile/create` | Create user profile |
-| GET    | `/api/user/profile/me` | Get own profile |
-| PUT    | `/api/user/profile/update` | Update profile (name, email) |
+| GET    | `/api/user/profile/me` | Get own profile (auto-create from user if missing) |
+| GET    | `/api/user/profile/addresses` | List addresses only |
+| PUT    | `/api/user/profile` or `/update` | Update profile (name, email) |
 | POST   | `/api/user/profile/upload-image` | Upload profile image (multipart) |
 | POST   | `/api/user/profile/address/add` | Add address |
 | PUT    | `/api/user/profile/address/update` | Update address |
 | DELETE | `/api/user/profile/address/delete/:addressId` | Delete address |
-
-## User — Create Profile
-
-**POST** `/api/user/profile/create`  
-**Auth:** Bearer JWT, role USER
-
-**Request:**
-```json
-{
-  "name": "John Doe",
-  "phone": "9876543210",
-  "email": "john@example.com"
-}
-```
-- `name` (required): 2–100 chars  
-- `phone` (required): 10–15 chars  
-- `email` (optional): valid email  
-
-**Response:** 201 — profile created. 409 if profile already exists.
 
 ---
 
@@ -57,6 +41,17 @@ Module 2 covers **user**, **cobbler**, **delivery**, and **admin** profile manag
 **Auth:** Bearer JWT, role USER
 
 **Response:** 200 — `{ success, message, data: { profile } }`. If no profile exists, one is **auto-created** from the authenticated user (name, mobile, email) and then returned (200).
+
+---
+
+## User — List addresses
+
+**GET** `/api/user/profile/addresses`  
+**Auth:** Bearer JWT, role USER
+
+**Response (200):** `{ "data": { "addresses": [ ... ] } }` (embedded sub-documents on `UserProfile`).
+
+Used by the mobile app for service pickup address selection (Module 4).
 
 ---
 
@@ -139,35 +134,23 @@ Only provided fields are updated.
 
 # Cobbler Profile APIs (Role: COBBER)
 
+Profile row created via **`POST /api/auth/complete-profile`** (cobbler app). Routes below update an existing profile only.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST   | `/api/cobbler/profile/create` | Create cobbler profile |
 | GET    | `/api/cobbler/profile/me` | Get own profile |
-| PUT    | `/api/cobbler/profile/update` | Update profile (name, phone) |
+| PUT    | `/api/cobbler/profile` or `/update` | Update profile (name, phone) |
 | PUT    | `/api/cobbler/profile/shop` | Update booth details |
 | PUT    | `/api/cobbler/profile/services` | Update services & service areas |
 | PUT    | `/api/cobbler/profile/tools-owned` | Update tools owned |
 | PUT    | `/api/cobbler/profile/tools-needed` | Update tools needed |
+| PUT    | `/api/cobbler/profile/bank` | Update bank details |
 | POST   | `/api/cobbler/profile/upload-image` | Upload profile image |
 | POST   | `/api/cobbler/profile/upload-doc` | Upload KYC document |
+| PUT    | `/api/cobbler/profile/update-status` | Online / availability status |
 | GET    | `/api/cobbler/profile/verification` | Get verification status |
 
-## Cobbler — Create Profile
-
-**POST** `/api/cobbler/profile/create`  
-**Auth:** Bearer JWT, role COBBER
-
-**Request:**
-```json
-{
-  "name": "Raju Cobbler",
-  "phone": "9876543210"
-}
-```
-- `name` (required): 2–100 chars  
-- `phone` (required): 10–15 chars  
-
-**Response:** 201 — profile created. 409 if profile already exists.
+**Cobbler home:** `GET /api/cobbler/home/dashboard` — see `cobblerHome.routes.js`.
 
 ---
 
@@ -296,30 +279,16 @@ Allowed: JPEG, JPG, PNG, WEBP, PDF. Max 10MB. Stored in Cloudinary (`getmypair/k
 
 # Delivery Profile APIs (Role: DELIVERY)
 
+Profile row created via **`POST /api/auth/complete-profile`** (delivery app).
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST   | `/api/delivery/profile/create` | Create delivery profile |
 | GET    | `/api/delivery/profile/me` | Get own profile |
-| PUT    | `/api/delivery/profile/update` | Update profile (name, phone) |
+| PUT    | `/api/delivery/profile` or `/update` | Update profile (name, phone) |
 | PUT    | `/api/delivery/profile/vehicle` | Update vehicle details |
 | POST   | `/api/delivery/profile/upload-doc` | Upload document |
 | POST   | `/api/delivery/profile/upload-image` | Upload profile image |
 | GET    | `/api/delivery/profile/verification` | Get verification status |
-
-## Delivery — Create Profile
-
-**POST** `/api/delivery/profile/create`  
-**Auth:** Bearer JWT, role DELIVERY
-
-**Request:**
-```json
-{
-  "name": "Suresh Kumar",
-  "phone": "9876543210"
-}
-```
-
-**Response:** 201 — profile created. 409 if already exists.
 
 ---
 

@@ -3,6 +3,8 @@
 Reference: route mounts in `server/src/app.js` and definitions in `server/src/routes/*.routes.js`.  
 Line numbers point to the **route file** where `router.<method>(...)` is declared.
 
+**Narrative docs:** [README.md](README.md) · [Module 1](MODULE_1_DOCUMENTATION.md) · [Module 2](MODULE_2_DOCUMENTATION.md) · [Module 3](MODULE_3_DOCUMENTATION.md) · [Module 4](MODULE_4_DOCUMENTATION.md) · [Admin dashboard](ADMIN_DASHBOARD.md)
+
 ---
 
 ## App & documentation
@@ -46,7 +48,7 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 |--------|-----------|------|----------------------|
 | GET | `/api/user/profile/me` | 39 | `getProfile` |
 | GET | `/api/user/profile/addresses` | 44 | `listAddresses` |
-| PUT | `/api/user/profile` | 49 | `updateProfile` |
+| PUT | `/api/user/profile` | 49 | `updateProfile` (no create; profile from `complete-profile`) |
 | PUT | `/api/user/profile/update` | 50 | `updateProfile` |
 | POST | `/api/user/profile/upload-image` | 55 | `uploadProfileImage` |
 | POST | `/api/user/profile/address/add` | 60 | `addAddress` |

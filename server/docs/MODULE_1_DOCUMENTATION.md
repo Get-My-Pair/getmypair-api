@@ -328,7 +328,15 @@ RATE_LIMIT_MAX_REQUESTS=100
 |-------|------|
 | Routes | `server/src/routes/auth.routes.js` |
 | Controller | `server/src/controllers/auth.controller.js` |
-| Service | `server/src/services/auth.service.js` |
+| Service | `server/src/services/auth.service.js`, `server/src/services/token.service.js`, `server/src/services/otp.service.js` |
 | Validation | `server/src/validations/auth.validation.js` |
+| Models | `server/src/models/user.model.js`, `otp.model.js`, `session.model.js` |
 | Middleware | `server/src/middleware/auth.middleware.js`, `server/src/middleware/rateLimit.js` |
 | App mount | `server/src/app.js` — `/api/auth`, `/api/version`, `/health` |
+
+## Related modules
+
+- **Module 2:** Profile rows created here via `complete-profile` → updated under `/api/user/profile`, `/api/cobbler/profile`, etc.
+- **Module 3–4:** Require `Authorization: Bearer <accessToken>` from this module.
+
+See also: [README.md](README.md), [API-CATALOG.md](API-CATALOG.md).

@@ -1,5 +1,7 @@
 # Master Admin HTML Dashboard
 
+Part of the GetMyPair backend. Customer/cobbler **mobile JWT APIs** are documented in [README.md](README.md) (Modules 1–4). This document covers the **master admin** HTML UI and `/api/sys-admin` APIs only.
+
 ## URL
 
 - **Login / entry:** `http://localhost:3000/admin/` (or `/admin` → redirects to `/admin/`)
