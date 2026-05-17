@@ -31,8 +31,17 @@ const {
     updateStatusValidation,
 } = require('../validations/cobblerProfile.validation');
 
-// All routes require authentication + COBBER role
+// All routes require authentication
 router.use(authMiddleware);
+
+// Nearby discovery route is used by mobile map for USER/ADMIN/COBBER roles.
+router.get(
+    '/nearby',
+    roleMiddleware(['USER', 'ADMIN', 'COBBER', 'DELIVERY']),
+    cobblerProfileController.getNearbyCobblers
+);
+
+// Remaining routes are cobbler-only profile management APIs.
 router.use(roleMiddleware(['COBBER']));
 
 // Profile row is created only by POST /api/auth/complete-profile — use PUT below to edit.

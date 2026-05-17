@@ -392,6 +392,80 @@ const getVerificationStatus = async (req, res) => {
     }
 };
 
+/**
+ * Get nearby cobblers
+ * GET /api/cobbler/profile/nearby?lat=..&lng=..&radiusKm=..
+ */
+const getNearbyCobblers = async (req, res) => {
+    try {
+        const lat = Number(req.query.lat);
+        const lng = Number(req.query.lng);
+        const radiusKmRaw = req.query.radiusKm;
+        const radiusKm = radiusKmRaw === undefined ? 5 : Number(radiusKmRaw);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return errorResponse(res, 'lat and lng query params are required numbers', 400);
+        }
+
+        if (Number.isNaN(radiusKm) || radiusKm < 0 || radiusKm > 150) {
+            return errorResponse(res, 'radiusKm must be a number between 0 and 150', 400);
+        }
+
+        const maxDistanceMeters = radiusKm * 1000;
+
+        const cobblers = await CobblerProfile.aggregate([
+            {
+                $geoNear: {
+                    near: {
+                        type: 'Point',
+                        coordinates: [lng, lat],
+                    },
+                    distanceField: 'distanceMeters',
+                    key: 'lastKnownLocation',
+                    maxDistance: maxDistanceMeters,
+                    spherical: true,
+                    query: {
+                        isOnline: true,
+                        'lastKnownLocation.type': 'Point',
+                    },
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    userId: 1,
+                    name: 1,
+                    phone: 1,
+                    profileImage: 1,
+                    shopName: 1,
+                    shopAddress: 1,
+                    servicesOffered: 1,
+                    serviceAreas: 1,
+                    verificationStatus: 1,
+                    isOnline: 1,
+                    lastKnownLocation: 1,
+                    distanceMeters: 1,
+                },
+            },
+            { $sort: { distanceMeters: 1 } },
+            { $limit: 200 },
+        ]);
+
+        return success(res, 'Nearby cobblers retrieved successfully', {
+            cobblers,
+            meta: {
+                lat,
+                lng,
+                radiusKm,
+                count: cobblers.length,
+            },
+        });
+    } catch (err) {
+        logger.error(`Get nearby cobblers error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
 module.exports = {
     getProfile,
     updateProfile,
@@ -404,4 +478,5 @@ module.exports = {
     uploadProfileImage,
     uploadKycDoc,
     getVerificationStatus,
+    getNearbyCobblers,
 };
