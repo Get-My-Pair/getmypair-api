@@ -135,6 +135,11 @@ const completeProfileValidation = [
     .isIn(['male', 'female', 'other'])
     .withMessage('Gender must be one of: male, female, other')
     .toLowerCase(),
+  body('householdType')
+    .optional()
+    .trim()
+    .isIn(['just_me', 'with_partner', 'with_children', 'with_elder'])
+    .withMessage('householdType must be one of: just_me, with_partner, with_children, with_elder'),
   body('location').optional().isObject().withMessage('Location must be an object'),
   body('location.lat').optional().isFloat({ min: -90, max: 90 }),
   body('location.lng').optional().isFloat({ min: -180, max: 180 }),
