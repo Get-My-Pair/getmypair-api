@@ -25,3 +25,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Verify Payment API
 - [x] Webhook API
 - [x] Payment History API
+- [x] Payment Details API
