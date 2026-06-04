@@ -14,3 +14,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Commission Engine
 - [x] Audit Log Service
 - [x] Notification Trigger Service
+- [x] Zoho payment gateway client
