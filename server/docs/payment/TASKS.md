@@ -8,3 +8,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Refund Collection
 - [x] Payment Indexes
 - [x] Settlement Indexes
+- [x] Audit Collection
