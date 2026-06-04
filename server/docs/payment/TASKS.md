@@ -32,3 +32,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Darkworkstore Revenue API
 - [x] Settlement API
 - [x] Refund API
+- [x] Payment Report API
