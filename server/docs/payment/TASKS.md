@@ -6,3 +6,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Commission Collection
 - [x] Webhook Logs Collection
 - [x] Refund Collection
+- [x] Payment Indexes
