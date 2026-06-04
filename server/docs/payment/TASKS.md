@@ -34,3 +34,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Refund API
 - [x] Payment Report API
 - [x] Module 5 integration
+- [x] API documentation
