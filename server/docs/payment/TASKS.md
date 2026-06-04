@@ -21,3 +21,4 @@ Track implementation commits for payment workflow (API + database).
 - [x] Payment Failed Handler (processPaymentFailed in payment.service)
 - [x] Payment Pending Handler (processPaymentPending in payment.service)
 - [x] Settlement Scheduler
+- [x] Create Payment Link API
