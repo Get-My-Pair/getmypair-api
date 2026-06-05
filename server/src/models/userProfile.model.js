@@ -47,6 +47,27 @@ const addressSchema = new mongoose.Schema(
     { _id: true }
 );
 
+const familyMemberSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 100,
+        },
+        relation: {
+            type: String,
+            enum: ['partner', 'child', 'elder'],
+            required: true,
+        },
+        profileImage: {
+            type: String,
+            default: null,
+        },
+    },
+    { _id: true }
+);
+
 const userProfileSchema = new mongoose.Schema(
     {
         userId: {
@@ -79,6 +100,15 @@ const userProfileSchema = new mongoose.Schema(
         },
         addresses: {
             type: [addressSchema],
+            default: [],
+        },
+        householdType: {
+            type: String,
+            enum: ['just_me', 'with_partner', 'with_children', 'with_elder'],
+            default: 'just_me',
+        },
+        familyMembers: {
+            type: [familyMemberSchema],
             default: [],
         },
     },

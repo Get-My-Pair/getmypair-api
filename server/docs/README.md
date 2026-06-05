@@ -1,25 +1,55 @@
 # GetMyPair API — Backend Documentation
 
-This folder contains **module documentation** for the GetMyPair backend API (`getmypair-api/server`).
+Module documentation for the **GetMyPair Node/Express API** (`getmypair-api/server`).
 
-## Module 1: Authentication & Health
+| Module | Topic | Document |
+|--------|--------|----------|
+| **1** | Authentication & health | [MODULE_1_DOCUMENTATION.md](MODULE_1_DOCUMENTATION.md) |
+| **2** | Profiles & geocode | [MODULE_2_DOCUMENTATION.md](MODULE_2_DOCUMENTATION.md) |
+| **3** | Articles (Digital Shoe Passport) | [MODULE_3_DOCUMENTATION.md](MODULE_3_DOCUMENTATION.md) |
+| **4** | Service requests | [MODULE_4_DOCUMENTATION.md](MODULE_4_DOCUMENTATION.md) |
 
-**[MODULE_1_DOCUMENTATION.md](MODULE_1_DOCUMENTATION.md)**
+## Quick reference
 
-- Health & version: `GET /health`, `GET /api/version`
-- Auth: send-otp, verify-otp, complete-profile, refresh-token, logout, me
-- Validation, response format, security, backend file references
+| Resource | Location |
+|----------|----------|
+| Route mounts | `server/src/app.js` |
+| Full endpoint index (with line numbers) | [API-CATALOG.md](API-CATALOG.md) |
+| OpenAPI / Swagger UI | `GET /api-docs` (main), `GET /api-docs/admin` (sys-admin) |
+| Health | `GET /health`, `GET /api/version` |
+| Master admin HTML UI | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) — `/admin/`, `/api/sys-admin` |
 
-## Module 2: Profile & Geocode
+## Base URL
 
-**[MODULE_2_DOCUMENTATION.md](MODULE_2_DOCUMENTATION.md)**
+- **Production:** `https://getmypair-api.onrender.com`
+- **Local:** `http://localhost:3000` (or your `PORT` from `.env`)
 
-- **User profile** (role USER): create, me, update, upload-image, address add/update/delete
-- **Cobbler profile** (role COBBER): create, me, update, shop, services, tools, upload-image, upload-doc, verification
-- **Delivery profile** (role DELIVERY): create, me, update, vehicle, upload-doc, upload-image, verification
-- **Admin profile** (role ADMIN): users, cobblers, delivery, get by id, verify, status
-- **Geocode** (public): reverse lat/lon → location
+## Auth headers (mobile apps)
+
+| Header | Purpose |
+|--------|---------|
+| `Authorization` | `Bearer <accessToken>` on protected routes |
+| `X-App-Source` | App identifier (e.g. `USER_APP`, `COBBER_APP`) — used at `complete-profile` for role |
+| `X-App-Version` | Client version string |
+| `device-info` | Optional on verify-otp (e.g. `mobile`) |
+
+## Standard JSON response
+
+```json
+{
+  "success": true,
+  "message": "Human-readable message",
+  "data": { }
+}
+```
+
+Errors: `{ "success": false, "message": "...", "statusCode": 400, "errors": [] }` — see `server/src/utils/response.js`.
+
+## Related client docs
+
+- Customer mobile app: `getmypair-mobile/gmp/docs/`
+- Cobblers app: `gmp-cobblers-app/cobbler_app/docs/` (if present)
 
 ---
 
-*Swagger/OpenAPI path definitions live in `server/src/docs/*.paths.js` and are served at `/api-docs`.*
+*OpenAPI path definitions: `server/src/docs/*.paths.js`*

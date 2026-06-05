@@ -213,6 +213,7 @@ const getMyServiceRequests = async (req, res) => {
     const userId = req.user._id;
     const requests = await ServiceRequest.find({ userId })
       .sort({ createdAt: -1 })
+      .populate('articleId', 'brand model category color images')
       .lean();
 
     return success(res, 'Service requests retrieved successfully', { requests });

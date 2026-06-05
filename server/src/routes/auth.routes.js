@@ -18,6 +18,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
+const sessionController = require('../controllers/session.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const {
   sendOTPValidation,
@@ -34,6 +35,11 @@ router.post('/verify-otp', otpRateLimiter, verifyOTPValidation, authController.v
 router.post('/complete-profile', completeProfileValidation, authController.completeProfile);
 router.post('/refresh-token', refreshTokenValidation, authController.refreshToken);
 router.post('/logout', authMiddleware, authController.logout);
+
+// Manage devices (active sessions)
+router.get('/sessions', authMiddleware, sessionController.listUserSessions);
+router.delete('/sessions/:sessionId', authMiddleware, sessionController.revokeSession);
+
 router.get('/me', authMiddleware, authController.getCurrentUser);
 
 module.exports = router;

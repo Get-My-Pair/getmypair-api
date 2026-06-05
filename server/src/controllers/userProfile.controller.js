@@ -70,7 +70,7 @@ const listAddresses = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { name, email } = req.body;
+        const { name, email, householdType } = req.body;
 
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
@@ -104,6 +104,9 @@ const updateProfile = async (req, res) => {
         }
         if (email !== undefined && String(email).trim() !== '') {
             profile.email = String(email).trim().toLowerCase();
+        }
+        if (householdType !== undefined && String(householdType).trim() !== '') {
+            profile.householdType = String(householdType).trim();
         }
 
         await profile.save();
@@ -264,6 +267,106 @@ const deleteAddress = async (req, res) => {
     }
 };
 
+/**
+ * Add Family Member
+ * POST /api/user/profile/family-members/add
+ */
+const addFamilyMember = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { name, relation } = req.body;
+
+        const profile = await UserProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'User profile not found. Create profile first.');
+        }
+
+        profile.familyMembers.push({
+            name: String(name).trim(),
+            relation: String(relation).trim(),
+        });
+        await profile.save();
+
+        const member = profile.familyMembers[profile.familyMembers.length - 1];
+        logger.info(`Family member added for userId: ${userId}`);
+        return success(res, 'Family member added successfully', {
+            member,
+            totalMembers: profile.familyMembers.length,
+            profile,
+        }, 201);
+    } catch (err) {
+        logger.error(`Add family member error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Update Family Member
+ * PUT /api/user/profile/family-members/update
+ */
+const updateFamilyMember = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { memberId, name, relation } = req.body;
+
+        const profile = await UserProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'User profile not found');
+        }
+
+        const member = profile.familyMembers.id(memberId);
+        if (!member) {
+            return notFound(res, 'Family member not found');
+        }
+
+        if (name !== undefined && String(name).trim() !== '') {
+            member.name = String(name).trim();
+        }
+        if (relation !== undefined && String(relation).trim() !== '') {
+            member.relation = String(relation).trim();
+        }
+
+        await profile.save();
+        logger.info(`Family member updated for userId: ${userId}, memberId: ${memberId}`);
+        return success(res, 'Family member updated successfully', { member, profile });
+    } catch (err) {
+        logger.error(`Update family member error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Delete Family Member
+ * DELETE /api/user/profile/family-members/delete/:memberId
+ */
+const deleteFamilyMember = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { memberId } = req.params;
+
+        const profile = await UserProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'User profile not found');
+        }
+
+        const member = profile.familyMembers.id(memberId);
+        if (!member) {
+            return notFound(res, 'Family member not found');
+        }
+
+        member.deleteOne();
+        await profile.save();
+        logger.info(`Family member deleted for userId: ${userId}, memberId: ${memberId}`);
+        return success(res, 'Family member deleted successfully', {
+            totalMembers: profile.familyMembers.length,
+            profile,
+        });
+    } catch (err) {
+        logger.error(`Delete family member error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
 module.exports = {
     getProfile,
     listAddresses,
@@ -272,4 +375,7 @@ module.exports = {
     addAddress,
     updateAddress,
     deleteAddress,
+    addFamilyMember,
+    updateFamilyMember,
+    deleteFamilyMember,
 };

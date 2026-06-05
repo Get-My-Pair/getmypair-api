@@ -205,7 +205,18 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
  * @param {Object} location - Optional { lat, lng, address }
  * @returns {Object} User and tokens
  */
-const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, userAgent, deviceInfo, appSource = 'USER_APP', location = null) => {
+const completeProfile = async (
+  mobile,
+  name,
+  dateOfBirth,
+  gender,
+  ipAddress,
+  userAgent,
+  deviceInfo,
+  appSource = 'USER_APP',
+  location = null,
+  householdType = 'just_me'
+) => {
   try {
     // Role from app source (USER_APP -> USER, COBBER_APP -> COBBER, etc.)
     let roleDoc = null;
@@ -267,12 +278,17 @@ const completeProfile = async (mobile, name, dateOfBirth, gender, ipAddress, use
 
     // Create app-specific profile (same as user collection – one profile per role)
     const roleName = roleDoc ? String(roleDoc.name).toUpperCase() : 'USER';
+    const normalizedHouseholdType = ['just_me', 'with_partner', 'with_children', 'with_elder']
+      .includes(String(householdType || '').trim())
+      ? String(householdType).trim()
+      : 'just_me';
     if (roleName === 'USER') {
       await UserProfile.create({
         userId: user._id,
         name: name || 'User',
         phone: normalizedMobile,
         email: null,
+        householdType: normalizedHouseholdType,
       });
     } else if (roleName === 'COBBER') {
       await CobblerProfile.create({

@@ -29,8 +29,9 @@ const updateProfileValidation = [
         }
         const hasName = Object.prototype.hasOwnProperty.call(b, 'name') && hasNonEmptyString(b.name);
         const hasEmail = Object.prototype.hasOwnProperty.call(b, 'email') && hasNonEmptyString(b.email);
-        if (!hasName && !hasEmail) {
-            throw new Error('Please provide name or email to update');
+        const hasHouseholdType = Object.prototype.hasOwnProperty.call(b, 'householdType') && hasNonEmptyString(b.householdType);
+        if (!hasName && !hasEmail && !hasHouseholdType) {
+            throw new Error('Please provide name, email, or householdType to update');
         }
         return true;
     }),
@@ -54,6 +55,11 @@ const updateProfileValidation = [
             }
             return true;
         }),
+    body('householdType')
+        .optional()
+        .trim()
+        .isIn(['just_me', 'with_partner', 'with_children', 'with_elder'])
+        .withMessage('householdType must be one of: just_me, with_partner, with_children, with_elder'),
     handleValidationErrors,
 ];
 
@@ -149,8 +155,64 @@ const updateAddressValidation = [
     handleValidationErrors,
 ];
 
+const addFamilyMemberValidation = [
+    body('name')
+        .trim()
+        .notEmpty()
+        .withMessage('Name is required')
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Name must be between 2 and 100 characters')
+        .custom((value) => {
+            if (!isValidName(value)) {
+                throw new Error('Name must contain only letters (no special characters or numbers)');
+            }
+            return true;
+        }),
+    body('relation')
+        .trim()
+        .notEmpty()
+        .withMessage('relation is required')
+        .isIn(['partner', 'child', 'elder'])
+        .withMessage('relation must be one of: partner, child, elder'),
+    handleValidationErrors,
+];
+
+const updateFamilyMemberValidation = [
+    body('memberId')
+        .notEmpty()
+        .withMessage('memberId is required'),
+    body().custom((value, { req }) => {
+        const b = req.body || {};
+        const hasName = Object.prototype.hasOwnProperty.call(b, 'name') && hasNonEmptyString(b.name);
+        const hasRelation = Object.prototype.hasOwnProperty.call(b, 'relation') && hasNonEmptyString(b.relation);
+        if (!hasName && !hasRelation) {
+            throw new Error('Please provide at least one field to update');
+        }
+        return true;
+    }),
+    body('name')
+        .optional()
+        .trim()
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Name must be between 2 and 100 characters')
+        .custom((value) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '' && !isValidName(String(value))) {
+                throw new Error('Name must contain only letters (no special characters or numbers)');
+            }
+            return true;
+        }),
+    body('relation')
+        .optional()
+        .trim()
+        .isIn(['partner', 'child', 'elder'])
+        .withMessage('relation must be one of: partner, child, elder'),
+    handleValidationErrors,
+];
+
 module.exports = {
     updateProfileValidation,
     addAddressValidation,
     updateAddressValidation,
+    addFamilyMemberValidation,
+    updateFamilyMemberValidation,
 };

@@ -166,7 +166,7 @@ const verifyOTP = async (req, res) => {
  */
 const completeProfile = async (req, res) => {
   try {
-    const { mobile, name, dateOfBirth, gender, location } = req.body;
+    const { mobile, name, dateOfBirth, gender, location, householdType } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
@@ -184,7 +184,8 @@ const completeProfile = async (req, res) => {
       userAgent,
       deviceInfo,
       appSource,
-      location
+      location,
+      householdType
     );
 
     return success(res, 'Profile completed successfully. Login successful.', {

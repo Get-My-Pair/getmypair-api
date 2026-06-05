@@ -42,30 +42,65 @@ const pkg = require('../package.json');
 
 const app = express();
 
-// Security middleware
+/**
+ * CORS: Flutter web (localhost / hosted) calls this API cross-origin with cookies-like flows.
+ * `credentials: true` cannot be combined with `origin: '*'` in the static cors config — browsers block it.
+ * Use a dynamic origin that reflects the request origin when `CORS_ORIGIN=*`, or match a comma-separated allowlist.
+ */
+const corsOriginCallback = (origin, callback) => {
+  const configured = String(config.CORS_ORIGIN || '*').trim();
+  if (!origin) {
+    return callback(null, true);
+  }
+  if (configured === '*') {
+    return callback(null, true);
+  }
+  const allowed = configured
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (allowed.includes(origin)) {
+    return callback(null, true);
+  }
+  return callback(null, false);
+};
+
+// Security middleware — allow cross-origin reads of API responses (Flutter web + mobile)
 app.use(
   helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https:', 'http://localhost', 'http://127.0.0.1'],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'", "https:"],
+        mediaSrc: ["'self'", 'https:'],
         frameSrc: ["'none'"],
       },
     },
   })
 );
 
-// CORS configuration
 app.use(
   cors({
-    origin: config.CORS_ORIGIN,
+    origin: corsOriginCallback,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-App-Source',
+      'X-App-Version',
+      'Accept',
+      'device-info',
+      'X-Requested-With',
+    ],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
+    optionsSuccessStatus: 204,
   })
 );
 

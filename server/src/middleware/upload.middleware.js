@@ -133,12 +133,12 @@ const uploadArticleImage = multer({
     },
 }).single('file');
 
-// Service request proof – image (max 5 per request on client), 5MB
+// Service request proof – image (max 5 per request on client); allow larger phone photos
 const uploadServiceProofImage = multer({
     storage: memoryStorage,
     fileFilter: imageFileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 12 * 1024 * 1024,
     },
 }).single('file');
 
