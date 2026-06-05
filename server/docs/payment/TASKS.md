@@ -1,0 +1,37 @@
+# Module 5 — Payment tasks
+
+Track implementation commits for payment workflow (API + database).
+- [x] Payment Collection
+- [x] Settlement Collection
+- [x] Commission Collection
+- [x] Webhook Logs Collection
+- [x] Refund Collection
+- [x] Payment Indexes
+- [x] Settlement Indexes
+- [x] Audit Collection
+- [x] Invoice Collection
+- [x] Revenue Collection
+- [x] Commission Engine
+- [x] Audit Log Service
+- [x] Notification Trigger Service
+- [x] Zoho payment gateway client
+- [x] payment workflow helper
+- [x] Create Payment Order API (service)
+- [x] Payment Success Handler (processPaymentSuccess in payment.service)
+- [x] Payment Failed Handler (processPaymentFailed in payment.service)
+- [x] Payment Pending Handler (processPaymentPending in payment.service)
+- [x] Settlement Scheduler
+- [x] Create Payment Link API
+- [x] Verify Payment API
+- [x] Webhook API
+- [x] Payment History API
+- [x] Payment Details API
+- [x] Cost Approval API
+- [x] Cost Reject API
+- [x] Cobbler Earnings API
+- [x] Darkworkstore Revenue API
+- [x] Settlement API
+- [x] Refund API
+- [x] Payment Report API
+- [x] Module 5 integration
+- [x] API documentation

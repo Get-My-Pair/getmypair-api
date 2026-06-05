@@ -51,6 +51,21 @@ const config = {
   /** Seeded only if AdminMaster collection is empty; override in production via .env */
   MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com',
   MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || 'Admin@123',
+
+  // Zoho Payments
+  ZOHO_API_KEY: process.env.ZOHO_API_KEY || '',
+  ZOHO_WEBHOOK_SECRET: process.env.ZOHO_WEBHOOK_SECRET || '',
+  ZOHO_PAYMENTS_BASE_URL: process.env.ZOHO_PAYMENTS_BASE_URL || 'https://payments.zoho.in/api/v1',
+  ZOHO_PAYMENT_RETURN_URL: process.env.ZOHO_PAYMENT_RETURN_URL || '',
+  ZOHO_PAYMENTS_MOCK: process.env.ZOHO_PAYMENTS_MOCK === 'true' || process.env.ZOHO_PAYMENTS_MOCK === '1',
+  API_PUBLIC_BASE_URL: process.env.API_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
+
+  // Settlement scheduler
+  SETTLEMENT_SCHEDULER_ENABLED:
+    process.env.SETTLEMENT_SCHEDULER_ENABLED !== 'false' &&
+    process.env.SETTLEMENT_SCHEDULER_ENABLED !== '0',
+  SETTLEMENT_SCHEDULER_INTERVAL_MS:
+    parseInt(process.env.SETTLEMENT_SCHEDULER_INTERVAL_MS, 10) || 60 * 60 * 1000,
 };
 
 if (config.NODE_ENV === 'production') {

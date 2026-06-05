@@ -128,6 +128,8 @@ const createServiceRequest = async (req, res) => {
           ? String(maintenancePlanLabel).trim()
           : null,
       status: 'pending',
+      workflowStatus: 'AWAITING_ACCEPTANCE',
+      paymentState: 'PAYMENT_PENDING',
       estimatedCost: estimated,
       actualCost: actualCost != null && Number(actualCost) >= 0 ? Number(actualCost) : null,
       routingType: 'dark_store',
@@ -557,6 +559,8 @@ const respondToActualCost = async (req, res) => {
     if (dec === 'reject') {
       request.status = 'cancelled';
       request.trackingState = 'cancelled';
+      request.workflowStatus = 'CLOSED';
+      request.paymentState = 'PAYMENT_PENDING';
       request.actualCostUserDecision = 'rejected';
       request.actualCostAcceptedAt = null;
       request.lifecycleEvents.push({
@@ -577,6 +581,8 @@ const respondToActualCost = async (req, res) => {
 
     request.actualCostUserDecision = 'accepted';
     request.actualCostAcceptedAt = new Date();
+    request.workflowStatus = 'PAYMENT_PENDING';
+    request.paymentState = 'PAYMENT_PENDING';
     request.lifecycleEvents.push({
       state: request.trackingState || 'request_created',
       status: request.status,
@@ -736,6 +742,16 @@ const cobblerRejectRequest = async (req, res) => {
       request.cobblerDeclinedBy.push(cobblerId);
     }
 
+    request.workflowStatus = 'COBBLER_REJECTED';
+    const declinedCount = request.cobblerDeclinedBy.length;
+    if (declinedCount >= 3) {
+      request.workflowStatus = 'ESCALATED_TO_GMP';
+      request.gmpEscalated = true;
+      request.routingType = 'dark_store';
+    } else {
+      request.workflowStatus = 'COBBLER_PENDING';
+    }
+
     request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
     request.lifecycleEvents.push({
       state: request.trackingState || 'request_created',
@@ -787,6 +803,8 @@ const cobblerAcceptRequest = async (req, res) => {
     request.cobblerId = cobblerId;
     request.cobblerProfileId = cobblerProfile._id;
     request.cobblerAssignedAt = new Date();
+    request.routingType = 'direct';
+    request.acceptedProviderType = 'cobbler';
     request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
     request.lifecycleEvents.push({
       state: request.trackingState || 'request_created',
@@ -835,7 +853,16 @@ const cobblerSetActualCost = async (req, res) => {
     request.actualCost = costNum;
     request.actualCostUserDecision = 'pending';
     request.actualCostAcceptedAt = null;
+    request.workflowStatus = 'COBBLER_COST_PENDING';
+    request.paymentState = 'COST_APPROVAL_PENDING';
     request.trackingUpdatedAt = new Date();
+
+    const paymentNotification = require('../services/paymentNotification.service');
+    await paymentNotification.notifyCostApprovalPending({
+      userId: request.userId,
+      serviceRequestId: request._id,
+      actualCost: costNum,
+    });
     request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
     request.lifecycleEvents.push({
       state: request.trackingState || 'request_created',

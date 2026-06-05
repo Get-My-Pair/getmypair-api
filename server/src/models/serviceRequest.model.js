@@ -7,6 +7,10 @@
  */
 
 const mongoose = require('mongoose');
+const {
+  workflowStatuses,
+  paymentStates,
+} = require('../constants/paymentWorkflow.constants');
 
 // Central service types schema/enum so it can be reused in validation and Swagger.
 const serviceTypes = [
@@ -236,6 +240,38 @@ const serviceRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /** Payment workflow status (routing + job lifecycle per product spec). */
+    workflowStatus: {
+      type: String,
+      enum: workflowStatuses,
+      default: 'AWAITING_ACCEPTANCE',
+      index: true,
+    },
+    paymentState: {
+      type: String,
+      enum: paymentStates,
+      default: 'PAYMENT_PENDING',
+      index: true,
+    },
+    activePaymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment',
+      default: null,
+    },
+    acceptedProviderType: {
+      type: String,
+      enum: ['dark_store', 'cobbler', 'gmp'],
+      default: null,
+    },
+    darkStoreDeclinedBy: {
+      type: [String],
+      default: [],
+    },
+    gmpEscalated: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     lifecycleEvents: {
       type: [lifecycleEventSchema],
       default: [],
@@ -263,5 +299,7 @@ module.exports = {
   serviceStatuses,
   serviceTrackingStates,
   defaultEstimatedCostByServiceType,
+  workflowStatuses,
+  paymentStates,
 };
 

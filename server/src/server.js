@@ -20,6 +20,7 @@ const connectDB = require('./config/db');
 const config = require('./config/env');
 const logger = require('./utils/logger');
 const { ensureMasterAdmin } = require('./services/adminMaster.seed');
+const { startSettlementScheduler } = require('./services/settlementScheduler.service');
 
 // Connect to database
 connectDB()
@@ -49,6 +50,8 @@ connectDB()
     } catch (error) {
       logger.warn(`Master admin seed skipped or failed: ${error.message}`);
     }
+
+    startSettlementScheduler();
 
     // Start server
     const server = app.listen(config.PORT, () => {
