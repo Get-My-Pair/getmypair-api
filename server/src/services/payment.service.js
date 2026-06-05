@@ -469,6 +469,19 @@ async function rejectCost({ serviceRequestId, userId, reason }, req) {
   return { request: request.toObject() };
 }
 
+async function getPaymentByServiceRequest(serviceRequestId, userId) {
+  const request = await ServiceRequest.findOne({ _id: serviceRequestId, userId });
+  if (!request) {
+    const err = new Error('Service request not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  const payment = await Payment.findOne({ serviceRequestId: request._id })
+    .sort({ createdAt: -1 })
+    .lean();
+  return { request: request.toObject(), payment: payment || null };
+}
+
 async function getPaymentStatus({ orderId, userId, refresh = false }, req) {
   const payment = await Payment.findOne({ orderId, userId });
   if (!payment) {
@@ -731,6 +744,7 @@ module.exports = {
   approveCost,
   rejectCost,
   listPaymentHistory,
+  getPaymentByServiceRequest,
   getPaymentStatus,
   getPaymentDetails,
   getCobblerEarnings,

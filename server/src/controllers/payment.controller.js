@@ -117,6 +117,18 @@ const paymentStatus = async (req, res) => {
   }
 };
 
+const paymentByServiceRequest = async (req, res) => {
+  try {
+    const data = await paymentService.getPaymentByServiceRequest(
+      req.params.serviceRequestId,
+      req.user._id
+    );
+    return success(res, 'Payment for service request retrieved', data);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+};
+
 const paymentDetails = async (req, res) => {
   try {
     const isAdmin = req.userRoles?.includes?.('ADMIN') || req.user?.role === 'ADMIN';
@@ -239,6 +251,7 @@ module.exports = {
   approveCost,
   rejectCost,
   paymentHistory,
+  paymentByServiceRequest,
   paymentStatus,
   paymentDetails,
   cobblerEarnings,

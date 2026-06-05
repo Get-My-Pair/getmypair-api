@@ -62,6 +62,11 @@ const historyQueryValidation = [
   handleValidationErrors,
 ];
 
+const serviceRequestIdParam = [
+  param('serviceRequestId').notEmpty().isMongoId().withMessage('serviceRequestId must be a valid id'),
+  handleValidationErrors,
+];
+
 const orderIdParam = [
   param('orderId').notEmpty().isString().withMessage('orderId is required'),
   handleValidationErrors,
@@ -83,6 +88,7 @@ module.exports = {
   settlementValidation,
   reportQueryValidation,
   historyQueryValidation,
+  serviceRequestIdParam,
   orderIdParam,
   paymentStatusQueryValidation,
   darkStoreRevenueValidation: [

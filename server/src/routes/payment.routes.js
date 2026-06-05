@@ -17,6 +17,7 @@ const {
   settlementValidation,
   reportQueryValidation,
   historyQueryValidation,
+  serviceRequestIdParam,
   orderIdParam,
   paymentStatusQueryValidation,
   darkStoreRevenueValidation,
@@ -71,6 +72,12 @@ router.get(
   orderIdParam,
   paymentStatusQueryValidation,
   paymentController.paymentStatus
+);
+router.get(
+  '/by-service-request/:serviceRequestId',
+  roleMiddleware(['USER']),
+  serviceRequestIdParam,
+  paymentController.paymentByServiceRequest
 );
 router.get(
   '/cobbler/earnings',
