@@ -469,6 +469,23 @@ async function rejectCost({ serviceRequestId, userId, reason }, req) {
   return { request: request.toObject() };
 }
 
+async function getPaymentStatus({ orderId, userId, refresh = false }, req) {
+  const payment = await Payment.findOne({ orderId, userId });
+  if (!payment) {
+    const err = new Error('Payment not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (refresh && payment.status !== 'PAYMENT_SUCCESS') {
+    return verifyPayment({ orderId, userId }, req);
+  }
+  return {
+    payment: payment.toObject(),
+    verified: payment.status === 'PAYMENT_SUCCESS',
+    fromCache: true,
+  };
+}
+
 async function listPaymentHistory(userId, { page = 1, limit = 20 }) {
   const skip = (page - 1) * limit;
   const [items, total] = await Promise.all([
@@ -714,6 +731,7 @@ module.exports = {
   approveCost,
   rejectCost,
   listPaymentHistory,
+  getPaymentStatus,
   getPaymentDetails,
   getCobblerEarnings,
   getDarkStoreRevenue,

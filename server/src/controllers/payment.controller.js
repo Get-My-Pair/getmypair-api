@@ -104,6 +104,19 @@ const paymentHistory = async (req, res) => {
   }
 };
 
+const paymentStatus = async (req, res) => {
+  try {
+    const refresh = req.query.refresh === 'true' || req.query.refresh === '1';
+    const data = await paymentService.getPaymentStatus(
+      { orderId: req.params.orderId, userId: req.user._id, refresh },
+      req
+    );
+    return success(res, 'Payment status retrieved', data);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+};
+
 const paymentDetails = async (req, res) => {
   try {
     const isAdmin = req.userRoles?.includes?.('ADMIN') || req.user?.role === 'ADMIN';
@@ -226,6 +239,7 @@ module.exports = {
   approveCost,
   rejectCost,
   paymentHistory,
+  paymentStatus,
   paymentDetails,
   cobblerEarnings,
   darkStoreRevenue,

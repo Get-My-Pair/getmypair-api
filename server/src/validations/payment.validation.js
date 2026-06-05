@@ -62,6 +62,16 @@ const historyQueryValidation = [
   handleValidationErrors,
 ];
 
+const orderIdParam = [
+  param('orderId').notEmpty().isString().withMessage('orderId is required'),
+  handleValidationErrors,
+];
+
+const paymentStatusQueryValidation = [
+  query('refresh').optional().isIn(['true', 'false', '1', '0']),
+  handleValidationErrors,
+];
+
 module.exports = {
   createPaymentOrderValidation,
   createPaymentLinkValidation,
@@ -73,6 +83,8 @@ module.exports = {
   settlementValidation,
   reportQueryValidation,
   historyQueryValidation,
+  orderIdParam,
+  paymentStatusQueryValidation,
   darkStoreRevenueValidation: [
     param('darkStoreId').notEmpty().isString(),
     query('from').optional().isISO8601(),
