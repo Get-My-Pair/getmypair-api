@@ -10,6 +10,7 @@ const WebhookLog = require('../models/webhookLog.model');
 const Revenue = require('../models/revenue.model');
 const Invoice = require('../models/invoice.model');
 const { ServiceRequest } = require('../models/serviceRequest.model');
+const User = require('../models/user.model');
 const { calculateRevenueSplit } = require('./commission.service');
 const zohoPayment = require('./zohoPayment.service');
 const { logPaymentAudit } = require('./paymentAudit.service');
@@ -110,15 +111,27 @@ async function createPaymentOrder({ serviceRequestId, userId }, req) {
   return { payment: payment.toObject(), zohoOrder };
 }
 
+async function resolveZohoCustomer(userId) {
+  const user = await User.findById(userId).lean();
+  if (!user) return {};
+  return {
+    name: user.name || undefined,
+    email: user.email || undefined,
+    phone: user.mobile || undefined,
+  };
+}
+
 async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req) {
   const request = await getPayableRequest(serviceRequestId, userId);
   const payment = await findOrCreatePendingPayment(request);
+  const customer = await resolveZohoCustomer(userId);
 
   const link = await zohoPayment.createPaymentLink({
     orderId: payment.orderId,
     amount: payment.amount,
     currency: payment.currency,
     redirectUrl,
+    customer,
   });
 
   payment.paymentLinkUrl = link.url;
