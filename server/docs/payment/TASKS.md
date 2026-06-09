@@ -35,3 +35,13 @@ Track implementation commits for payment workflow (API + database).
 - [x] Payment Report API
 - [x] Module 5 integration
 - [x] API documentation
+- [x] Darkworkstore Cost Approval Screen (admin UI + API)
+- [x] Darkworkstore Payment Status Monitor
+- [x] Darkworkstore Paid Jobs List
+- [x] Darkworkstore Unpaid Jobs List
+- [x] Darkworkstore Revenue Dashboard
+- [x] Darkworkstore Transaction Details
+- [x] Darkworkstore Service Payment History
+- [x] Darkworkstore Settlement Dashboard
+- [x] Darkworkstore Payment Reports (monthly)
+- [x] Darkworkstore Payment Notifications

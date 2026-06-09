@@ -903,3 +903,135 @@ table.data tr:hover td {
     grid-template-columns: 1fr;
   }
 }
+
+/* Payments module */
+.pay-intro {
+  margin: 0 0 12px;
+}
+
+.pay-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pay-filters label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pay-input {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  min-width: 160px;
+}
+
+.pay-input-sm {
+  min-width: 100px;
+  display: inline-block;
+  margin-top: 0;
+}
+
+.pay-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pay-tab {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.pay-tab:hover {
+  border-color: var(--primary);
+}
+
+.pay-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.pay-panel {
+  animation: payFade 0.2s ease;
+}
+
+@keyframes payFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pay-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pay-summary-row {
+  margin-bottom: 12px;
+}
+
+.pay-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.pay-pre {
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.pay-pre-inline {
+  font-size: 0.72rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 280px;
+}
+
+.pill-ok {
+  background: rgba(13, 148, 136, 0.15);
+  color: var(--success);
+}
+
+.pill-warn {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+.pill-bad {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .pay-split {
+    grid-template-columns: 1fr;
+  }
+}
