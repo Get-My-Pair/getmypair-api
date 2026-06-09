@@ -3,7 +3,7 @@
 Reference: route mounts in `server/src/app.js` and definitions in `server/src/routes/*.routes.js`.  
 Line numbers point to the **route file** where `router.<method>(...)` is declared.
 
-**Narrative docs:** [README.md](README.md) · [Module 1](MODULE_1_DOCUMENTATION.md) · [Module 2](MODULE_2_DOCUMENTATION.md) · [Module 3](MODULE_3_DOCUMENTATION.md) · [Module 4](MODULE_4_DOCUMENTATION.md) · [Admin dashboard](ADMIN_DASHBOARD.md)
+**Narrative docs:** [README.md](README.md) · [Module 1](MODULE_1_DOCUMENTATION.md) · [Module 2](MODULE_2_DOCUMENTATION.md) · [Module 3](MODULE_3_DOCUMENTATION.md) · [Module 4](MODULE_4_DOCUMENTATION.md) · [Module 5 — Payment](MODULE_5_PAYMENT.md) · [Admin dashboard](ADMIN_DASHBOARD.md)
 
 ---
 
@@ -186,6 +186,31 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | POST | `/api/service/cobbler/accept` | 101 | `cobblerAcceptRequest` |
 | POST | `/api/service/cobbler/reject` | 107 | `cobblerRejectRequest` |
 | POST | `/api/service/cobbler/set-actual-cost` | 113 | `cobblerSetActualCost` |
+
+---
+
+## Module 5 — Payments (Zoho)
+
+**Base:** `/api/payment`  
+**File:** `server/src/routes/payment.routes.js`  
+**Doc:** [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md)
+
+| Method | Full path | Description |
+|--------|-----------|-------------|
+| POST | `/api/payment/webhook/zoho` | Zoho callback (mounted in `app.js`) |
+| POST | `/api/payment/order` | Create payment order |
+| POST | `/api/payment/link` | Generate payment link |
+| POST | `/api/payment/verify` | Verify payment |
+| POST | `/api/payment/cost/approve` | User cost approval |
+| POST | `/api/payment/cost/reject` | User cost rejection |
+| GET | `/api/payment/history` | User transactions |
+| GET | `/api/payment/:paymentId` | Payment details |
+| GET | `/api/payment/cobbler/earnings` | Cobbler earnings |
+| GET | `/api/payment/darkstore/:darkStoreId/revenue` | Dark store revenue |
+| POST | `/api/payment/settlement/process` | Process settlement |
+| POST | `/api/payment/refund` | Refund |
+| GET | `/api/payment/admin/report` | Payment report |
+| GET | `/api/payment/admin/commission-preview` | Commission split preview |
 
 ---
 
