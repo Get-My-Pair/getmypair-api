@@ -66,7 +66,7 @@ const deliveryProfileSchema = new mongoose.Schema(
         vehicleType: {
             type: String,
             trim: true,
-            enum: ['bicycle', 'bike', 'scooter', 'auto', 'car', 'van', 'other'],
+            enum: ['bicycle', 'bike', 'scooter', 'auto', 'car', 'van', 'other', null],
             default: null,
         },
         vehicleNumber: {

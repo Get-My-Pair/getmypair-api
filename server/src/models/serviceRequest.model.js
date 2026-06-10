@@ -260,7 +260,8 @@ const serviceRequestSchema = new mongoose.Schema(
     },
     acceptedProviderType: {
       type: String,
-      enum: ['dark_store', 'cobbler', 'gmp'],
+      // null must be in the enum list, otherwise Mongoose rejects the explicit null default
+      enum: ['dark_store', 'cobbler', 'gmp', null],
       default: null,
     },
     darkStoreDeclinedBy: {
