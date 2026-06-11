@@ -23,8 +23,13 @@ const {
   darkStoreRevenueValidation,
 } = require('../validations/payment.validation');
 
-/** Mock checkout page (dev) — webhook mounted in app.js before JSON parser */
-router.get('/mock-checkout', paymentController.mockCheckout);
+const config = require('../config/env');
+
+/** Public — Zoho return URL (webhook mounted in app.js) */
+router.get('/callback', paymentController.paymentCallback);
+if (config.ZOHO_PAYMENTS_MOCK) {
+  router.get('/mock-checkout', paymentController.mockCheckout);
+}
 
 router.use(authMiddleware);
 

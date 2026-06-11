@@ -210,6 +210,57 @@ const paymentReport = async (req, res) => {
   }
 };
 
+/** Zoho return URL — customer redirected after checkout (no auth). */
+const paymentCallback = async (req, res) => {
+  try {
+    if (req.query.code && !req.query.payment_link_id) {
+      return res.status(200).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Zoho OAuth</title></head>
+<body style="font-family:system-ui;padding:24px;max-width:640px;margin:0 auto;">
+  <h1>Zoho OAuth authorization received</h1>
+  <p>Copy the authorization code below and run on your server:</p>
+  <pre style="background:#f4f4f4;padding:12px;overflow:auto;">node scripts/zoho-oauth.js exchange --code=${String(req.query.code).replace(/</g, '&lt;')}</pre>
+</body></html>`);
+    }
+
+    const data = await paymentService.handlePaymentCallback(req.query, req);
+    const paid = data.callbackStatus === 'paid' || data.payment?.status === 'PAYMENT_SUCCESS';
+    const orderId = data.payment?.orderId || req.query.payment_link_reference || '';
+    const title = paid ? 'Payment successful' : 'Payment status received';
+    const message = paid
+      ? 'Thank you! Your payment was received. You can close this window and return to the app.'
+      : 'Payment is being processed. Return to the app and tap “I completed payment — verify”.';
+
+    return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 32px 20px; background: #f6f8fa; color: #1a1a1a; }
+    .card { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; color: ${paid ? '#0d7a3f' : '#b45309'}; }
+    p { line-height: 1.5; margin: 0; color: #444; }
+    .meta { margin-top: 16px; font-size: 0.85rem; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="card" id="payment-success">
+    <h1>${title}</h1>
+    <p>${message}</p>
+    ${orderId ? `<p class="meta">Order: ${orderId}</p>` : ''}
+  </div>
+</body>
+</html>`);
+  } catch (err) {
+    const code = err.statusCode || 500;
+    logger.error(`Payment callback error: ${err.message}`);
+    return res.status(code).send(`<!DOCTYPE html>
+<html><body><h2>Payment callback error</h2><p>${err.message}</p></body></html>`);
+  }
+};
+
 /** Dev mock checkout — simulates Zoho redirect success */
 const mockCheckout = async (req, res) => {
   try {
@@ -259,6 +310,7 @@ module.exports = {
   processSettlement,
   createRefund,
   paymentReport,
+  paymentCallback,
   mockCheckout,
   commissionPreview,
 };

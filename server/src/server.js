@@ -21,6 +21,7 @@ const config = require('./config/env');
 const logger = require('./utils/logger');
 const { ensureMasterAdmin } = require('./services/adminMaster.seed');
 const { startSettlementScheduler } = require('./services/settlementScheduler.service');
+const { logZohoConfigStatus } = require('./config/zohoEnv');
 
 // Connect to database
 connectDB()
@@ -52,6 +53,7 @@ connectDB()
     }
 
     startSettlementScheduler();
+    logZohoConfigStatus();
 
     // Start server
     const server = app.listen(config.PORT, () => {

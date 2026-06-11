@@ -64,6 +64,7 @@ async function findOrCreatePendingPayment(request) {
     serviceRequestId: request._id,
     userId: request.userId,
     amount: request.actualCost,
+    currency: zohoPayment.normalizeCurrency('INR'),
     providerType,
     cobblerId: request.cobblerId || null,
     darkStoreId: request.darkStoreId || null,
@@ -85,6 +86,10 @@ async function findOrCreatePendingPayment(request) {
 async function createPaymentOrder({ serviceRequestId, userId }, req) {
   const request = await getPayableRequest(serviceRequestId, userId);
   const payment = await findOrCreatePendingPayment(request);
+  if (!payment.currency) {
+    payment.currency = zohoPayment.normalizeCurrency('INR');
+    await payment.save();
+  }
   const zohoOrder = await zohoPayment.createPaymentOrder({
     orderId: payment.orderId,
     amount: payment.amount,
@@ -114,16 +119,22 @@ async function createPaymentOrder({ serviceRequestId, userId }, req) {
 async function resolveZohoCustomer(userId) {
   const user = await User.findById(userId).lean();
   if (!user) return {};
+  const phone = String(user.mobile || '').replace(/\D/g, '').slice(-10);
   return {
     name: user.name || undefined,
     email: user.email || undefined,
-    phone: user.mobile || undefined,
+    phone: phone || undefined,
+    phone_country_code: 'IN',
   };
 }
 
 async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req) {
   const request = await getPayableRequest(serviceRequestId, userId);
   const payment = await findOrCreatePendingPayment(request);
+  if (!payment.currency) {
+    payment.currency = zohoPayment.normalizeCurrency('INR');
+    await payment.save();
+  }
   const customer = await resolveZohoCustomer(userId);
 
   const link = await zohoPayment.createPaymentLink({
@@ -132,10 +143,11 @@ async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req)
     currency: payment.currency,
     redirectUrl,
     customer,
+    description: `GetMyPair service payment #${String(request._id).slice(-8)}`,
   });
 
   payment.paymentLinkUrl = link.url;
-  payment.zohoPaymentId = link.payment_link_id || payment.zohoPaymentId;
+  payment.zohoOrderId = link.payment_link_id || payment.zohoOrderId;
   payment.status = 'PAYMENT_INITIATED';
   await payment.save();
 
@@ -172,12 +184,12 @@ async function verifyPayment({ orderId, userId }, req) {
   const zohoResult = await zohoPayment.verifyPayment({
     orderId: payment.orderId,
     zohoPaymentId: payment.zohoPaymentId,
+    zohoPaymentLinkId: payment.zohoOrderId || payment.zohoPaymentId,
   });
 
-  const paid =
-    ['paid', 'success', 'captured', 'completed'].includes(
-      String(zohoResult.status || zohoResult.payment_status || '').toLowerCase()
-    ) || zohoResult.mock === true;
+  const paid = zohoPayment.isPaidStatus(
+    zohoResult.status || zohoResult.payment_status
+  );
 
   if (paid && payment.status !== 'PAYMENT_SUCCESS') {
     return processPaymentSuccess(payment, zohoResult, req);
@@ -379,7 +391,7 @@ async function handleZohoWebhook(rawBody, headers, req) {
   try {
     const status = String(payload.status || payload.payment_status || '').toLowerCase();
     if (payment) {
-      if (['paid', 'success', 'captured', 'completed'].includes(status)) {
+      if (zohoPayment.isPaidStatus(status)) {
         await processPaymentSuccess(payment, payload, req);
       } else if (['failed', 'failure', 'declined'].includes(status)) {
         await processPaymentFailed(payment, payload.failure_reason || status, req);
@@ -398,6 +410,75 @@ async function handleZohoWebhook(rawBody, headers, req) {
   }
 
   return { processed: log.processed, webhookLogId: log._id };
+}
+
+/**
+ * Zoho return URL handler — customer redirected here after checkout.
+ * Query: payment_link_id, payment_id, amount, status, payment_link_reference, signature
+ */
+async function handlePaymentCallback(query = {}, req = null) {
+  const orderId =
+    query.payment_link_reference ||
+    query.reference_id ||
+    query.orderId ||
+    query.order_id;
+
+  const signatureValid = zohoPayment.verifyReturnUrlSignature(query, query.signature);
+
+  if (!signatureValid && process.env.NODE_ENV === 'production') {
+    const err = new Error('Invalid payment callback signature');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const status = String(query.status || '').toLowerCase();
+  let payment = orderId ? await Payment.findOne({ orderId }) : null;
+
+  if (!payment && query.payment_link_id) {
+    payment = await Payment.findOne({ zohoOrderId: query.payment_link_id });
+  }
+
+  if (!payment) {
+    const err = new Error('Payment not found for callback');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (query.payment_id) {
+    payment.zohoPaymentId = query.payment_id;
+  }
+  if (query.payment_link_id && !payment.zohoOrderId) {
+    payment.zohoOrderId = query.payment_link_id;
+  }
+
+  if (zohoPayment.isPaidStatus(status)) {
+    const result = await processPaymentSuccess(
+      payment,
+      {
+        payment_id: query.payment_id,
+        payment_link_id: query.payment_link_id,
+        amount: query.amount,
+        status: query.status,
+        reference_id: orderId,
+        signatureValid,
+        source: 'return_url',
+      },
+      req
+    );
+    return { ...result, callbackStatus: 'paid', signatureValid };
+  }
+
+  if (['failed', 'failure', 'declined'].includes(status)) {
+    const result = await processPaymentFailed(payment, status, req);
+    return { ...result, callbackStatus: 'failed', signatureValid };
+  }
+
+  await payment.save();
+  return {
+    payment: payment.toObject(),
+    callbackStatus: status || 'pending',
+    signatureValid,
+  };
 }
 
 async function approveCost({ serviceRequestId, userId }, req) {
@@ -483,16 +564,22 @@ async function rejectCost({ serviceRequestId, userId, reason }, req) {
 }
 
 async function getPaymentByServiceRequest(serviceRequestId, userId) {
-  const request = await ServiceRequest.findOne({ _id: serviceRequestId, userId });
+  const request = await ServiceRequest.findOne({ _id: serviceRequestId, userId }).lean();
   if (!request) {
-    const err = new Error('Service request not found');
-    err.statusCode = 404;
-    throw err;
+    return {
+      request: null,
+      payment: null,
+      serviceRequestFound: false,
+    };
   }
   const payment = await Payment.findOne({ serviceRequestId: request._id })
     .sort({ createdAt: -1 })
     .lean();
-  return { request: request.toObject(), payment: payment || null };
+  return {
+    request,
+    payment: payment || null,
+    serviceRequestFound: true,
+  };
 }
 
 async function getPaymentStatus({ orderId, userId, refresh = false }, req) {
@@ -754,6 +841,7 @@ module.exports = {
   processPaymentFailed,
   processPaymentPending,
   handleZohoWebhook,
+  handlePaymentCallback,
   approveCost,
   rejectCost,
   listPaymentHistory,
