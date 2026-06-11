@@ -82,6 +82,51 @@ function printAuthUrl() {
   console.log('Then run:\n  node scripts/zoho-oauth.js exchange --code=YOUR_CODE\n');
 }
 
+/**
+ * Self Client grant-code exchange (no redirect_uri).
+ * @see https://www.zoho.com/in/payments/api/v1/oauth/
+ */
+async function exchangeSelfClientCode(code) {
+  const clientId = requireEnv('ZOHO_CLIENT_ID');
+  const clientSecret = requireEnv('ZOHO_CLIENT_SECRET');
+  const accountsUrl = (process.env.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.in').replace(
+    /\/$/,
+    ''
+  );
+
+  const params = new URLSearchParams({
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'authorization_code',
+  });
+
+  const res = await fetch(`${accountsUrl}/oauth/v2/token?${params.toString()}`, {
+    method: 'POST',
+  });
+  const body = await res.json();
+  if (!res.ok || body.error) {
+    console.error('Self Client token exchange failed:', body);
+    if (body.error === 'invalid_client') {
+      console.error(
+        '\nTip: ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET must be from the SAME Self Client\n' +
+          'that generated the grant code (Client Secret tab in api-console.zoho.in).'
+      );
+    }
+    process.exit(1);
+  }
+
+  writeRefreshTokenToEnv(body.refresh_token);
+
+  console.log('\nSaved to server/.env:\n');
+  console.log(`ZOHO_CLIENT_ID=${clientId}`);
+  console.log(`ZOHO_CLIENT_SECRET=${clientSecret}`);
+  console.log(`ZOHO_REFRESH_TOKEN=${body.refresh_token}`);
+  console.log('ZOHO_PAYMENTS_MOCK=false');
+  console.log('\nAlso add these to Render environment variables, then redeploy.');
+  console.log('\nVerify with: node scripts/zoho-oauth.js test');
+}
+
 async function exchangeCode(code) {
   const clientId = requireEnv('ZOHO_CLIENT_ID');
   const clientSecret = requireEnv('ZOHO_CLIENT_SECRET');
@@ -218,6 +263,15 @@ if (command === 'auth-url') {
     console.error(err.message);
     process.exit(1);
   });
+} else if (command === 'exchange-self') {
+  if (!codeArg) {
+    console.error('Usage: node scripts/zoho-oauth.js exchange-self --code=1000.xxx');
+    process.exit(1);
+  }
+  exchangeSelfClientCode(codeArg).catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
 } else if (command === 'test') {
   testAuth().catch((err) => {
     console.error(err.message);
@@ -227,6 +281,6 @@ if (command === 'auth-url') {
   printStatus();
 } else {
   console.error(`Unknown command: ${command}`);
-  console.log('\nCommands: status | auth-url | exchange --code=... | test');
+  console.log('\nCommands: status | auth-url | exchange --code=... | exchange-self --code=... | test');
   process.exit(1);
 }
