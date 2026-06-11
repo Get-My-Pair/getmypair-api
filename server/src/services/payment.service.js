@@ -417,6 +417,15 @@ async function handleZohoWebhook(rawBody, headers, req) {
  * Query: payment_link_id, payment_id, amount, status, payment_link_reference, signature
  */
 async function handlePaymentCallback(query = {}, req = null) {
+  const zohoOAuth = require('./zohoOAuth.service');
+  if (zohoOAuth.isOAuthRedirectQuery(query)) {
+    const err = new Error(
+      'OAuth redirect received — redeploy the latest API so /api/payment/callback handles Zoho OAuth automatically.'
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+
   const orderId =
     query.payment_link_reference ||
     query.reference_id ||

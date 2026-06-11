@@ -11,10 +11,30 @@
  * 3) Test refresh + payment link auth:
  *    node scripts/zoho-oauth.js test
  */
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const fs = require('fs');
+const path = require('path');
+
+const ENV_PATH = path.join(__dirname, '..', '.env');
+require('dotenv').config({ path: ENV_PATH });
 
 const config = require('../src/config/env');
 const zohoOAuth = require('../src/services/zohoOAuth.service');
+
+function writeRefreshTokenToEnv(refreshToken) {
+  let content = fs.readFileSync(ENV_PATH, 'utf8');
+  const line = `ZOHO_REFRESH_TOKEN=${refreshToken}`;
+  if (/^ZOHO_REFRESH_TOKEN=.*$/m.test(content)) {
+    content = content.replace(/^ZOHO_REFRESH_TOKEN=.*$/m, line);
+  } else {
+    content += `\n${line}\n`;
+  }
+  if (/^ZOHO_PAYMENTS_MOCK=.*$/m.test(content)) {
+    content = content.replace(/^ZOHO_PAYMENTS_MOCK=.*$/m, 'ZOHO_PAYMENTS_MOCK=false');
+  }
+  fs.writeFileSync(ENV_PATH, content, 'utf8');
+  process.env.ZOHO_REFRESH_TOKEN = refreshToken;
+  process.env.ZOHO_PAYMENTS_MOCK = 'false';
+}
 
 const SCOPES = [
   'ZohoPay.payments.CREATE',
@@ -88,11 +108,13 @@ async function exchangeCode(code) {
     process.exit(1);
   }
 
-  console.log('\nAdd this to server/.env:\n');
+  writeRefreshTokenToEnv(body.refresh_token);
+
+  console.log('\nSaved to server/.env:\n');
   console.log(`ZOHO_REFRESH_TOKEN=${body.refresh_token}`);
-  console.log(`ZOHO_PAYMENTS_MOCK=false`);
-  console.log('\nAccess token (expires in ~1 hour — server refreshes automatically):');
-  console.log(body.access_token);
+  console.log('ZOHO_PAYMENTS_MOCK=false');
+  console.log('\nAlso add ZOHO_REFRESH_TOKEN to Render environment variables, then redeploy.');
+  console.log('\nVerify with: node scripts/zoho-oauth.js test');
 }
 
 function mask(value) {
@@ -154,6 +176,32 @@ async function testAuth() {
 
   const token = await zohoOAuth.getAccessToken({ forceRefresh: true });
   console.log('OAuth access token OK (first 12 chars):', `${token.slice(0, 12)}…`);
+
+  const accountId = requireEnv('ZOHO_ACCOUNT_ID');
+  const res = await fetch(
+    `https://payments.zoho.in/api/v1/paymentlinks?account_id=${encodeURIComponent(accountId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: 1,
+        currency: 'INR',
+        reference_id: `oauth-test-${Date.now()}`,
+        description: 'GetMyPair OAuth connectivity test',
+        return_url: requireEnv('ZOHO_PAYMENT_RETURN_URL'),
+      }),
+    }
+  );
+  const body = await res.json();
+  if (!res.ok) {
+    console.error('Payment link test failed:', body);
+    process.exit(1);
+  }
+  const link = body.payment_links || body.payment_link || body;
+  console.log('Payment link API OK — test URL created:', link.url || '(url in response)');
 }
 
 const [command, ...rest] = process.argv.slice(2);

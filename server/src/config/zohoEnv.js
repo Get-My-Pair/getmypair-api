@@ -41,7 +41,15 @@ function getZohoConfigStatus() {
     );
   }
 
-  if (!refreshToken && !zohoOAuth.hasStaticAccessToken()) {
+  const refreshLooksPlaceholder =
+    refreshToken &&
+    (refreshToken.length > 120 || /1a1b1c1d1e1f1g/i.test(refreshToken));
+
+  if (refreshLooksPlaceholder) {
+    issues.push(
+      'ZOHO_REFRESH_TOKEN is a placeholder — run: node scripts/zoho-oauth.js auth-url and exchange the code for a real token.'
+    );
+  } else if (!refreshToken && !zohoOAuth.hasStaticAccessToken()) {
     issues.push(
       'ZOHO_REFRESH_TOKEN is missing. Generate it once via Zoho OAuth (see server/scripts/zoho-oauth.js).'
     );

@@ -2,6 +2,7 @@
  * Module 5 — Payment & Zoho workflow APIs
  */
 const paymentService = require('../services/payment.service');
+const zohoOAuth = require('../services/zohoOAuth.service');
 const { success, error: errorResponse } = require('../utils/response');
 const logger = require('../utils/logger');
 const config = require('../config/env');
@@ -210,17 +211,35 @@ const paymentReport = async (req, res) => {
   }
 };
 
-/** Zoho return URL — customer redirected after checkout (no auth). */
+/** Zoho return URL — OAuth setup or customer redirected after checkout (no auth). */
 const paymentCallback = async (req, res) => {
   try {
-    if (req.query.code && !req.query.payment_link_id) {
-      return res.status(200).send(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8" /><title>Zoho OAuth</title></head>
-<body style="font-family:system-ui;padding:24px;max-width:640px;margin:0 auto;">
-  <h1>Zoho OAuth authorization received</h1>
-  <p>Copy the authorization code below and run on your server:</p>
-  <pre style="background:#f4f4f4;padding:12px;overflow:auto;">node scripts/zoho-oauth.js exchange --code=${String(req.query.code).replace(/</g, '&lt;')}</pre>
+    if (zohoOAuth.isOAuthRedirectQuery(req.query)) {
+      try {
+        const { refreshToken } = await zohoOAuth.exchangeAuthorizationCode(req.query.code);
+        const safeToken = String(refreshToken).replace(/</g, '&lt;');
+        return res.status(200).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Zoho OAuth success</title></head>
+<body style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto;line-height:1.5;">
+  <h1 style="color:#0d7a3f;">Zoho OAuth connected</h1>
+  <p>Refresh token received. Payments will work on this server instance immediately.</p>
+  <p><strong>Persist on Render:</strong> open Render → Environment → add:</p>
+  <pre style="background:#f4f4f4;padding:12px;overflow:auto;word-break:break-all;">ZOHO_REFRESH_TOKEN=${safeToken}
+ZOHO_PAYMENTS_MOCK=false</pre>
+  <p>Then redeploy so the token survives restarts.</p>
+  <p>Verify locally: <code>node scripts/zoho-oauth.js test</code></p>
 </body></html>`);
+      } catch (oauthErr) {
+        const safeCode = String(req.query.code).replace(/</g, '&lt;');
+        return res.status(200).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Zoho OAuth</title></head>
+<body style="font-family:system-ui;padding:24px;max-width:720px;margin:0 auto;">
+  <h1>Zoho OAuth authorization received</h1>
+  <p>Auto-exchange failed: ${String(oauthErr.message).replace(/</g, '&lt;')}</p>
+  <p>Run on your PC within 2 minutes:</p>
+  <pre style="background:#f4f4f4;padding:12px;overflow:auto;">node scripts/zoho-oauth.js exchange --code=${safeCode}</pre>
+</body></html>`);
+      }
     }
 
     const data = await paymentService.handlePaymentCallback(req.query, req);
