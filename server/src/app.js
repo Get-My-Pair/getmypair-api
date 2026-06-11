@@ -28,6 +28,7 @@ const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const userProfileRoutes = require('./routes/userProfile.routes');
+const userNotificationRoutes = require('./routes/userNotification.routes');
 const cobblerProfileRoutes = require('./routes/cobblerProfile.routes');
 const cobblerHomeRoutes = require('./routes/cobblerHome.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
@@ -175,6 +176,7 @@ app.use('/api/auth', authRoutes);
 
 // Module 2: Profile APIs
 app.use('/api/user/profile', userProfileRoutes);
+app.use('/api/user/notifications', userNotificationRoutes);
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
 app.use('/api/cobbler/home', cobblerHomeRoutes);
 app.use('/api/delivery/profile', deliveryProfileRoutes);

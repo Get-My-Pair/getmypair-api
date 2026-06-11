@@ -99,7 +99,7 @@ async function updateActualCost(serviceRequestId, actualCost, adminId, req) {
   request.paymentState = 'COST_APPROVAL_PENDING';
   await request.save();
 
-  await paymentNotification.notifyCostApprovalPending({
+  await paymentNotification.notifyDarkstoreCostUpdated({
     userId: request.userId,
     serviceRequestId: request._id,
     actualCost: n,

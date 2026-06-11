@@ -573,6 +573,8 @@ const respondToActualCost = async (req, res) => {
         timestamp: new Date(),
       });
       await request.save();
+      const userNotificationService = require('../services/userNotification.service');
+      await userNotificationService.markReadByServiceRequest(userId, requestId);
       logger.info(`User rejected actual cost for request=${requestId}`);
       return success(res, 'Service request cancelled — final cost rejected', {
         request: request.toObject(),
@@ -593,6 +595,8 @@ const respondToActualCost = async (req, res) => {
       timestamp: new Date(),
     });
     await request.save();
+    const userNotificationService = require('../services/userNotification.service');
+    await userNotificationService.markReadByServiceRequest(userId, requestId);
     logger.info(`User accepted actual cost for request=${requestId}`);
     return success(res, 'Final service cost accepted — workflow may continue', {
       request: request.toObject(),

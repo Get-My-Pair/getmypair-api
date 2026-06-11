@@ -679,6 +679,8 @@ const patchServiceRequestWorkflow = async (req, res) => {
       assignmentNotes.push(`estimatedCost=${parsed.value === null ? 'cleared' : parsed.value}`);
     }
 
+    let actualCostChangedToPending = false;
+
     if (Object.prototype.hasOwnProperty.call(body, 'actualCost')) {
       const parsed = parseMoneyField(bodyAct, 'actualCost');
       if (!parsed.ok) {
@@ -692,6 +694,9 @@ const patchServiceRequestWorkflow = async (req, res) => {
       } else if (prevAct !== parsed.value) {
         request.actualCostUserDecision = 'pending';
         request.actualCostAcceptedAt = null;
+        request.workflowStatus = 'COBBLER_COST_PENDING';
+        request.paymentState = 'COST_APPROVAL_PENDING';
+        actualCostChangedToPending = true;
       }
       assignmentNotes.push(`actualCost=${parsed.value === null ? 'cleared' : parsed.value}`);
     }
@@ -863,6 +868,19 @@ const patchServiceRequestWorkflow = async (req, res) => {
     });
 
     await request.save();
+
+    if (actualCostChangedToPending && request.actualCost != null) {
+      const paymentNotification = require('../services/paymentNotification.service');
+      const notify = request.darkStoreId
+        ? paymentNotification.notifyDarkstoreCostUpdated
+        : paymentNotification.notifyCostApprovalPending;
+      await notify({
+        userId: request.userId,
+        serviceRequestId: request._id,
+        actualCost: request.actualCost,
+      });
+    }
+
     const populated = await ServiceRequest.findById(request._id)
       .populate('userId', 'name mobile email')
       .populate('articleId', 'brand model')
