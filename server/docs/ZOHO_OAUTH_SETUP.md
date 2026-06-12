@@ -186,17 +186,109 @@ Or deploy latest API — `/api/payment/callback` auto-exchanges OAuth redirects.
 
 ---
 
-## Local development (mock mode)
+## Testing options (choose one)
 
-While waiting for Zoho account activation:
+GetMyPair supports **three** payment test modes:
+
+| Mode | When to use | Real Zoho checkout? | Code changes? |
+|------|-------------|---------------------|---------------|
+| **A. Internal mock** | Fastest local/dev testing | No — our `/mock-checkout` page | Set `ZOHO_PAYMENTS_MOCK=true` only |
+| **B. Zoho Sandbox** | Full Zoho flow (cards, UPI, webhooks) | Yes — simulated, no real money | Sandbox `.env` + Zoho enables sandbox org |
+| **C. Live production** | Real customer payments | Yes — real money | Current live credentials + Zoho enables account |
+
+**Current integration status:** OAuth for **live** is configured correctly. Live payment links fail with `payments_not_enabled` until Zoho activates the production account. **No API code rewrite needed** — use mock (A) or sandbox (B) while waiting.
+
+---
+
+## A. Internal mock mode (ready now)
+
+No Zoho account required. Use for app flow testing (pay now → success → pickup).
 
 ```env
 ZOHO_PAYMENTS_MOCK=true
 ```
 
-Payment links use `/api/payment/mock-checkout?orderId=...` — no live Zoho API calls.
+Payment links point to `/api/payment/mock-checkout?orderId=...` on your API.
 
-Set `ZOHO_PAYMENTS_MOCK=false` for production.
+Restart the server after changing `.env`. Set `ZOHO_PAYMENTS_MOCK=false` before production.
+
+---
+
+## B. Zoho Payments Sandbox
+
+Official test environment: [Sandbox overview](https://www.zoho.com/in/payments/developerdocs/sandbox/) · [Test cards/UPI](https://www.zoho.com/in/payments/developerdocs/sandbox/testing/)
+
+> **Contact Zoho support** to enable Sandbox for your org. Portal: [paymentssandbox.zoho.in](https://paymentssandbox.zoho.in/)
+
+### Sandbox vs internal mock
+
+| | Internal mock | Zoho Sandbox |
+|---|---------------|--------------|
+| Setup | One env flag | Separate sandbox org + credentials from Zoho |
+| Checkout UI | Our HTML page | Real Zoho hosted checkout |
+| Test cards (4111…) | N/A | Yes |
+| Webhooks | N/A | Yes — configure in sandbox portal |
+| OAuth scopes | N/A | `ZohoPaySandbox.payments.*` |
+
+### Sandbox `.env` template
+
+Copy `server/.env.sandbox.example` to `.env` (or use a separate Render **staging** service) and fill sandbox values from [paymentssandbox.zoho.in](https://paymentssandbox.zoho.in/):
+
+```env
+ZOHO_PAYMENTS_MOCK=false
+ZOHO_PAYMENTS_BASE_URL=https://paymentssandbox.zoho.in/api/v1
+ZOHO_ACCOUNT_ID=<sandbox account id>
+ZOHO_CLIENT_ID=<sandbox self client id>
+ZOHO_CLIENT_SECRET=<sandbox self client secret>
+ZOHO_REFRESH_TOKEN=<sandbox refresh token>
+ZOHO_REDIRECT_URI=https://getmypair-api.onrender.com/api/payment/callback
+ZOHO_PAYMENT_RETURN_URL=https://getmypair-api.onrender.com/api/payment/callback
+ZOHO_ACCOUNTS_URL=https://accounts.zoho.in
+```
+
+### Sandbox OAuth (Self Client)
+
+1. In **sandbox** API console, create **Self Client**
+2. **Generate Code** with scopes (one line):
+
+```
+ZohoPaySandbox.payments.CREATE,ZohoPaySandbox.payments.READ,ZohoPaySandbox.payments.UPDATE
+```
+
+3. Exchange within 3 minutes:
+
+```bash
+node scripts/zoho-oauth.js exchange-self --code=PASTE_CODE
+```
+
+4. Verify:
+
+```bash
+node scripts/zoho-oauth.js status   # should show SANDBOX mode
+node scripts/zoho-oauth.js test     # creates test payment link on sandbox API
+```
+
+### Sandbox test payments
+
+After a payment link opens in the browser, use Zoho test values ([full list](https://www.zoho.com/in/payments/developerdocs/sandbox/testing/)):
+
+| Method | Test value | Result |
+|--------|------------|--------|
+| **Card (Visa)** | `4111 1111 1111 1111`, any future expiry, any CVV | Success |
+| **Card failure** | Cardholder name: `Failure` | Auth failure |
+| **UPI success** | Amount ≤ ₹500 (e.g. ₹100) | Success |
+| **UPI failure** | Amount ₹501–₹1000 | Failure |
+| **Net banking** | Success Test Bank | Success |
+
+### Going live (sandbox → production)
+
+When Zoho enables live payments:
+
+1. Replace sandbox Client ID, Secret, Account ID, Refresh token with **live** values
+2. `ZOHO_PAYMENTS_BASE_URL=https://payments.zoho.in/api/v1`
+3. OAuth scopes: `ZohoPay.payments.*` (not `ZohoPaySandbox.*`)
+4. `ZOHO_PAYMENTS_MOCK=false`
+5. Register **production** webhooks and signing keys
 
 ---
 
@@ -234,3 +326,22 @@ Set `ZOHO_PAYMENTS_MOCK=false` for production.
 - [Zoho Payments Authentication](https://www.zoho.com/in/payments/api/v1/authentication/)
 - [Zoho Payments OAuth (Self Client)](https://www.zoho.com/in/payments/api/v1/oauth/)
 - [ORG OAuth](https://www.zoho.com/in/payments/developerdocs/web-integration/org-oauth/)
+- [Zoho Sandbox](https://www.zoho.com/in/payments/developerdocs/sandbox/)
+- [Sandbox test cards / UPI](https://www.zoho.com/in/payments/developerdocs/sandbox/testing/)
+
+---
+
+## Message for team lead (summary)
+
+**Integration status:** GetMyPair API payment module and Zoho OAuth are **implemented and correct** for live India (`payments.zoho.in`). Self Client refresh token works; scopes are `ZohoPay.payments.*`.
+
+**Blocker on live:** Zoho returns `payments_not_enabled` — production account `60072201604` must be activated by Zoho (KYC / enable payment collection). Email **support@zohopayments.com**.
+
+**What works today without live Zoho:**
+
+1. **Internal mock** — set `ZOHO_PAYMENTS_MOCK=true`; full app pay flow via `/api/payment/mock-checkout` (no Zoho).
+2. **Zoho Sandbox** (optional, closer to production) — request sandbox org from Zoho; use separate sandbox credentials and `ZOHO_PAYMENTS_BASE_URL=https://paymentssandbox.zoho.in/api/v1` with `ZohoPaySandbox.*` scopes. Test cards/UPI per [Zoho sandbox testing docs](https://www.zoho.com/in/payments/developerdocs/sandbox/testing/).
+
+**No major code changes required** for sandbox — env + credentials only. Sandbox OAuth script and docs updated in `server/scripts/zoho-oauth.js` and this file.
+
+**Before production go-live:** Copy live `ZOHO_*` vars to Render, `ZOHO_PAYMENTS_MOCK=false`, confirm `node scripts/zoho-oauth.js test` passes after Zoho enables the account.

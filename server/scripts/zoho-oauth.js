@@ -36,11 +36,34 @@ function writeRefreshTokenToEnv(refreshToken) {
   process.env.ZOHO_PAYMENTS_MOCK = 'false';
 }
 
-const SCOPES = [
+const LIVE_SCOPES = [
   'ZohoPay.payments.CREATE',
   'ZohoPay.payments.READ',
   'ZohoPay.payments.UPDATE',
 ].join(',');
+
+const SANDBOX_SCOPES = [
+  'ZohoPaySandbox.payments.CREATE',
+  'ZohoPaySandbox.payments.READ',
+  'ZohoPaySandbox.payments.UPDATE',
+].join(',');
+
+function isSandboxMode() {
+  return String(process.env.ZOHO_PAYMENTS_BASE_URL || config.ZOHO_PAYMENTS_BASE_URL || '').includes(
+    'paymentssandbox'
+  );
+}
+
+function getOAuthScopes() {
+  return isSandboxMode() ? SANDBOX_SCOPES : LIVE_SCOPES;
+}
+
+function getPaymentsApiBase() {
+  const base = String(
+    process.env.ZOHO_PAYMENTS_BASE_URL || config.ZOHO_PAYMENTS_BASE_URL || ''
+  ).replace(/\/$/, '');
+  return base || 'https://payments.zoho.in/api/v1';
+}
 
 function requireEnv(name) {
   const value = String(process.env[name] || '').trim();
@@ -59,11 +82,9 @@ function printAuthUrl() {
     /\/$/,
     ''
   );
-  const isSandbox = String(process.env.ZOHO_PAYMENTS_BASE_URL || '').includes('sandbox');
-  const soid = isSandbox ? `zohopaysandbox.${accountId}` : `zohopay.${accountId}`;
-  const scope = isSandbox
-    ? SCOPES.replace(/ZohoPay\./g, 'ZohoPaySandbox.')
-    : SCOPES;
+  const sandbox = isSandboxMode();
+  const soid = sandbox ? `zohopaysandbox.${accountId}` : `zohopay.${accountId}`;
+  const scope = getOAuthScopes();
 
   const params = new URLSearchParams({
     scope,
@@ -172,18 +193,23 @@ function mask(value) {
 function printStatus() {
   const refreshToken = String(process.env.ZOHO_REFRESH_TOKEN || '').trim();
   const mock = config.ZOHO_PAYMENTS_MOCK === true;
+  const sandbox = isSandboxMode();
 
   console.log('\nZoho Payments configuration\n');
-  console.log(`  ZOHO_ACCOUNT_ID:     ${config.ZOHO_ACCOUNT_ID || '(not set)'}`);
-  console.log(`  ZOHO_CLIENT_ID:      ${mask(config.ZOHO_CLIENT_ID)}`);
-  console.log(`  ZOHO_CLIENT_SECRET:  ${mask(config.ZOHO_CLIENT_SECRET)}`);
-  console.log(`  ZOHO_REFRESH_TOKEN:  ${refreshToken ? mask(refreshToken) : '(not set)'}`);
-  console.log(`  ZOHO_PAYMENTS_MOCK:  ${mock}`);
-  console.log(`  ZOHO_REDIRECT_URI:   ${config.ZOHO_REDIRECT_URI || '(not set)'}`);
+  console.log(`  ZOHO_ACCOUNT_ID:        ${config.ZOHO_ACCOUNT_ID || '(not set)'}`);
+  console.log(`  ZOHO_PAYMENTS_BASE_URL: ${getPaymentsApiBase()}`);
+  console.log(`  ZOHO_CLIENT_ID:         ${mask(config.ZOHO_CLIENT_ID)}`);
+  console.log(`  ZOHO_CLIENT_SECRET:     ${mask(config.ZOHO_CLIENT_SECRET)}`);
+  console.log(`  ZOHO_REFRESH_TOKEN:     ${refreshToken ? mask(refreshToken) : '(not set)'}`);
+  console.log(`  ZOHO_PAYMENTS_MOCK:     ${mock}`);
+  console.log(`  ZOHO_REDIRECT_URI:      ${config.ZOHO_REDIRECT_URI || '(not set)'}`);
+  console.log(`  Self Client scopes:     ${getOAuthScopes()}`);
 
   console.log('\nStatus\n');
   if (mock) {
-    console.log('  Mode: mock checkout (payments work locally without live Zoho API).');
+    console.log('  Mode: internal mock (ZOHO_PAYMENTS_MOCK=true — no Zoho API calls).');
+  } else if (sandbox) {
+    console.log('  Mode: Zoho Payments SANDBOX (test cards/UPI — no real money).');
   } else if (refreshToken) {
     console.log('  Mode: live Zoho Payments (refresh token present).');
   } else {
@@ -223,8 +249,9 @@ async function testAuth() {
   console.log('OAuth access token OK (first 12 chars):', `${token.slice(0, 12)}…`);
 
   const accountId = requireEnv('ZOHO_ACCOUNT_ID');
+  const apiBase = getPaymentsApiBase();
   const res = await fetch(
-    `https://payments.zoho.in/api/v1/paymentlinks?account_id=${encodeURIComponent(accountId)}`,
+    `${apiBase}/paymentlinks?account_id=${encodeURIComponent(accountId)}`,
     {
       method: 'POST',
       headers: {
