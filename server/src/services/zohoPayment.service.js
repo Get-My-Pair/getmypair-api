@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const config = require('../config/env');
 const {
   getZohoRuntimeConfig,
-  isRuntimeConfigured,
   normalizeZohoMode,
+  resolveEffectiveRuntime,
 } = require('../config/zohoRuntimeConfig');
 const logger = require('../utils/logger');
 const zohoOAuth = require('./zohoOAuth.service');
@@ -16,12 +16,7 @@ const zohoOAuth = require('./zohoOAuth.service');
 const isMock = () =>
   config.ZOHO_PAYMENTS_MOCK === true || config.ZOHO_PAYMENTS_MOCK === 'true';
 
-function resolveRuntime(mode) {
-  return getZohoRuntimeConfig(mode);
-}
-
-function assertLiveZohoConfigured(mode = 'live') {
-  const runtime = resolveRuntime(mode);
+function assertLiveZohoConfigured(runtime) {
   if (runtime.isMock) return;
   if (!zohoOAuth.isConfiguredForRuntime(runtime)) {
     const label = runtime.mode === 'sandbox' ? 'sandbox' : 'live';
@@ -34,6 +29,14 @@ function assertLiveZohoConfigured(mode = 'live') {
     err.zohoMode = label;
     throw err;
   }
+}
+
+function logSandboxMockFallback(runtime) {
+  if (!runtime.mockFallback) return;
+  logger.warn(
+    '[Zoho:sandbox] ZOHO_SANDBOX_* credentials not set — using internal mock checkout. ' +
+      'Add sandbox OAuth credentials from paymentssandbox.zoho.in for real Zoho sandbox checkout.'
+  );
 }
 
 function normalizeCurrency(currency) {
@@ -98,7 +101,7 @@ function enrichZohoAuthError(err) {
 }
 
 async function zohoFetch(path, options = {}, attempt = 0, mode = 'live') {
-  const runtime = resolveRuntime(mode);
+  const runtime = getZohoRuntimeConfig(mode);
   const base = String(runtime.baseUrl || '').replace(/\/$/, '');
   const url = `${base}${buildApiPath(path, runtime.accountId)}`;
   const accessToken = await zohoOAuth.getAccessTokenForRuntime(runtime.mode, {
@@ -213,8 +216,9 @@ async function createPaymentOrder({
   description,
   mode = 'live',
 }) {
-  const runtime = resolveRuntime(mode);
-  assertLiveZohoConfigured(mode);
+  const runtime = resolveEffectiveRuntime(mode);
+  logSandboxMockFallback(runtime);
+  assertLiveZohoConfigured(runtime);
   if (runtime.isMock) {
     return {
       order_id: `mock_order_${orderId}`,
@@ -222,6 +226,8 @@ async function createPaymentOrder({
       currency: normalizeCurrency(currency),
       status: 'created',
       mock: true,
+      mockFallback: !!runtime.mockFallback,
+      zohoMode: runtime.mode,
     };
   }
 
@@ -268,8 +274,9 @@ async function createPaymentLink({
   description,
   mode = 'live',
 }) {
-  const runtime = resolveRuntime(mode);
-  assertLiveZohoConfigured(mode);
+  const runtime = resolveEffectiveRuntime(mode);
+  logSandboxMockFallback(runtime);
+  assertLiveZohoConfigured(runtime);
   if (runtime.isMock) {
     const base = config.API_PUBLIC_BASE_URL || `http://localhost:${config.PORT}`;
     const amt = normalizeAmount(amount);
@@ -278,6 +285,8 @@ async function createPaymentLink({
       url: `${base}/api/payment/mock-checkout?orderId=${encodeURIComponent(orderId)}&amount=${amt}`,
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       mock: true,
+      mockFallback: !!runtime.mockFallback,
+      zohoMode: runtime.mode,
     };
   }
 
@@ -318,9 +327,15 @@ async function createPaymentLink({
 /**
  * Verify payment status with Zoho by payment link id, reference id, or payment id.
  */
-async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId, mode = 'live' }) {
-  const runtime = resolveRuntime(mode);
-  assertLiveZohoConfigured(mode);
+async function verifyPayment({
+  orderId,
+  zohoPaymentId,
+  zohoPaymentLinkId,
+  mode = 'live',
+  forceMock = false,
+}) {
+  const runtime = resolveEffectiveRuntime(mode, { forceMock });
+  assertLiveZohoConfigured(runtime);
   if (runtime.isMock) {
     return {
       status: 'paid',
@@ -480,6 +495,5 @@ module.exports = {
   normalizeCurrency,
   isPaidStatus,
   normalizeZohoMode,
-  resolveRuntime,
-  isRuntimeConfigured,
+  resolveEffectiveRuntime,
 };

@@ -58,8 +58,24 @@ function isRuntimeConfigured(runtime) {
   return !!(hasOAuth || hasStatic);
 }
 
+/**
+ * Sandbox without ZOHO_SANDBOX_* credentials falls back to internal mock checkout
+ * so the app "Sandbox Testing Mode" works before Zoho enables a sandbox org.
+ */
+function resolveEffectiveRuntime(mode = 'live', { forceMock = false } = {}) {
+  const runtime = getZohoRuntimeConfig(mode);
+  if (forceMock) {
+    return { ...runtime, isMock: true, mockFallback: true };
+  }
+  if (runtime.mode === 'sandbox' && !runtime.isMock && !isRuntimeConfigured(runtime)) {
+    return { ...runtime, isMock: true, mockFallback: true };
+  }
+  return runtime;
+}
+
 module.exports = {
   normalizeZohoMode,
   getZohoRuntimeConfig,
   isRuntimeConfigured,
+  resolveEffectiveRuntime,
 };

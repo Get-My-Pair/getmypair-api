@@ -27,9 +27,8 @@ const config = require('../config/env');
 
 /** Public — Zoho return URL (webhook mounted in app.js) */
 router.get('/callback', paymentController.paymentCallback);
-if (config.ZOHO_PAYMENTS_MOCK) {
-  router.get('/mock-checkout', paymentController.mockCheckout);
-}
+/** Sandbox mock fallback + ZOHO_PAYMENTS_MOCK — guarded per payment in controller */
+router.get('/mock-checkout', paymentController.mockCheckout);
 
 router.use(authMiddleware);
 

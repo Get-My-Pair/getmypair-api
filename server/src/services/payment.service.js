@@ -158,6 +158,7 @@ async function createPaymentLink({ serviceRequestId, userId, redirectUrl, paymen
   payment.metadata = {
     ...payment.metadata,
     zohoMode,
+    zohoMockFallback: link.mock === true && link.mockFallback === true,
     paymentLink: link,
   };
   await payment.save();
@@ -197,6 +198,7 @@ async function verifyPayment({ orderId, userId }, req) {
     zohoPaymentId: payment.zohoPaymentId,
     zohoPaymentLinkId: payment.zohoOrderId || payment.zohoPaymentId,
     mode: resolvePaymentZohoMode(payment),
+    forceMock: payment.metadata?.zohoMockFallback === true,
   });
 
   const paid = zohoPayment.isPaidStatus(
