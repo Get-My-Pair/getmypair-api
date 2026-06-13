@@ -281,32 +281,6 @@ ZOHO_PAYMENTS_MOCK=false</pre>
   }
 };
 
-/** Dev mock checkout — simulates Zoho redirect success */
-const mockCheckout = async (req, res) => {
-  try {
-    const { orderId } = req.query;
-    if (!orderId) {
-      return errorResponse(res, 'orderId query required', 400);
-    }
-    const Payment = require('../models/payment.model');
-    const payment = await Payment.findOne({ orderId });
-    if (!payment) {
-      return errorResponse(res, 'Payment not found', 404);
-    }
-    const mockAllowed =
-      config.ZOHO_PAYMENTS_MOCK === true || payment.metadata?.zohoMockFallback === true;
-    if (!mockAllowed) {
-      return errorResponse(res, 'Mock checkout is not enabled for this payment', 403);
-    }
-    const result = await paymentService.processPaymentSuccess(payment, { mock: true }, req);
-    return res.send(
-      `<html><body><h2>Mock payment success</h2><pre>${JSON.stringify(result.payment, null, 2)}</pre></body></html>`
-    );
-  } catch (err) {
-    return errorResponse(res, err.message, 500);
-  }
-};
-
 const commissionPreview = async (req, res) => {
   try {
     const { calculateRevenueSplit } = require('../services/commission.service');
@@ -336,6 +310,5 @@ module.exports = {
   createRefund,
   paymentReport,
   paymentCallback,
-  mockCheckout,
   commissionPreview,
 };

@@ -1,23 +1,15 @@
 /**
  * Zoho Payments integration — create orders, payment links, verify status.
  * India API docs: https://www.zoho.com/in/payments/api/v1/payment-links/
- * Live Zoho Payments only — set ZOHO_PAYMENTS_MOCK=true only for offline dev.
+ * Live and sandbox Zoho Payments — no internal mock checkout.
  */
 const crypto = require('crypto');
 const config = require('../config/env');
-const {
-  getZohoRuntimeConfig,
-  normalizeZohoMode,
-  resolveEffectiveRuntime,
-} = require('../config/zohoRuntimeConfig');
+const { getZohoRuntimeConfig, normalizeZohoMode } = require('../config/zohoRuntimeConfig');
 const logger = require('../utils/logger');
 const zohoOAuth = require('./zohoOAuth.service');
 
-const isMock = () =>
-  config.ZOHO_PAYMENTS_MOCK === true || config.ZOHO_PAYMENTS_MOCK === 'true';
-
 function assertLiveZohoConfigured(runtime) {
-  if (runtime.isMock) return;
   if (!zohoOAuth.isConfiguredForRuntime(runtime)) {
     const label = runtime.mode === 'sandbox' ? 'sandbox' : 'live';
     const err = new Error(
@@ -29,14 +21,6 @@ function assertLiveZohoConfigured(runtime) {
     err.zohoMode = label;
     throw err;
   }
-}
-
-function logSandboxMockFallback(runtime) {
-  if (!runtime.mockFallback) return;
-  logger.warn(
-    '[Zoho:sandbox] ZOHO_SANDBOX_* credentials not set — using internal mock checkout. ' +
-      'Add sandbox OAuth credentials from paymentssandbox.zoho.in for real Zoho sandbox checkout.'
-  );
 }
 
 function normalizeCurrency(currency) {
@@ -206,7 +190,7 @@ function isPaidStatus(status) {
 }
 
 /**
- * Create a payment order in Zoho (or mock).
+ * Create a payment order in Zoho.
  */
 async function createPaymentOrder({
   orderId,
@@ -216,20 +200,8 @@ async function createPaymentOrder({
   description,
   mode = 'live',
 }) {
-  const runtime = resolveEffectiveRuntime(mode);
-  logSandboxMockFallback(runtime);
+  const runtime = getZohoRuntimeConfig(mode);
   assertLiveZohoConfigured(runtime);
-  if (runtime.isMock) {
-    return {
-      order_id: `mock_order_${orderId}`,
-      amount: normalizeAmount(amount),
-      currency: normalizeCurrency(currency),
-      status: 'created',
-      mock: true,
-      mockFallback: !!runtime.mockFallback,
-      zohoMode: runtime.mode,
-    };
-  }
 
   const payload = buildPaymentLinkPayload({
     orderId,
@@ -274,21 +246,8 @@ async function createPaymentLink({
   description,
   mode = 'live',
 }) {
-  const runtime = resolveEffectiveRuntime(mode);
-  logSandboxMockFallback(runtime);
+  const runtime = getZohoRuntimeConfig(mode);
   assertLiveZohoConfigured(runtime);
-  if (runtime.isMock) {
-    const base = config.API_PUBLIC_BASE_URL || `http://localhost:${config.PORT}`;
-    const amt = normalizeAmount(amount);
-    return {
-      payment_link_id: `mock_link_${orderId}`,
-      url: `${base}/api/payment/mock-checkout?orderId=${encodeURIComponent(orderId)}&amount=${amt}`,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      mock: true,
-      mockFallback: !!runtime.mockFallback,
-      zohoMode: runtime.mode,
-    };
-  }
 
   const payload = buildPaymentLinkPayload({
     orderId,
@@ -332,18 +291,9 @@ async function verifyPayment({
   zohoPaymentId,
   zohoPaymentLinkId,
   mode = 'live',
-  forceMock = false,
 }) {
-  const runtime = resolveEffectiveRuntime(mode, { forceMock });
+  const runtime = getZohoRuntimeConfig(mode);
   assertLiveZohoConfigured(runtime);
-  if (runtime.isMock) {
-    return {
-      status: 'paid',
-      reference_id: orderId,
-      payment_id: zohoPaymentId || `mock_pay_${orderId}`,
-      mock: true,
-    };
-  }
 
   const linkId = zohoPaymentLinkId || zohoPaymentId;
   if (linkId) {
@@ -491,9 +441,8 @@ module.exports = {
   verifyPayment,
   verifyReturnUrlSignature,
   verifyWebhookSignature,
-  isMock,
   normalizeCurrency,
   isPaidStatus,
   normalizeZohoMode,
-  resolveEffectiveRuntime,
+  getZohoRuntimeConfig,
 };

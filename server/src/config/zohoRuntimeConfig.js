@@ -27,7 +27,6 @@ function getZohoRuntimeConfig(mode = 'live') {
         config.ZOHO_SANDBOX_ACCOUNTS_URL || config.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.in'
       ).replace(/\/$/, ''),
       returnUrl: config.ZOHO_PAYMENT_RETURN_URL || '',
-      isMock: false,
     };
   }
 
@@ -41,12 +40,10 @@ function getZohoRuntimeConfig(mode = 'live') {
     apiKey: String(config.ZOHO_API_KEY || '').trim(),
     accountsUrl: String(config.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.in').replace(/\/$/, ''),
     returnUrl: config.ZOHO_PAYMENT_RETURN_URL || '',
-    isMock: config.ZOHO_PAYMENTS_MOCK === true || config.ZOHO_PAYMENTS_MOCK === 'true',
   };
 }
 
 function isRuntimeConfigured(runtime) {
-  if (runtime.isMock) return true;
   const hasOAuth =
     runtime.clientId &&
     runtime.clientSecret &&
@@ -58,24 +55,8 @@ function isRuntimeConfigured(runtime) {
   return !!(hasOAuth || hasStatic);
 }
 
-/**
- * Sandbox without ZOHO_SANDBOX_* credentials falls back to internal mock checkout
- * so the app "Sandbox Testing Mode" works before Zoho enables a sandbox org.
- */
-function resolveEffectiveRuntime(mode = 'live', { forceMock = false } = {}) {
-  const runtime = getZohoRuntimeConfig(mode);
-  if (forceMock) {
-    return { ...runtime, isMock: true, mockFallback: true };
-  }
-  if (runtime.mode === 'sandbox' && !runtime.isMock && !isRuntimeConfigured(runtime)) {
-    return { ...runtime, isMock: true, mockFallback: true };
-  }
-  return runtime;
-}
-
 module.exports = {
   normalizeZohoMode,
   getZohoRuntimeConfig,
   isRuntimeConfigured,
-  resolveEffectiveRuntime,
 };
