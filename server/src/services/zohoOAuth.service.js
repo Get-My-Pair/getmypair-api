@@ -3,11 +3,15 @@
  * Docs: https://www.zoho.com/in/payments/api/v1/authentication/
  */
 const config = require('../config/env');
+const { getZohoRuntimeConfig } = require('../config/zohoRuntimeConfig');
 const logger = require('../utils/logger');
 
 let cachedAccessToken = null;
 let tokenExpiresAtMs = 0;
 let refreshInFlight = null;
+
+const runtimeTokenCache = new Map();
+const runtimeRefreshInFlight = new Map();
 
 function isPlaceholderRefreshToken(token) {
   const t = String(token || '').trim();
@@ -48,6 +52,145 @@ function isConfigured() {
 function clearTokenCache() {
   cachedAccessToken = null;
   tokenExpiresAtMs = 0;
+  runtimeTokenCache.clear();
+}
+
+function hasOAuthRefreshFlowForRuntime(runtime) {
+  return !!(
+    runtime.clientId &&
+    runtime.clientSecret &&
+    runtime.refreshToken &&
+    !isPlaceholderRefreshToken(runtime.refreshToken)
+  );
+}
+
+function hasStaticAccessTokenForRuntime(runtime) {
+  const token = String(runtime.apiKey || '').trim();
+  const clientId = String(runtime.clientId || '').trim();
+  if (!token) return false;
+  if (clientId && token === clientId) return false;
+  if (token.includes('xxxxxxxx') || token.includes('your_')) return false;
+  return true;
+}
+
+function isConfiguredForRuntime(runtime) {
+  return hasOAuthRefreshFlowForRuntime(runtime) || hasStaticAccessTokenForRuntime(runtime);
+}
+
+function clearTokenCacheForRuntime(mode = 'live') {
+  const runtime = getZohoRuntimeConfig(mode);
+  runtimeTokenCache.delete(runtime.mode);
+  if (runtime.mode === 'live') {
+    cachedAccessToken = null;
+    tokenExpiresAtMs = 0;
+  }
+}
+
+async function refreshAccessTokenForRuntime(runtime) {
+  if (!hasOAuthRefreshFlowForRuntime(runtime)) {
+    const label = runtime.mode === 'sandbox' ? 'sandbox' : 'live';
+    const err = new Error(
+      `Zoho ${label} OAuth is not configured. Set ZOHO${runtime.mode === 'sandbox' ? '_SANDBOX' : ''}_CLIENT_ID, ZOHO${runtime.mode === 'sandbox' ? '_SANDBOX' : ''}_CLIENT_SECRET, and ZOHO${runtime.mode === 'sandbox' ? '_SANDBOX' : ''}_REFRESH_TOKEN in server/.env`
+    );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const params = new URLSearchParams({
+    refresh_token: runtime.refreshToken,
+    client_id: runtime.clientId,
+    client_secret: runtime.clientSecret,
+    grant_type: 'refresh_token',
+  });
+
+  const res = await fetch(`${runtime.accountsUrl}/oauth/v2/token?${params.toString()}`, {
+    method: 'POST',
+  });
+  const text = await res.text();
+  let body;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    body = { raw: text };
+  }
+
+  if (!res.ok || body.error) {
+    const zohoError = String(body.error || '').toLowerCase();
+    if (
+      (zohoError === 'invalid_code' || zohoError === 'invalid_grant') &&
+      hasStaticAccessTokenForRuntime(runtime)
+    ) {
+      logger.warn(`[Zoho:${runtime.mode}] Refresh token rejected — falling back to static API key`);
+      return String(runtime.apiKey).trim();
+    }
+
+    const message =
+      body.error_description ||
+      body.error ||
+      body.message ||
+      `Zoho OAuth refresh failed (${res.status})`;
+    const err = new Error(`${message}. Generate a new refresh token for ${runtime.mode} mode.`);
+    err.statusCode = 503;
+    err.body = body;
+    throw err;
+  }
+
+  const accessToken = String(body.access_token || '').trim();
+  if (!accessToken) {
+    const err = new Error('Zoho OAuth refresh did not return an access_token');
+    err.statusCode = 502;
+    err.body = body;
+    throw err;
+  }
+
+  const expiresInSec = Number(body.expires_in) || 3600;
+  runtimeTokenCache.set(runtime.mode, {
+    accessToken,
+    expiresAtMs: Date.now() + expiresInSec * 1000,
+  });
+  if (runtime.mode === 'live') {
+    cachedAccessToken = accessToken;
+    tokenExpiresAtMs = Date.now() + expiresInSec * 1000;
+  }
+  logger.info(`[Zoho:${runtime.mode}] OAuth access token refreshed`);
+  return accessToken;
+}
+
+async function getAccessTokenForRuntime(mode = 'live', { forceRefresh = false } = {}) {
+  const runtime = getZohoRuntimeConfig(mode);
+
+  if (!forceRefresh && hasStaticAccessTokenForRuntime(runtime) && !hasOAuthRefreshFlowForRuntime(runtime)) {
+    return String(runtime.apiKey).trim();
+  }
+
+  if (!hasOAuthRefreshFlowForRuntime(runtime)) {
+    if (hasStaticAccessTokenForRuntime(runtime)) {
+      return String(runtime.apiKey).trim();
+    }
+    const label = runtime.mode === 'sandbox' ? 'sandbox' : 'live';
+    const err = new Error(
+      `Zoho ${label} Payments OAuth not configured. Add sandbox credentials to server/.env or choose Live Zoho payment.`
+    );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const now = Date.now();
+  const cached = runtimeTokenCache.get(runtime.mode);
+  if (!forceRefresh && cached && cached.expiresAtMs > now + 60_000) {
+    return cached.accessToken;
+  }
+
+  if (!runtimeRefreshInFlight.has(runtime.mode)) {
+    runtimeRefreshInFlight.set(
+      runtime.mode,
+      refreshAccessTokenForRuntime(runtime).finally(() => {
+        runtimeRefreshInFlight.delete(runtime.mode);
+      })
+    );
+  }
+
+  return runtimeRefreshInFlight.get(runtime.mode);
 }
 
 async function refreshAccessToken() {
@@ -240,4 +383,9 @@ module.exports = {
   exchangeAuthorizationCode,
   isOAuthRedirectQuery,
   getRefreshToken,
+  hasOAuthRefreshFlowForRuntime,
+  hasStaticAccessTokenForRuntime,
+  isConfiguredForRuntime,
+  getAccessTokenForRuntime,
+  clearTokenCacheForRuntime,
 };

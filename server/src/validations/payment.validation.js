@@ -12,6 +12,10 @@ const createPaymentOrderValidation = [serviceRequestIdBody, handleValidationErro
 const createPaymentLinkValidation = [
   serviceRequestIdBody,
   body('redirectUrl').optional().isURL().withMessage('redirectUrl must be a valid URL'),
+  body('paymentMode')
+    .optional()
+    .isIn(['sandbox', 'live', 'test'])
+    .withMessage('paymentMode must be sandbox or live'),
   handleValidationErrors,
 ];
 

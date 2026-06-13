@@ -68,6 +68,15 @@ const config = {
   ZOHO_PAYMENTS_BASE_URL: process.env.ZOHO_PAYMENTS_BASE_URL || 'https://payments.zoho.in/api/v1',
   ZOHO_PAYMENT_RETURN_URL: process.env.ZOHO_PAYMENT_RETURN_URL || '',
   ZOHO_PAYMENTS_MOCK: process.env.ZOHO_PAYMENTS_MOCK === 'true' || process.env.ZOHO_PAYMENTS_MOCK === '1',
+  /** Zoho Payments sandbox credentials (used when app sends paymentMode=sandbox). */
+  ZOHO_SANDBOX_CLIENT_ID: process.env.ZOHO_SANDBOX_CLIENT_ID || '',
+  ZOHO_SANDBOX_CLIENT_SECRET: process.env.ZOHO_SANDBOX_CLIENT_SECRET || '',
+  ZOHO_SANDBOX_REFRESH_TOKEN: process.env.ZOHO_SANDBOX_REFRESH_TOKEN || '',
+  ZOHO_SANDBOX_ACCOUNT_ID: process.env.ZOHO_SANDBOX_ACCOUNT_ID || '',
+  ZOHO_SANDBOX_API_KEY: process.env.ZOHO_SANDBOX_API_KEY || '',
+  ZOHO_SANDBOX_PAYMENTS_BASE_URL:
+    process.env.ZOHO_SANDBOX_PAYMENTS_BASE_URL || 'https://paymentssandbox.zoho.in/api/v1',
+  ZOHO_SANDBOX_ACCOUNTS_URL: process.env.ZOHO_SANDBOX_ACCOUNTS_URL || '',
   API_PUBLIC_BASE_URL: process.env.API_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
 
   // Settlement scheduler

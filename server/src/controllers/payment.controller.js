@@ -32,6 +32,7 @@ const createPaymentLink = async (req, res) => {
         serviceRequestId: req.body.serviceRequestId,
         userId: req.user._id,
         redirectUrl: req.body.redirectUrl,
+        paymentMode: req.body.paymentMode,
       },
       req
     );

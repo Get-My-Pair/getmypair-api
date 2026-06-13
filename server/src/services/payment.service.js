@@ -128,7 +128,11 @@ async function resolveZohoCustomer(userId) {
   };
 }
 
-async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req) {
+function resolvePaymentZohoMode(payment) {
+  return zohoPayment.normalizeZohoMode(payment?.metadata?.zohoMode || 'live');
+}
+
+async function createPaymentLink({ serviceRequestId, userId, redirectUrl, paymentMode }, req) {
   const request = await getPayableRequest(serviceRequestId, userId);
   const payment = await findOrCreatePendingPayment(request);
   if (!payment.currency) {
@@ -136,6 +140,7 @@ async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req)
     await payment.save();
   }
   const customer = await resolveZohoCustomer(userId);
+  const zohoMode = zohoPayment.normalizeZohoMode(paymentMode);
 
   const link = await zohoPayment.createPaymentLink({
     orderId: payment.orderId,
@@ -144,11 +149,17 @@ async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req)
     redirectUrl,
     customer,
     description: `GetMyPair service payment #${String(request._id).slice(-8)}`,
+    mode: zohoMode,
   });
 
   payment.paymentLinkUrl = link.url;
   payment.zohoOrderId = link.payment_link_id || payment.zohoOrderId;
   payment.status = 'PAYMENT_INITIATED';
+  payment.metadata = {
+    ...payment.metadata,
+    zohoMode,
+    paymentLink: link,
+  };
   await payment.save();
 
   await updateServiceWorkflow(request._id, {
@@ -163,12 +174,12 @@ async function createPaymentLink({ serviceRequestId, userId, redirectUrl }, req)
       resourceId: payment._id,
       userId,
       status: 'success',
-      details: { url: link.url },
+      details: { url: link.url, zohoMode },
     },
     req
   );
 
-  return { payment: payment.toObject(), paymentLink: link };
+  return { payment: payment.toObject(), paymentLink: link, zohoMode };
 }
 
 async function verifyPayment({ orderId, userId }, req) {
@@ -185,6 +196,7 @@ async function verifyPayment({ orderId, userId }, req) {
     orderId: payment.orderId,
     zohoPaymentId: payment.zohoPaymentId,
     zohoPaymentLinkId: payment.zohoOrderId || payment.zohoPaymentId,
+    mode: resolvePaymentZohoMode(payment),
   });
 
   const paid = zohoPayment.isPaidStatus(

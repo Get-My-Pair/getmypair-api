@@ -5,19 +5,33 @@
  */
 const crypto = require('crypto');
 const config = require('../config/env');
+const {
+  getZohoRuntimeConfig,
+  isRuntimeConfigured,
+  normalizeZohoMode,
+} = require('../config/zohoRuntimeConfig');
 const logger = require('../utils/logger');
 const zohoOAuth = require('./zohoOAuth.service');
 
 const isMock = () =>
   config.ZOHO_PAYMENTS_MOCK === true || config.ZOHO_PAYMENTS_MOCK === 'true';
 
-function assertLiveZohoConfigured() {
-  if (isMock()) return;
-  if (!zohoOAuth.isConfigured()) {
+function resolveRuntime(mode) {
+  return getZohoRuntimeConfig(mode);
+}
+
+function assertLiveZohoConfigured(mode = 'live') {
+  const runtime = resolveRuntime(mode);
+  if (runtime.isMock) return;
+  if (!zohoOAuth.isConfiguredForRuntime(runtime)) {
+    const label = runtime.mode === 'sandbox' ? 'sandbox' : 'live';
     const err = new Error(
-      'Zoho Payments is not configured. Set ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, and ZOHO_ACCOUNT_ID in server/.env'
+      runtime.mode === 'sandbox'
+        ? 'Zoho Sandbox is not configured. Set ZOHO_SANDBOX_CLIENT_ID, ZOHO_SANDBOX_CLIENT_SECRET, ZOHO_SANDBOX_REFRESH_TOKEN, and ZOHO_SANDBOX_ACCOUNT_ID in server/.env'
+        : 'Zoho Payments is not configured. Set ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, and ZOHO_ACCOUNT_ID in server/.env'
     );
     err.statusCode = 503;
+    err.zohoMode = label;
     throw err;
   }
 }
@@ -45,12 +59,12 @@ function normalizePhone(phone) {
   return digits || undefined;
 }
 
-function buildApiPath(resourcePath) {
+function buildApiPath(resourcePath, accountId = '') {
   const basePath = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
-  const accountId = String(config.ZOHO_ACCOUNT_ID || '').trim();
-  if (!accountId) return basePath;
+  const resolvedAccountId = String(accountId || '').trim();
+  if (!resolvedAccountId) return basePath;
   const joiner = basePath.includes('?') ? '&' : '?';
-  return `${basePath}${joiner}account_id=${encodeURIComponent(accountId)}`;
+  return `${basePath}${joiner}account_id=${encodeURIComponent(resolvedAccountId)}`;
 }
 
 function extractZohoError(body, status) {
@@ -83,13 +97,13 @@ function enrichZohoAuthError(err) {
   return err;
 }
 
-async function zohoFetch(path, options = {}, attempt = 0) {
-  const base = (config.ZOHO_PAYMENTS_BASE_URL || 'https://payments.zoho.in/api/v1').replace(
-    /\/$/,
-    ''
-  );
-  const url = `${base}${buildApiPath(path)}`;
-  const accessToken = await zohoOAuth.getAccessToken({ forceRefresh: attempt > 0 });
+async function zohoFetch(path, options = {}, attempt = 0, mode = 'live') {
+  const runtime = resolveRuntime(mode);
+  const base = String(runtime.baseUrl || '').replace(/\/$/, '');
+  const url = `${base}${buildApiPath(path, runtime.accountId)}`;
+  const accessToken = await zohoOAuth.getAccessTokenForRuntime(runtime.mode, {
+    forceRefresh: attempt > 0,
+  });
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Zoho-oauthtoken ${accessToken}`,
@@ -104,9 +118,9 @@ async function zohoFetch(path, options = {}, attempt = 0) {
     body = { raw: text };
   }
   if (!res.ok) {
-    if (res.status === 401 && attempt === 0 && zohoOAuth.hasOAuthRefreshFlow()) {
-      zohoOAuth.clearTokenCache();
-      return zohoFetch(path, options, attempt + 1);
+    if (res.status === 401 && attempt === 0 && zohoOAuth.hasOAuthRefreshFlowForRuntime(runtime)) {
+      zohoOAuth.clearTokenCacheForRuntime(runtime.mode);
+      return zohoFetch(path, options, attempt + 1, mode);
     }
     const err = enrichZohoAuthError(
       Object.assign(new Error(extractZohoError(body, res.status)), {
@@ -126,6 +140,7 @@ function buildPaymentLinkPayload({
   customer,
   redirectUrl,
   description,
+  runtime,
 }) {
   const payload = {
     amount: normalizeAmount(amount),
@@ -136,7 +151,7 @@ function buildPaymentLinkPayload({
       `GetMyPair service payment for order ${String(orderId).slice(0, 48)}`,
   };
 
-  const returnUrl = redirectUrl || config.ZOHO_PAYMENT_RETURN_URL;
+  const returnUrl = redirectUrl || runtime?.returnUrl || config.ZOHO_PAYMENT_RETURN_URL;
   if (returnUrl) payload.return_url = returnUrl;
 
   const c = customer || {};
@@ -190,9 +205,17 @@ function isPaidStatus(status) {
 /**
  * Create a payment order in Zoho (or mock).
  */
-async function createPaymentOrder({ orderId, amount, currency, customer, description }) {
-  assertLiveZohoConfigured();
-  if (isMock()) {
+async function createPaymentOrder({
+  orderId,
+  amount,
+  currency,
+  customer,
+  description,
+  mode = 'live',
+}) {
+  const runtime = resolveRuntime(mode);
+  assertLiveZohoConfigured(mode);
+  if (runtime.isMock) {
     return {
       order_id: `mock_order_${orderId}`,
       amount: normalizeAmount(amount),
@@ -208,12 +231,18 @@ async function createPaymentOrder({ orderId, amount, currency, customer, descrip
     currency,
     customer,
     description,
+    runtime,
   });
 
-  const result = await zohoFetch('/paymentlinks', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const result = await zohoFetch(
+    '/paymentlinks',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    0,
+    mode
+  );
 
   const link = parsePaymentLinkResponse(result);
   return {
@@ -223,15 +252,25 @@ async function createPaymentOrder({ orderId, amount, currency, customer, descrip
     currency: payload.currency,
     amount: payload.amount,
     status: 'created',
+    zohoMode: runtime.mode,
   };
 }
 
 /**
  * Generate payment link URL for checkout.
  */
-async function createPaymentLink({ orderId, amount, currency, customer, redirectUrl, description }) {
-  assertLiveZohoConfigured();
-  if (isMock()) {
+async function createPaymentLink({
+  orderId,
+  amount,
+  currency,
+  customer,
+  redirectUrl,
+  description,
+  mode = 'live',
+}) {
+  const runtime = resolveRuntime(mode);
+  assertLiveZohoConfigured(mode);
+  if (runtime.isMock) {
     const base = config.API_PUBLIC_BASE_URL || `http://localhost:${config.PORT}`;
     const amt = normalizeAmount(amount);
     return {
@@ -249,32 +288,40 @@ async function createPaymentLink({ orderId, amount, currency, customer, redirect
     customer,
     redirectUrl,
     description,
+    runtime,
   });
 
-  if (!String(config.ZOHO_ACCOUNT_ID || '').trim()) {
+  if (!runtime.accountId) {
     logger.warn(
-      '[Zoho] ZOHO_ACCOUNT_ID is not set — payment link request may fail. Add it to server/.env'
+      `[Zoho:${runtime.mode}] Account ID is not set — payment link request may fail. Add it to server/.env`
     );
   }
 
   logger.info(
-    `[Zoho] createPaymentLink order=${orderId} amount=${payload.amount} currency=${payload.currency}`
+    `[Zoho:${runtime.mode}] createPaymentLink order=${orderId} amount=${payload.amount} currency=${payload.currency}`
   );
 
-  const result = await zohoFetch('/paymentlinks', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const result = await zohoFetch(
+    '/paymentlinks',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    0,
+    mode
+  );
 
-  return parsePaymentLinkResponse(result);
+  const link = parsePaymentLinkResponse(result);
+  return { ...link, zohoMode: runtime.mode };
 }
 
 /**
  * Verify payment status with Zoho by payment link id, reference id, or payment id.
  */
-async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId }) {
-  assertLiveZohoConfigured();
-  if (isMock()) {
+async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId, mode = 'live' }) {
+  const runtime = resolveRuntime(mode);
+  assertLiveZohoConfigured(mode);
+  if (runtime.isMock) {
     return {
       status: 'paid',
       reference_id: orderId,
@@ -285,7 +332,12 @@ async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId }) {
 
   const linkId = zohoPaymentLinkId || zohoPaymentId;
   if (linkId) {
-    const linkResult = await zohoFetch(buildApiPath(`/paymentlinks/${linkId}`));
+    const linkResult = await zohoFetch(
+      buildApiPath(`/paymentlinks/${linkId}`, runtime.accountId),
+      {},
+      0,
+      mode
+    );
     const link = unwrapPaymentLink(linkResult);
     const linkStatus = normalizePaymentStatus(link);
     if (isPaidStatus(linkStatus)) {
@@ -313,7 +365,12 @@ async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId }) {
 
   if (zohoPaymentId && !zohoPaymentLinkId) {
     try {
-      const paymentResult = await zohoFetch(buildApiPath(`/payments/${zohoPaymentId}`));
+      const paymentResult = await zohoFetch(
+        buildApiPath(`/payments/${zohoPaymentId}`, runtime.accountId),
+        {},
+        0,
+        mode
+      );
       const paymentStatus = normalizePaymentStatus(paymentResult);
       if (paymentStatus) {
         return {
@@ -329,7 +386,10 @@ async function verifyPayment({ orderId, zohoPaymentId, zohoPaymentLinkId }) {
   }
 
   const listResult = await zohoFetch(
-    buildApiPath(`/payments?reference_id=${encodeURIComponent(orderId)}`)
+    buildApiPath(`/payments?reference_id=${encodeURIComponent(orderId)}`, runtime.accountId),
+    {},
+    0,
+    mode
   );
   const payments = listResult.payments || listResult.payment || [];
   const items = Array.isArray(payments) ? payments : [payments].filter(Boolean);
@@ -419,4 +479,7 @@ module.exports = {
   isMock,
   normalizeCurrency,
   isPaidStatus,
+  normalizeZohoMode,
+  resolveRuntime,
+  isRuntimeConfigured,
 };
