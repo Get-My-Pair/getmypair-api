@@ -278,9 +278,43 @@ const getCurrentUser = async (userId, ipAddress, userAgent) => {
   }
 };
 
+/**
+ * Update user preferred language
+ * @param {String} userId - User ID
+ * @param {String} preferredLanguage - Language code (en, kn, ta, hi, te)
+ * @returns {Object} Updated user
+ */
+const updatePreferredLanguage = async (userId, preferredLanguage, ipAddress, userAgent) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.preferredLanguage = preferredLanguage;
+    await user.save();
+
+    await AuditLog.createLog({
+      userId: user._id,
+      action: 'profile-update',
+      resource: 'user',
+      status: 'success',
+      ipAddress,
+      userAgent,
+      details: { action: 'update_language', preferredLanguage },
+    });
+
+    return user.toJSON();
+  } catch (error) {
+    logger.error(`Error updating preferred language: ${error.message}`);
+    throw error;
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
   completeProfile,
   getCurrentUser,
+  updatePreferredLanguage,
 };

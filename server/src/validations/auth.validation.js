@@ -106,9 +106,22 @@ const refreshTokenValidation = [
   handleValidationErrors,
 ];
 
+// Update language validation
+const updateLanguageValidation = [
+  body('preferredLanguage')
+    .trim()
+    .notEmpty()
+    .withMessage('Language code is required')
+    .isIn(['en', 'kn', 'ta', 'hi', 'te'])
+    .withMessage('Language must be one of: en, kn, ta, hi, te')
+    .toLowerCase(),
+  handleValidationErrors,
+];
+
 module.exports = {
   sendOTPValidation,
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
+  updateLanguageValidation,
 };

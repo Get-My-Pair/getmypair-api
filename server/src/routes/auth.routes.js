@@ -7,6 +7,7 @@ const {
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
+  updateLanguageValidation,
 } = require('../validations/auth.validation');
 const {
   otpRateLimiter,
@@ -283,5 +284,35 @@ router.post('/logout', authMiddleware, authController.logout);
  *         description: User not found
  */
 router.get('/me', authMiddleware, authController.getCurrentUser);
+
+/**
+ * @swagger
+ * /api/auth/language:
+ *   put:
+ *     summary: Update user preferred language
+ *     description: Update the authenticated user's preferred language for localized content.
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - preferredLanguage
+ *             properties:
+ *               preferredLanguage:
+ *                 type: string
+ *                 enum: [en, kn, ta, hi, te]
+ *                 example: "kn"
+ *     responses:
+ *       200:
+ *         description: Language preference updated
+ *       401:
+ *         description: Unauthorized
+ */
+router.put('/language', authMiddleware, updateLanguageValidation, authController.updateLanguage);
 
 module.exports = router;

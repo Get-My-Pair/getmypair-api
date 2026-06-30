@@ -1,5 +1,6 @@
 const authService = require('../services/auth.service');
 const { success, error: errorResponse } = require('../utils/response');
+const { t } = require('../utils/i18n');
 const logger = require('../utils/logger');
 
 /**
@@ -14,7 +15,7 @@ const sendOTP = async (req, res) => {
 
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
 
-    return success(res, 'OTP sent successfully', {
+    return success(res, t('otp_sent', req.locale), {
       expiresIn: result.expiresIn,
     });
   } catch (err) {
@@ -49,13 +50,13 @@ const verifyOTP = async (req, res) => {
 
     if (result.isExistingUser) {
       // Existing user - Login successful
-      return success(res, 'Login successful', {
+      return success(res, t('login_success', req.locale), {
         user: result.user,
         tokens: result.tokens,
       });
     } else {
       // New user - Profile completion required
-      return success(res, result.message, {
+      return success(res, t('complete_profile', req.locale), {
         requiresProfileCompletion: true,
         mobile: mobile,
       });
@@ -104,7 +105,7 @@ const completeProfile = async (req, res) => {
       deviceInfo
     );
 
-    return success(res, 'Profile completed successfully. Login successful.', {
+    return success(res, t('profile_completed', req.locale), {
       user: result.user,
       tokens: result.tokens,
     }, 201);
@@ -153,7 +154,7 @@ const refreshToken = async (req, res) => {
       userAgent,
     });
 
-    return success(res, 'Token refreshed successfully', {
+    return success(res, t('token_refreshed', req.locale), {
       accessToken: result.accessToken,
       expiresIn: result.expiresIn,
     });
@@ -205,7 +206,7 @@ const logout = async (req, res) => {
       userAgent,
     });
 
-    return success(res, 'Logout successful');
+    return success(res, t('logout_success', req.locale));
   } catch (err) {
     logger.error(`Logout error: ${err.message}`);
     return errorResponse(res, err.message, 500);
@@ -223,12 +224,33 @@ const getCurrentUser = async (req, res) => {
     
     const user = await authService.getCurrentUser(req.user._id, ipAddress, userAgent);
 
-    return success(res, 'User retrieved successfully', {
+    return success(res, t('user_retrieved', req.locale), {
       user,
     });
   } catch (err) {
     logger.error(`Get current user error: ${err.message}`);
     return errorResponse(res, err.message, 404);
+  }
+};
+
+/**
+ * Update user preferred language
+ * PUT /api/auth/language
+ */
+const updateLanguage = async (req, res) => {
+  try {
+    const { preferredLanguage } = req.body;
+    const user = await authService.updatePreferredLanguage(
+      req.user._id,
+      preferredLanguage,
+      req.ip || req.connection.remoteAddress,
+      req.get('user-agent') || 'unknown'
+    );
+
+    return success(res, t('language_updated', req.locale), { user });
+  } catch (err) {
+    logger.error(`Update language error: ${err.message}`);
+    return errorResponse(res, err.message, 400);
   }
 };
 
@@ -239,4 +261,5 @@ module.exports = {
   refreshToken,
   logout,
   getCurrentUser,
+  updateLanguage,
 };

@@ -5,10 +5,12 @@ const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const { globalRateLimiter } = require('./middleware/rateLimit');
+const localeMiddleware = require('./middleware/locale.middleware');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const cobblerProfileRoutes = require('./routes/cobbler.profile.routes');
 const { notFound } = require('./utils/response');
+const { t } = require('./utils/i18n');
 const config = require('./config/env');
 
 const app = express();
@@ -43,6 +45,9 @@ app.use(
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Locale resolution from Accept-Language / X-App-Language headers
+app.use(localeMiddleware);
 
 // Logging middleware
 if (config.NODE_ENV === 'development') {
@@ -92,7 +97,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Server is running',
+    message: t('server_running', req.locale),
     timestamp: new Date().toISOString(),
   });
 });
@@ -103,7 +108,7 @@ app.use('/api/cobbler/profile', cobblerProfileRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  return notFound(res, 'Route not found');
+  return notFound(res, t('route_not_found', req.locale));
 });
 
 // Error handler (must be last)

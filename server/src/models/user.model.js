@@ -50,6 +50,12 @@ const userSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    preferredLanguage: {
+      type: String,
+      enum: ['en', 'kn', 'ta', 'hi', 'te'],
+      default: 'en',
+      lowercase: true,
+    },
   },
   {
     timestamps: true,
