@@ -47,19 +47,19 @@ const getDashboard = async (req, res) => {
 
         const [earningsResult, newRequests, activeJobs, completedJobs] = await Promise.all([
             Payment.aggregate([
-                { $match: { cobblerId: userId, paymentStatus: 'completed' } },
+                { $match: { cobblerId: userId, status: 'PAYMENT_SUCCESS' } },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: '$amount' },
+                        total: { $sum: '$cobblerShare' },
                         today: {
                             $sum: {
-                                $cond: [{ $gte: ['$createdAt', startOfToday] }, '$amount', 0],
+                                $cond: [{ $gte: ['$paidAt', startOfToday] }, '$cobblerShare', 0],
                             },
                         },
                         weekly: {
                             $sum: {
-                                $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$amount', 0],
+                                $cond: [{ $gte: ['$paidAt', startOfWeek] }, '$cobblerShare', 0],
                             },
                         },
                     },

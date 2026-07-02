@@ -26,7 +26,7 @@ const options = {
       title: 'GetMyPair API',
       version: '1.0.0',
       description:
-        'GetMyPair – A comprehensive API for shoe repair marketplace. Includes Authentication (Module 1) and Profile Management (Module 2) for Users, Cobblers, Delivery Partners, and Admins.',
+        'GetMyPair – A comprehensive API for shoe repair marketplace. Modules: Authentication (1), Profiles (2), Articles (3), Service Requests (4), Payments / Zoho (5).',
       contact: {
         name: 'API Support',
       },
@@ -273,8 +273,115 @@ const options = {
               example: 'pending',
             },
             actualCostAcceptedAt: { type: 'string', format: 'date-time', nullable: true },
+            workflowStatus: {
+              type: 'string',
+              enum: [
+                'CREATED', 'AWAITING_ACCEPTANCE', 'DARKWORKSTORE_REJECTED', 'COBBLER_PENDING',
+                'COBBLER_REJECTED', 'COBBLER_COST_PENDING', 'COST_APPROVAL_PENDING', 'PAYMENT_PENDING',
+                'PAYMENT_SUCCESS', 'PICKUP_SCHEDULED', 'IN_PROGRESS', 'WORK_COMPLETED',
+                'DELIVERY_SCHEDULED', 'DELIVERED', 'CLOSED', 'ESCALATED_TO_GMP',
+              ],
+              example: 'AWAITING_ACCEPTANCE',
+            },
+            paymentState: {
+              type: 'string',
+              enum: [
+                'PAYMENT_PENDING', 'COST_APPROVAL_PENDING', 'PAYMENT_INITIATED',
+                'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUNDED',
+              ],
+              example: 'PAYMENT_PENDING',
+            },
+            activePaymentId: { type: 'string', nullable: true },
+            acceptedProviderType: {
+              type: 'string',
+              nullable: true,
+              enum: ['dark_store', 'cobbler', 'gmp'],
+            },
+            gmpEscalated: { type: 'boolean', example: false },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
+        PaymentServiceRequestBody: {
+          type: 'object',
+          required: ['serviceRequestId'],
+          properties: {
+            serviceRequestId: {
+              type: 'string',
+              description: 'Service request MongoDB ObjectId',
+              example: '664a1b2c3d4e5f6a7b8c9d99',
+            },
+          },
+        },
+
+        Payment: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d01' },
+            orderId: { type: 'string', example: 'GMP-c9d99-1730000000000' },
+            serviceRequestId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d99' },
+            userId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d10' },
+            amount: { type: 'number', example: 1000 },
+            currency: { type: 'string', example: 'INR' },
+            providerType: { type: 'string', enum: ['dark_store', 'cobbler', 'gmp'], example: 'cobbler' },
+            cobblerId: { type: 'string', nullable: true },
+            darkStoreId: { type: 'string', nullable: true, example: 'STORE_21' },
+            status: {
+              type: 'string',
+              enum: ['PAYMENT_PENDING', 'PAYMENT_INITIATED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUNDED'],
+              example: 'PAYMENT_SUCCESS',
+            },
+            paymentLinkUrl: { type: 'string', format: 'uri', nullable: true },
+            zohoPaymentId: { type: 'string', nullable: true },
+            zohoOrderId: { type: 'string', nullable: true },
+            gmpShare: { type: 'number', example: 200 },
+            cobblerShare: { type: 'number', example: 800 },
+            commissionPercent: { type: 'number', example: 20 },
+            paidAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
+        Settlement: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            paymentId: { type: 'string' },
+            serviceRequestId: { type: 'string' },
+            beneficiaryType: { type: 'string', enum: ['cobbler', 'dark_store', 'gmp'] },
+            beneficiaryId: { type: 'string' },
+            amount: { type: 'number', example: 800 },
+            status: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'], example: 'pending' },
+            scheduledAt: { type: 'string', format: 'date-time', nullable: true },
+            processedAt: { type: 'string', format: 'date-time', nullable: true },
+          },
+        },
+
+        Refund: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            paymentId: { type: 'string' },
+            serviceRequestId: { type: 'string' },
+            userId: { type: 'string' },
+            amount: { type: 'number', example: 1000 },
+            reason: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['requested', 'processing', 'completed', 'failed'], example: 'requested' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
+        RevenueSplit: {
+          type: 'object',
+          description: 'Commission breakdown for a payable amount',
+          properties: {
+            totalAmount: { type: 'number', example: 1000 },
+            gmpShare: { type: 'number', example: 200 },
+            cobblerShare: { type: 'number', example: 800 },
+            partnerShare: { type: 'number', example: 800 },
+            commissionPercent: { type: 'number', example: 20 },
           },
         },
 
@@ -343,6 +450,7 @@ const options = {
       { name: 'User Profile', description: 'User profile management — Profile created by auth; Role: USER' },
       { name: 'Articles', description: 'Article / Digital Shoe Passport (Module 3) — Role: USER' },
       { name: 'Service Requests', description: 'Service request lifecycle APIs (Module 4)' },
+      { name: 'Payment', description: 'Zoho payments, cost approval, settlements, refunds (Module 5)' },
       { name: 'Cobbler Profile', description: 'Cobbler profile management — Profile created by auth; Role: COBBER' },
       { name: 'Delivery Profile', description: 'Delivery partner profile management — Profile created by auth; Role: DELIVERY' },
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },

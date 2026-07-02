@@ -28,6 +28,7 @@ const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const userProfileRoutes = require('./routes/userProfile.routes');
+const userNotificationRoutes = require('./routes/userNotification.routes');
 const cobblerProfileRoutes = require('./routes/cobblerProfile.routes');
 const cobblerHomeRoutes = require('./routes/cobblerHome.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
@@ -35,6 +36,7 @@ const adminProfileRoutes = require('./routes/adminProfile.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
 const articleRoutes = require('./routes/article.routes');
 const serviceRoutes = require('./routes/service.routes');
+const paymentRoutes = require('./routes/payment.routes');
 const adminDashboardRoutes = require('./routes/adminDashboard.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
@@ -104,6 +106,23 @@ app.use(
   })
 );
 
+// Zoho webhook must receive raw body for signature verification (before JSON parser)
+const paymentController = require('./controllers/payment.controller');
+app.post(
+  '/api/payment/webhook/zoho',
+  express.raw({ type: 'application/json' }),
+  (req, res, next) => {
+    req.rawBody = req.body?.toString?.() || '';
+    try {
+      req.body = req.rawBody ? JSON.parse(req.rawBody) : {};
+    } catch {
+      req.body = {};
+    }
+    next();
+  },
+  paymentController.zohoWebhook
+);
+
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -157,6 +176,7 @@ app.use('/api/auth', authRoutes);
 
 // Module 2: Profile APIs
 app.use('/api/user/profile', userProfileRoutes);
+app.use('/api/user/notifications', userNotificationRoutes);
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
 app.use('/api/cobbler/home', cobblerHomeRoutes);
 app.use('/api/delivery/profile', deliveryProfileRoutes);
@@ -167,6 +187,8 @@ app.use('/api/geocode', geocodeRoutes);
 app.use('/api/articles', articleRoutes);
 // Module 4: Service Requests
 app.use('/api/service', serviceRoutes);
+// Module 5: Payments (Zoho, cost approval, settlements)
+app.use('/api/payment', paymentRoutes);
 // Master admin HTML dashboard APIs (separate from /api/admin/profile mobile ADMIN JWT)
 app.use('/api/sys-admin', adminDashboardRoutes);
 

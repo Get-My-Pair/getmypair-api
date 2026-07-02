@@ -51,6 +51,40 @@ const config = {
   /** Seeded only if AdminMaster collection is empty; override in production via .env */
   MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com',
   MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || 'Admin@123',
+
+  // Zoho Payments (OAuth — do not put Client ID in ZOHO_API_KEY)
+  ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID || '',
+  ZOHO_CLIENT_SECRET: process.env.ZOHO_CLIENT_SECRET || '',
+  ZOHO_REFRESH_TOKEN: process.env.ZOHO_REFRESH_TOKEN || '',
+  ZOHO_REDIRECT_URI: process.env.ZOHO_REDIRECT_URI || process.env.ZOHO_PAYMENT_RETURN_URL || '',
+  ZOHO_ACCOUNTS_URL: process.env.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.in',
+  /** Optional static access token (expires ~1h). Prefer ZOHO_REFRESH_TOKEN for production. */
+  ZOHO_API_KEY: process.env.ZOHO_API_KEY || '',
+  ZOHO_ACCOUNT_ID: process.env.ZOHO_ACCOUNT_ID || '',
+  ZOHO_PAYMENT_CURRENCY: process.env.ZOHO_PAYMENT_CURRENCY || 'INR',
+  ZOHO_WEBHOOK_SECRET: process.env.ZOHO_WEBHOOK_SECRET || '',
+  /** Signing key from Zoho Payments → Settings → Developer Space (return URL / widget verification). */
+  ZOHO_SIGNING_KEY: process.env.ZOHO_SIGNING_KEY || '',
+  ZOHO_PAYMENTS_BASE_URL: process.env.ZOHO_PAYMENTS_BASE_URL || 'https://payments.zoho.in/api/v1',
+  ZOHO_PAYMENT_RETURN_URL: process.env.ZOHO_PAYMENT_RETURN_URL || '',
+  ZOHO_PAYMENTS_MOCK: process.env.ZOHO_PAYMENTS_MOCK === 'true' || process.env.ZOHO_PAYMENTS_MOCK === '1',
+  /** Zoho Payments sandbox credentials (used when app sends paymentMode=sandbox). */
+  ZOHO_SANDBOX_CLIENT_ID: process.env.ZOHO_SANDBOX_CLIENT_ID || '',
+  ZOHO_SANDBOX_CLIENT_SECRET: process.env.ZOHO_SANDBOX_CLIENT_SECRET || '',
+  ZOHO_SANDBOX_REFRESH_TOKEN: process.env.ZOHO_SANDBOX_REFRESH_TOKEN || '',
+  ZOHO_SANDBOX_ACCOUNT_ID: process.env.ZOHO_SANDBOX_ACCOUNT_ID || '',
+  ZOHO_SANDBOX_API_KEY: process.env.ZOHO_SANDBOX_API_KEY || '',
+  ZOHO_SANDBOX_PAYMENTS_BASE_URL:
+    process.env.ZOHO_SANDBOX_PAYMENTS_BASE_URL || 'https://paymentssandbox.zoho.in/api/v1',
+  ZOHO_SANDBOX_ACCOUNTS_URL: process.env.ZOHO_SANDBOX_ACCOUNTS_URL || '',
+  API_PUBLIC_BASE_URL: process.env.API_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
+
+  // Settlement scheduler
+  SETTLEMENT_SCHEDULER_ENABLED:
+    process.env.SETTLEMENT_SCHEDULER_ENABLED !== 'false' &&
+    process.env.SETTLEMENT_SCHEDULER_ENABLED !== '0',
+  SETTLEMENT_SCHEDULER_INTERVAL_MS:
+    parseInt(process.env.SETTLEMENT_SCHEDULER_INTERVAL_MS, 10) || 60 * 60 * 1000,
 };
 
 if (config.NODE_ENV === 'production') {
