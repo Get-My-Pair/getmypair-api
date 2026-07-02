@@ -25,6 +25,7 @@ const {
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
+  updateLanguageValidation,
 } = require('../validations/auth.validation');
 const {
   otpRateLimiter,
@@ -41,5 +42,7 @@ router.get('/sessions', authMiddleware, sessionController.listUserSessions);
 router.delete('/sessions/:sessionId', authMiddleware, sessionController.revokeSession);
 
 router.get('/me', authMiddleware, authController.getCurrentUser);
+router.get('/languages', authController.getSupportedLanguages);
+router.put('/language', authMiddleware, updateLanguageValidation, authController.updatePreferredLanguage);
 
 module.exports = router;

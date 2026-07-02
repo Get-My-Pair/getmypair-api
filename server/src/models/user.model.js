@@ -16,6 +16,7 @@
  */
 
 const mongoose = require('mongoose');
+const { COBBLER_SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } = require('../config/languages');
 
 const userSchema = new mongoose.Schema(
   {
@@ -69,6 +70,13 @@ const userSchema = new mongoose.Schema(
       lat: { type: Number },
       lng: { type: Number },
       address: { type: String, trim: true },
+    },
+    preferredLanguage: {
+      type: String,
+      enum: COBBLER_SUPPORTED_LANGUAGES,
+      default: DEFAULT_LANGUAGE,
+      lowercase: true,
+      trim: true,
     },
   },
   {

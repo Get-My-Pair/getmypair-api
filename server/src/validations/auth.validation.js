@@ -17,6 +17,7 @@
 
 const { body } = require('express-validator');
 const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/validators');
+const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 
 // Send OTP validation (mobile number only, minimum 10 digits)
 const sendOTPValidation = [
@@ -155,9 +156,22 @@ const refreshTokenValidation = [
   handleValidationErrors,
 ];
 
+// Update preferred language (cobbler app: English and Kannada only)
+const updateLanguageValidation = [
+  body('preferredLanguage')
+    .trim()
+    .notEmpty()
+    .withMessage('preferredLanguage is required')
+    .isIn(COBBLER_SUPPORTED_LANGUAGES)
+    .withMessage(`preferredLanguage must be one of: ${COBBLER_SUPPORTED_LANGUAGES.join(', ')}`)
+    .toLowerCase(),
+  handleValidationErrors,
+];
+
 module.exports = {
   sendOTPValidation,
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
+  updateLanguageValidation,
 };

@@ -316,6 +316,40 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+/**
+ * Update preferred language (English or Kannada)
+ * PUT /api/auth/language
+ */
+const updatePreferredLanguage = async (req, res) => {
+  try {
+    const { preferredLanguage } = req.body;
+    const user = await authService.updatePreferredLanguage(
+      req.user._id,
+      preferredLanguage
+    );
+
+    return success(res, 'Language updated successfully', { user });
+  } catch (err) {
+    logger.error(`Update language error: ${err.message}`);
+    const status = err.message === 'User not found' ? 404 : 400;
+    return errorResponse(res, err.message, status);
+  }
+};
+
+/**
+ * Get supported Cobbler app languages (public)
+ * GET /api/auth/languages
+ */
+const getSupportedLanguages = async (req, res) => {
+  try {
+    const languages = authService.getSupportedLanguages();
+    return success(res, 'Supported languages retrieved', { languages });
+  } catch (err) {
+    logger.error(`Get supported languages error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -323,4 +357,6 @@ module.exports = {
   refreshToken,
   logout,
   getCurrentUser,
+  updatePreferredLanguage,
+  getSupportedLanguages,
 };

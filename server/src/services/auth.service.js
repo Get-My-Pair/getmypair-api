@@ -22,6 +22,7 @@ const UserProfile = require('../models/userProfile.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
 const { getRoleFromAppSource } = require('../config/roles');
+const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
 const logger = require('../utils/logger');
@@ -506,6 +507,38 @@ const updateProfile = async (userId, profileData) => {
   return user.toJSON();
 };
 
+/**
+ * Update user's preferred language (English or Kannada).
+ * @param {String} userId - User ID
+ * @param {String} preferredLanguage - Language code (en | kn)
+ * @returns {Object} Updated user object
+ */
+const updatePreferredLanguage = async (userId, preferredLanguage) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  user.preferredLanguage = preferredLanguage;
+  await user.save();
+
+  await AuditLog.createLog({
+    userId: user._id,
+    action: 'profile-update',
+    resource: 'user',
+    status: 'success',
+    details: { preferredLanguage },
+  });
+
+  return user.toJSON();
+};
+
+/**
+ * List supported Cobbler app languages.
+ * @returns {string[]} Language codes
+ */
+const getSupportedLanguages = () => [...COBBLER_SUPPORTED_LANGUAGES];
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -514,4 +547,6 @@ module.exports = {
   completeMobileRegistration,
   getCurrentUser,
   updateProfile,
+  updatePreferredLanguage,
+  getSupportedLanguages,
 };

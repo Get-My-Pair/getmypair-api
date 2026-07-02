@@ -312,3 +312,68 @@ void 0;
  *         description: User not found
  */
 void 0;
+
+/**
+ * @swagger
+ * /api/auth/languages:
+ *   get:
+ *     summary: Get supported Cobbler app languages
+ *     description: Returns language codes supported by the Cobbler app (English and Kannada).
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Supported languages retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     languages:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["en", "kn"]
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/auth/language:
+ *   put:
+ *     summary: Update preferred language
+ *     description: Updates the authenticated user's preferred language (English or Kannada).
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - preferredLanguage
+ *             properties:
+ *               preferredLanguage:
+ *                 type: string
+ *                 enum: [en, kn]
+ *                 example: kn
+ *     responses:
+ *       200:
+ *         description: Language updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+void 0;
