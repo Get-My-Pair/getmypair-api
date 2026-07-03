@@ -198,6 +198,15 @@
             s +
             '><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
         },
+        {
+          href: 'maintenance.html',
+          key: 'maintenance',
+          label: 'DB maintenance',
+          svg:
+            '<svg ' +
+            s +
+            '><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>',
+        },
       ];
       var nav = items
         .map(function (it) {

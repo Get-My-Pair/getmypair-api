@@ -11,6 +11,7 @@ const router = express.Router();
 const adminMasterAuth = require('../middleware/adminMasterAuth.middleware');
 const adminDashboardController = require('../controllers/adminDashboard.controller');
 const darkstorePaymentController = require('../controllers/darkstorePayment.controller');
+const dbMaintenanceController = require('../controllers/dbMaintenance.controller');
 const {
   adminLoginValidation,
   darkstoreUpdateCostValidation,
@@ -20,6 +21,9 @@ const {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
+  dbMaintenanceConfirmValidation,
+  dbMaintenanceCollectionValidation,
+  dbMaintenanceGroupValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 
@@ -146,6 +150,27 @@ router.get(
   adminMasterAuth,
   darkstorePaymentQueryValidation,
   darkstorePaymentController.paymentNotifications
+);
+
+// MongoDB maintenance (Darkworkstore master admin only — preserves adminmasters)
+router.get('/db/overview', adminMasterAuth, dbMaintenanceController.overview);
+router.post(
+  '/db/clear/collection',
+  adminMasterAuth,
+  dbMaintenanceCollectionValidation,
+  dbMaintenanceController.clearCollection
+);
+router.post(
+  '/db/clear/group',
+  adminMasterAuth,
+  dbMaintenanceGroupValidation,
+  dbMaintenanceController.clearGroup
+);
+router.post(
+  '/db/clear/all',
+  adminMasterAuth,
+  dbMaintenanceConfirmValidation,
+  dbMaintenanceController.clearAll
 );
 
 module.exports = router;

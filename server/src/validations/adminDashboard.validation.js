@@ -58,6 +58,23 @@ const darkstoreReportQueryValidation = [
   handleValidationErrors,
 ];
 
+const dbMaintenanceConfirmValidation = [
+  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  handleValidationErrors,
+];
+
+const dbMaintenanceCollectionValidation = [
+  body('collection').trim().notEmpty().withMessage('collection is required'),
+  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  handleValidationErrors,
+];
+
+const dbMaintenanceGroupValidation = [
+  body('group').trim().notEmpty().withMessage('group is required'),
+  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  handleValidationErrors,
+];
+
 module.exports = {
   adminLoginValidation,
   darkstoreUpdateCostValidation,
@@ -67,4 +84,7 @@ module.exports = {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
+  dbMaintenanceConfirmValidation,
+  dbMaintenanceCollectionValidation,
+  dbMaintenanceGroupValidation,
 };
