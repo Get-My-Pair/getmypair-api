@@ -32,6 +32,7 @@ const globalRateLimiter = rateLimit({
   legacyHeaders: false,
   /** Master admin dashboard polls/lists heavily in dev; do not throttle these JWT-protected routes here. */
   skip: (req) => {
+    if (req.method === 'OPTIONS') return true;
     if (isNonProduction) return true;
     const p = req.path || '';
     return p.startsWith('/api/sys-admin');

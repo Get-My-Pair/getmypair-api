@@ -55,14 +55,15 @@ const corsOriginCallback = (origin, callback) => {
     return callback(null, true);
   }
   if (configured === '*') {
-    return callback(null, true);
+    // Reflect request origin (required when credentials: true).
+    return callback(null, origin);
   }
   const allowed = configured
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
   if (allowed.includes(origin)) {
-    return callback(null, true);
+    return callback(null, origin);
   }
   return callback(null, false);
 };
@@ -98,6 +99,8 @@ app.use(
       'X-App-Source',
       'X-App-Version',
       'Accept',
+      'Accept-Language',
+      'X-App-Language',
       'device-info',
       'X-Requested-With',
     ],
