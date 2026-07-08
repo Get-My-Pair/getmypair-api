@@ -71,6 +71,13 @@ const articleSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    /** e.g. "UK: 08", "US: 09", "EU: 42" from mobile app */
+    shoeSize: {
+      type: String,
+      trim: true,
+      maxlength: 32,
+      default: null,
+    },
   },
   {
     timestamps: true,

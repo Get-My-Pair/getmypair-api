@@ -170,7 +170,7 @@ const getServiceRequestDetails = async (req, res) => {
     }
 
     const request = await ServiceRequest.findOne(query)
-      .populate('articleId', 'brand model category color purchaseYear condition images')
+      .populate('articleId', 'brand model category color purchaseYear condition images shoeSize')
       .populate('userId', 'name mobile')
       .lean();
     if (!request) {
@@ -215,7 +215,7 @@ const getMyServiceRequests = async (req, res) => {
     const userId = req.user._id;
     const requests = await ServiceRequest.find({ userId })
       .sort({ createdAt: -1 })
-      .populate('articleId', 'brand model category color images')
+      .populate('articleId', 'brand model category color images shoeSize')
       .lean();
 
     return success(res, 'Service requests retrieved successfully', { requests });

@@ -12,7 +12,7 @@ const { handleValidationErrors } = require('../utils/validators');
 const categoryEnum = ['sports_shoe', 'casual', 'formal', 'sandal', 'boot', 'slipper', 'other'];
 const conditionEnum = ['excellent', 'good', 'fair', 'worn', ''];
 
-const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images'];
+const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize'];
 
 const createArticleValidation = [
   body('purchaseYear')
@@ -77,6 +77,11 @@ const createArticleValidation = [
     .trim()
     .isURL()
     .withMessage('Each image must be a valid URL'),
+  body('shoeSize')
+    .optional()
+    .trim()
+    .isLength({ max: 32 })
+    .withMessage('Shoe size must be at most 32 characters'),
   handleValidationErrors,
 ];
 
@@ -138,6 +143,11 @@ const updateArticleValidation = [
     .trim()
     .isURL()
     .withMessage('Each image must be a valid URL'),
+  body('shoeSize')
+    .optional()
+    .trim()
+    .isLength({ max: 32 })
+    .withMessage('Shoe size must be at most 32 characters'),
   body().custom((value, { req }) => {
     const b = req.body || {};
     const hasField = updateArticleFieldKeys.some((k) => Object.prototype.hasOwnProperty.call(b, k));

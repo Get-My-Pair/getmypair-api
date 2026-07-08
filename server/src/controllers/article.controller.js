@@ -18,7 +18,7 @@ const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require
 const createArticle = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const { brand, model, category, color, purchaseYear, materials, condition, images } = req.body;
+    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
 
     const articleData = {
       ownerId,
@@ -30,6 +30,7 @@ const createArticle = async (req, res) => {
       materials: Array.isArray(materials) ? materials : [],
       condition: (condition || 'good').trim() || 'good',
       images: Array.isArray(images) ? images : [],
+      shoeSize: shoeSize ? String(shoeSize).trim() : null,
     };
 
     const currentYear = new Date().getFullYear();
@@ -103,7 +104,7 @@ const updateArticle = async (req, res) => {
   try {
     const { articleId } = req.params;
     const ownerId = req.user._id;
-    const { brand, model, category, color, purchaseYear, materials, condition, images } = req.body;
+    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
 
     const article = await Article.findOne({ _id: articleId, ownerId });
     if (!article) {
@@ -118,6 +119,7 @@ const updateArticle = async (req, res) => {
     if (materials !== undefined) article.materials = Array.isArray(materials) ? materials : article.materials;
     if (condition !== undefined) article.condition = (condition || 'good').trim() || 'good';
     if (images !== undefined) article.images = Array.isArray(images) ? images : article.images;
+    if (shoeSize !== undefined) article.shoeSize = shoeSize ? String(shoeSize).trim() : null;
 
     if (article.purchaseYear != null) {
       const currentYear = new Date().getFullYear();
