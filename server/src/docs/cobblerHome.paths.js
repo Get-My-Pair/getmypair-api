@@ -15,7 +15,7 @@
  *       Returns cobbler home dashboard summary including:
  *       profile flags, earnings totals, and job counters.
  *       `jobs.newRequests` matches available requests visible to this cobbler.
- *     tags: [Cobbler Profile]
+ *     tags: [Cobbler Home]
  *     security:
  *       - bearerAuth: []
  *     responses:

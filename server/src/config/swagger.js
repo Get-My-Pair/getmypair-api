@@ -26,7 +26,7 @@ const options = {
       title: 'GetMyPair API',
       version: '1.0.0',
       description:
-        'GetMyPair – A comprehensive API for shoe repair marketplace. Modules: Authentication (1), Profiles (2), Articles (3), Service Requests (4), Payments / Zoho (5).',
+        'GetMyPair – A comprehensive API for shoe repair marketplace. Modules: Authentication (1), Profiles (2), Articles (3), Service Requests (4), Payments / Zoho (5). Also includes geocoding, user notifications, and cobbler home dashboard.',
       contact: {
         name: 'API Support',
       },
@@ -82,6 +82,15 @@ const options = {
           },
         },
 
+        FamilyMember: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d12' },
+            name: { type: 'string', example: 'Jane Doe' },
+            relation: { type: 'string', enum: ['partner', 'child', 'elder'], example: 'partner' },
+          },
+        },
+
         // ─── User Profile ───────────────────────────────
         UserProfile: {
           type: 'object',
@@ -92,12 +101,56 @@ const options = {
             phone: { type: 'string', example: '9876543210' },
             email: { type: 'string', example: 'john@example.com' },
             profileImage: { type: 'string', example: 'https://res.cloudinary.com/xxx/image/upload/v1/getmypair/profiles/user-xxx.jpg' },
+            householdType: {
+              type: 'string',
+              enum: ['just_me', 'with_partner', 'with_children', 'with_elder'],
+              example: 'with_partner',
+              nullable: true,
+            },
             addresses: {
               type: 'array',
               items: { $ref: '#/components/schemas/Address' },
             },
+            familyMembers: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/FamilyMember' },
+            },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
+        UserNotification: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d30' },
+            userId: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d01' },
+            type: { type: 'string', example: 'COST_APPROVAL_PENDING' },
+            title: { type: 'string', example: 'Cost approval required' },
+            body: { type: 'string', example: 'Your cobbler quoted ₹650 for the repair.' },
+            data: { type: 'object', example: { serviceRequestId: '664a1b2c3d4e5f6a7b8c9d99' } },
+            readAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+
+        GeocodeLocation: {
+          type: 'object',
+          properties: {
+            displayName: { type: 'string', nullable: true, example: 'MG Road, Bengaluru, Karnataka, India' },
+            houseNumber: { type: 'string', nullable: true },
+            road: { type: 'string', nullable: true, example: 'MG Road' },
+            neighbourhood: { type: 'string', nullable: true },
+            suburb: { type: 'string', nullable: true },
+            city: { type: 'string', nullable: true, example: 'Bengaluru' },
+            county: { type: 'string', nullable: true },
+            state: { type: 'string', nullable: true, example: 'Karnataka' },
+            postcode: { type: 'string', nullable: true, example: '560001' },
+            country: { type: 'string', nullable: true, example: 'India' },
+            countryCode: { type: 'string', nullable: true, example: 'in' },
+            lat: { type: 'string', example: '12.9716' },
+            lon: { type: 'string', example: '77.5946' },
           },
         },
 
@@ -448,10 +501,13 @@ const options = {
       { name: 'Health', description: 'Health check endpoints' },
       { name: 'Authentication', description: 'OTP-based authentication endpoints' },
       { name: 'User Profile', description: 'User profile management — Profile created by auth; Role: USER' },
+      { name: 'User Notifications', description: 'In-app notifications for customer users — Role: USER' },
+      { name: 'Geocoding', description: 'Reverse geocoding (lat/lng to address)' },
       { name: 'Articles', description: 'Article / Digital Shoe Passport (Module 3) — Role: USER' },
       { name: 'Service Requests', description: 'Service request lifecycle APIs (Module 4)' },
       { name: 'Payment', description: 'Zoho payments, cost approval, settlements, refunds (Module 5)' },
       { name: 'Cobbler Profile', description: 'Cobbler profile management — Profile created by auth; Role: COBBER' },
+      { name: 'Cobbler Home', description: 'Cobbler home dashboard summary — Role: COBBER' },
       { name: 'Delivery Profile', description: 'Delivery partner profile management — Profile created by auth; Role: DELIVERY' },
       { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
     ],

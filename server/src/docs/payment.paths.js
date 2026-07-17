@@ -92,6 +92,31 @@
 
 /**
  * @swagger
+ * /api/payment/callback:
+ *   get:
+ *     summary: Zoho payment return URL
+ *     description: |
+ *       Browser redirect target after Zoho checkout completes.
+ *       Verifies payment status and redirects the user back to the app. No JWT required.
+ *     tags: [Payment]
+ *     parameters:
+ *       - in: query
+ *         name: orderId
+ *         schema: { type: string }
+ *         description: GMP order id
+ *       - in: query
+ *         name: reference_id
+ *         schema: { type: string }
+ *         description: Alternate order id parameter from Zoho
+ *     responses:
+ *       302:
+ *         description: Redirect to app success/failure page
+ *       400:
+ *         description: Missing order reference
+ */
+
+/**
+ * @swagger
  * /api/payment/order:
  *   post:
  *     summary: Create payment order
@@ -346,6 +371,54 @@
  *                     total: { type: integer, example: 12 }
  *                     page: { type: integer, example: 1 }
  *                     limit: { type: integer, example: 20 }
+ */
+
+/**
+ * @swagger
+ * /api/payment/status/{orderId}:
+ *   get:
+ *     summary: Payment status by order id
+ *     description: Returns payment status for a GMP order id (e.g. `GMP-c9d99-1730000000000`).
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string }
+ *         example: "GMP-c9d99-1730000000000"
+ *     responses:
+ *       200:
+ *         description: Payment status retrieved
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Payment not found
+ */
+
+/**
+ * @swagger
+ * /api/payment/by-service-request/{serviceRequestId}:
+ *   get:
+ *     summary: Payment by service request
+ *     description: Returns the active or most recent payment linked to a service request.
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: serviceRequestId
+ *         required: true
+ *         schema: { type: string }
+ *         example: "664a1b2c3d4e5f6a7b8c9d99"
+ *     responses:
+ *       200:
+ *         description: Payment retrieved
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Payment not found
  */
 
 /**

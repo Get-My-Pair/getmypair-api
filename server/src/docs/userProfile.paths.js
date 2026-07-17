@@ -91,6 +91,10 @@ void 0;
  *                 type: string
  *                 format: email
  *                 example: "john.updated@example.com"
+ *               householdType:
+ *                 type: string
+ *                 enum: [just_me, with_partner, with_children, with_elder]
+ *                 example: "with_partner"
  *     responses:
  *       200:
  *         description: Profile updated successfully
@@ -407,5 +411,109 @@ void 0;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/family-members/add:
+ *   post:
+ *     summary: Add family member
+ *     description: Adds a family member to the user profile (partner, child, or elder).
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, relation]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 example: "Jane Doe"
+ *               relation:
+ *                 type: string
+ *                 enum: [partner, child, elder]
+ *                 example: "partner"
+ *     responses:
+ *       200:
+ *         description: Family member added successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/family-members/update:
+ *   put:
+ *     summary: Update family member
+ *     description: Updates an existing family member by memberId.
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [memberId]
+ *             properties:
+ *               memberId:
+ *                 type: string
+ *                 example: "664a1b2c3d4e5f6a7b8c9d12"
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 example: "Jane Updated"
+ *               relation:
+ *                 type: string
+ *                 enum: [partner, child, elder]
+ *                 example: "child"
+ *     responses:
+ *       200:
+ *         description: Family member updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile or member not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/family-members/delete/{memberId}:
+ *   delete:
+ *     summary: Delete family member
+ *     description: Removes a family member from the user profile by memberId.
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema: { type: string }
+ *         example: "664a1b2c3d4e5f6a7b8c9d12"
+ *     responses:
+ *       200:
+ *         description: Family member deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile or member not found
  */
 void 0;

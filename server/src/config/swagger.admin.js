@@ -17,7 +17,7 @@ const options = {
       title: 'GetMyPair – Admin APIs',
       version: '1.0.0',
       description:
-        'Admin-only documentation: mobile ADMIN role APIs (/api/admin/...) and master admin HTML dashboard (/api/sys-admin/...).',
+        'Admin-only documentation: mobile ADMIN role APIs (/api/admin/...) and master admin HTML dashboard (/api/sys-admin/...) including payments and database maintenance.',
     },
     servers: [
       {

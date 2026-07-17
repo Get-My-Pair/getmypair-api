@@ -315,6 +315,70 @@ void 0;
 
 /**
  * @swagger
+ * /api/auth/sessions:
+ *   get:
+ *     summary: List active sessions
+ *     description: Returns all active login sessions for the authenticated user, including the current session id.
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sessions retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Sessions retrieved successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     currentSessionId: { type: string, nullable: true, example: "664a1b2c3d4e5f6a7b8c9d40" }
+ *                     sessions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: string, example: "664a1b2c3d4e5f6a7b8c9d40" }
+ *                           deviceInfo: { type: string, example: "Android 14" }
+ *                           ipAddress: { type: string, example: "192.168.1.10" }
+ *                           userAgent: { type: string }
+ *                           lastActivity: { type: string, format: date-time }
+ *                           expiresAt: { type: string, format: date-time }
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/auth/sessions/{sessionId}:
+ *   delete:
+ *     summary: Revoke a session
+ *     description: Revokes an active session by id. Users can only revoke their own sessions.
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema: { type: string }
+ *         example: "664a1b2c3d4e5f6a7b8c9d40"
+ *     responses:
+ *       200:
+ *         description: Session revoked successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Session not found
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/auth/languages:
  *   get:
  *     summary: Get supported Cobbler app languages

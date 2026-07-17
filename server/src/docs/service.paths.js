@@ -57,6 +57,11 @@ void 0;
  *                 type: number
  *                 minimum: 0
  *                 example: 650
+ *               pickupMode:
+ *                 type: string
+ *                 enum: [home_pickup, cobbler_nearby]
+ *                 default: home_pickup
+ *                 example: "home_pickup"
  *     responses:
  *       201:
  *         description: Service request created successfully
@@ -84,6 +89,76 @@ void 0;
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden — requires USER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/upload-proof/image:
+ *   post:
+ *     summary: Upload service proof image
+ *     description: |
+ *       Uploads a proof image when creating a service request.
+ *       Returns a Cloudinary URL to include in `photos` when calling `POST /api/service/create`.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (JPEG/PNG/WEBP, max 5MB)
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *       400:
+ *         description: No file or invalid file type
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires USER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/upload-proof/video:
+ *   post:
+ *     summary: Upload service proof video
+ *     description: |
+ *       Uploads a proof video when creating a service request.
+ *       Returns a Cloudinary URL to include in `videos` when calling `POST /api/service/create`.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (MP4/MOV/WEBM, max 50MB)
+ *     responses:
+ *       200:
+ *         description: Video uploaded successfully
+ *       400:
+ *         description: No file or invalid file type
+ *       401:
+ *         description: Unauthorized
  *       403:
  *         description: Forbidden — requires USER role
  */
@@ -578,6 +653,45 @@ void 0;
  *         description: Unauthorized
  *       403:
  *         description: Forbidden — requires ADMIN or COBBER role
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/service/respond-actual-cost:
+ *   post:
+ *     summary: Accept or reject quoted actual cost
+ *     description: |
+ *       User responds to the cobbler/dark store quoted `actualCost`.
+ *       `accept` advances the workflow toward payment; `reject` cancels the service request.
+ *       Alternative payment-module endpoints: `POST /api/payment/cost/approve` and `POST /api/payment/cost/reject`.
+ *     tags: [Service Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestId, decision]
+ *             properties:
+ *               requestId:
+ *                 type: string
+ *                 example: "664a1b2c3d4e5f6a7b8c9d99"
+ *               decision:
+ *                 type: string
+ *                 enum: [accept, reject]
+ *                 example: "accept"
+ *     responses:
+ *       200:
+ *         description: Decision recorded
+ *       400:
+ *         description: Validation error or invalid request state
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — requires USER role
  */
 void 0;
 

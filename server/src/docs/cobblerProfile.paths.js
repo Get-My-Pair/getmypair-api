@@ -25,6 +25,63 @@ void 0;
 
 /**
  * @swagger
+ * /api/cobbler/profile/nearby:
+ *   get:
+ *     summary: Find nearby online cobblers
+ *     description: |
+ *       Geo search for online cobblers within a radius of the given coordinates.
+ *       Uses `lastKnownLocation` on cobbler profiles. Available to USER, ADMIN, COBBER, and DELIVERY roles.
+ *     tags: [Cobbler Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         required: true
+ *         schema: { type: number, format: double }
+ *         example: 12.9716
+ *       - in: query
+ *         name: lng
+ *         required: true
+ *         schema: { type: number, format: double }
+ *         example: 77.5946
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, minimum: 0, maximum: 150, default: 5 }
+ *         description: Search radius in kilometres
+ *     responses:
+ *       200:
+ *         description: Nearby cobblers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Nearby cobblers retrieved successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     cobblers:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CobblerProfile'
+ *                     meta:
+ *                       type: object
+ *                       properties:
+ *                         lat: { type: number, example: 12.9716 }
+ *                         lng: { type: number, example: 77.5946 }
+ *                         radiusKm: { type: number, example: 5 }
+ *                         count: { type: integer, example: 3 }
+ *       400:
+ *         description: Invalid lat, lng, or radiusKm
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/cobbler/profile/me:
  *   get:
  *     summary: Get own cobbler profile
@@ -371,6 +428,48 @@ void 0;
  *                       example: ["shoe stretcher", "edge trimmer", "leather cutter"]
  *       400:
  *         description: toolsNeeded must be an array
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/cobbler/profile/bank:
+ *   put:
+ *     summary: Update bank details
+ *     description: Updates cobbler payout bank account details for settlements.
+ *     tags: [Cobbler Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               accountHolderName:
+ *                 type: string
+ *                 maxLength: 100
+ *                 example: "Raju Cobbler"
+ *               accountNumber:
+ *                 type: string
+ *                 maxLength: 34
+ *                 example: "123456789012"
+ *               ifscCode:
+ *                 type: string
+ *                 maxLength: 11
+ *                 example: "HDFC0001234"
+ *               bankName:
+ *                 type: string
+ *                 maxLength: 200
+ *                 example: "HDFC Bank"
+ *     responses:
+ *       200:
+ *         description: Bank details updated successfully
  *       401:
  *         description: Unauthorized
  *       404:
