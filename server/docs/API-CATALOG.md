@@ -14,8 +14,14 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | GET | `/health` | `app.js` | 103 | Health check JSON |
 | GET | `/api/version` | `app.js` | 112 | Package version JSON |
 | GET | `/admin` | `app.js` | 86 | Redirect to `/admin/` |
-| — | `/api-docs` | `app.js` | 98 | Swagger UI (main API) |
-| — | `/api-docs/admin` | `app.js` | 92 | Swagger UI (admin API) |
+| — | `/api-docs` | `app.js` | — | Swagger hub (per-app table) |
+| — | `/api-docs/user` | `app.js` | — | User App Swagger |
+| — | `/api-docs/cobbler` | `app.js` | — | Cobbler App Swagger |
+| — | `/api-docs/delivery` | `app.js` | — | Delivery App Swagger |
+| — | `/api-docs/darkworkstore` | `app.js` | — | Darkworkstore Dashboard Swagger |
+| — | `/api-docs/retailer` | `app.js` | — | Retailer Dashboard Swagger |
+| — | `/api-docs/admin` | `app.js` | — | Master Admin Dashboard Swagger |
+| — | `/api-docs/all` | `app.js` | — | Full API catalog Swagger |
 | — | `/uploads/*` | `app.js` | 139 | Static uploads |
 
 ---
@@ -241,7 +247,7 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 
 ## OpenAPI (Swagger) sources
 
-Path definitions live under `server/src/docs/*.paths.js` and are served at `/api-docs` and `/api-docs/admin`.
+Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagger UIs are served from `/api-docs/{user|cobbler|delivery|darkworkstore|retailer|admin}`; hub at `/api-docs`; full catalog at `/api-docs/all`.
 
 ---
 

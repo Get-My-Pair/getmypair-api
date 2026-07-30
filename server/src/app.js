@@ -23,7 +23,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
-const swaggerAdminSpec = require('./config/swagger.admin');
+const { appSpecs, uiCss, buildHubHtml } = require('./config/swagger.apps');
 const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
@@ -145,17 +145,29 @@ app.get('/admin', (req, res) => res.redirect(302, '/admin/'));
 // Global rate limiter (API + dynamic routes only; see skip in rateLimit.js for /api/sys-admin)
 app.use(globalRateLimiter);
 
-// Swagger: register the narrower path first so /api-docs/admin is not swallowed by /api-docs
-app.use('/api-docs/admin', swaggerUi.serve, swaggerUi.setup(swaggerAdminSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GetMyPair Admin APIs',
-}));
+// Per-app Swagger UIs (serveFiles avoids multi-mount conflicts with swagger-ui-express)
+const swaggerUiOpts = (title) => ({
+  customCss: uiCss,
+  customSiteTitle: title,
+});
 
-// Full API catalog (all path definitions in server/src/docs/*.paths.js)
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GetMyPair API Documentation',
-}));
+[
+  { route: '/api-docs/user', spec: appSpecs.user, title: 'GetMyPair User App APIs' },
+  { route: '/api-docs/cobbler', spec: appSpecs.cobbler, title: 'GetMyPair Cobbler App APIs' },
+  { route: '/api-docs/delivery', spec: appSpecs.delivery, title: 'GetMyPair Delivery App APIs' },
+  { route: '/api-docs/darkworkstore', spec: appSpecs.darkworkstore, title: 'GetMyPair Darkworkstore APIs' },
+  { route: '/api-docs/retailer', spec: appSpecs.retailer, title: 'GetMyPair Retailer Dashboard APIs' },
+  { route: '/api-docs/admin', spec: appSpecs.admin, title: 'GetMyPair Master Admin APIs' },
+  { route: '/api-docs/all', spec: swaggerSpec, title: 'GetMyPair API – Full Catalog' },
+].forEach(({ route, spec, title }) => {
+  app.use(route, swaggerUi.serveFiles(spec), swaggerUi.setup(spec, swaggerUiOpts(title)));
+});
+
+// Hub index: app-wise module table with links to each Swagger
+app.get(['/api-docs', '/api-docs/'], (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  res.type('html').send(buildHubHtml(base));
+});
 
 app.get('/health', (req, res) => {
   res.status(200).json({

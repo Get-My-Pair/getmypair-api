@@ -78,7 +78,8 @@ connectDB()
       console.log('  Port:        ' + config.PORT);
       console.log('------------------------------------------------------------');
       console.log('  Backend URL:  ' + backendUrl);
-      console.log('  API docs:     ' + apiDocsUrl);
+      console.log('  API docs:     ' + apiDocsUrl + '  (hub)');
+      console.log('    user / cobbler / delivery / darkworkstore / retailer / admin / all');
       console.log('  Admin panel:  ' + adminUrl);
       console.log('============================================================');
       console.log('\n');

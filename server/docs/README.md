@@ -15,7 +15,7 @@ Module documentation for the **GetMyPair Node/Express API** (`getmypair-api/serv
 |----------|----------|
 | Route mounts | `server/src/app.js` |
 | Full endpoint index (with line numbers) | [API-CATALOG.md](API-CATALOG.md) |
-| OpenAPI / Swagger UI | `GET /api-docs` (main), `GET /api-docs/admin` (sys-admin) |
+| OpenAPI / Swagger UI | Hub: `GET /api-docs` · User: `/api-docs/user` · Cobbler: `/api-docs/cobbler` · Delivery: `/api-docs/delivery` · Darkworkstore: `/api-docs/darkworkstore` · Retailer: `/api-docs/retailer` · Master Admin: `/api-docs/admin` · Full: `/api-docs/all` |
 | Health | `GET /health`, `GET /api/version` |
 | Master admin HTML UI | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) — `/admin/`, `/api/sys-admin` |
 
