@@ -17,7 +17,7 @@ const options = {
       title: 'GetMyPair – Admin APIs',
       version: '1.0.0',
       description:
-        'Admin-only documentation: mobile ADMIN role APIs (/api/admin/...) and master admin HTML dashboard (/api/sys-admin/...) including payments and database maintenance.',
+        'Admin APIs: Retailer (/api/retailer, legacy /api/admin/profile), Masteradmin (/api/masteradmin), Darkworkstore (/api/darkworkstore).',
     },
     servers: [
       {
@@ -41,14 +41,16 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Master admin JWT access token (HTML dashboard)',
+          description: 'Masteradmin JWT access token (dashboard login)',
         },
       },
     },
   },
   apis: [
     path.join(__dirname, '../docs/adminProfile.paths.js'),
+    path.join(__dirname, '../docs/retailer.paths.js'),
     path.join(__dirname, '../docs/adminDashboard.paths.js'),
+    path.join(__dirname, '../docs/darkworkstore.paths.js'),
   ],
 };
 

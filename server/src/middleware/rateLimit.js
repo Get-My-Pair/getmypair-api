@@ -35,7 +35,9 @@ const globalRateLimiter = rateLimit({
     if (req.method === 'OPTIONS') return true;
     if (isNonProduction) return true;
     const p = req.path || '';
-    return p.startsWith('/api/sys-admin');
+    return p.startsWith('/api/sys-admin')
+      || p.startsWith('/api/masteradmin')
+      || p.startsWith('/api/darkworkstore');
   },
 });
 
@@ -52,7 +54,7 @@ const otpRateLimiter = rateLimit({
   skipSuccessfulRequests: false,
 });
 
-/** Master admin login — global limiter skips /api/sys-admin, so login stays protected */
+/** Masteradmin / Darkworkstore login — global limiter skips those prefixes, so login stays protected */
 const adminLoginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isNonProduction ? 100000 : 10,

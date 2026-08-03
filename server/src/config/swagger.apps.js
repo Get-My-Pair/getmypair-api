@@ -162,24 +162,31 @@ const APP_ALLOWLISTS = {
     ['get', '/health'],
   ],
   darkworkstore: [
-    // Darkworkstore payment ops (sys-admin payments module)
-    ['get', '/api/sys-admin/payments/cost-approval'],
-    ['patch', '/api/sys-admin/payments/cost/{serviceRequestId}'],
-    ['get', '/api/sys-admin/payments/status'],
-    ['get', '/api/sys-admin/payments/status/{orderId}'],
-    ['get', '/api/sys-admin/payments/jobs/paid'],
-    ['get', '/api/sys-admin/payments/jobs/unpaid'],
-    ['get', '/api/sys-admin/payments/revenue'],
-    ['get', '/api/sys-admin/payments/transactions'],
-    ['get', '/api/sys-admin/payments/transactions/{paymentId}'],
-    ['get', '/api/sys-admin/payments/history/{serviceRequestId}'],
-    ['get', '/api/sys-admin/payments/settlements'],
-    ['post', '/api/sys-admin/payments/settlements/{settlementId}/process'],
-    ['get', '/api/sys-admin/payments/reports/monthly'],
-    ['get', '/api/sys-admin/payments/notifications'],
+    ['post', '/api/darkworkstore/auth/login'],
+    ['get', '/api/darkworkstore/auth/me'],
+    ['get', '/api/darkworkstore/payments/cost-approval'],
+    ['patch', '/api/darkworkstore/payments/cost/{serviceRequestId}'],
+    ['get', '/api/darkworkstore/payments/status'],
+    ['get', '/api/darkworkstore/payments/status/{orderId}'],
+    ['get', '/api/darkworkstore/payments/jobs/paid'],
+    ['get', '/api/darkworkstore/payments/jobs/unpaid'],
+    ['get', '/api/darkworkstore/payments/revenue'],
+    ['get', '/api/darkworkstore/payments/transactions'],
+    ['get', '/api/darkworkstore/payments/transactions/{paymentId}'],
+    ['get', '/api/darkworkstore/payments/history/{serviceRequestId}'],
+    ['get', '/api/darkworkstore/payments/settlements'],
+    ['post', '/api/darkworkstore/payments/settlements/{settlementId}/process'],
+    ['get', '/api/darkworkstore/payments/reports/monthly'],
+    ['get', '/api/darkworkstore/payments/notifications'],
   ],
   retailer: [
-    // Mobile ADMIN / retailer profile management
+    // Canonical retailer mount + legacy /api/admin/profile
+    ['get', '/api/retailer/profile/users'],
+    ['get', '/api/retailer/profile/cobblers'],
+    ['get', '/api/retailer/profile/delivery'],
+    ['get', '/api/retailer/profile/{id}'],
+    ['put', '/api/retailer/profile/verify'],
+    ['put', '/api/retailer/profile/status'],
     ['get', '/api/admin/profile/users'],
     ['get', '/api/admin/profile/cobblers'],
     ['get', '/api/admin/profile/delivery'],
@@ -187,40 +194,39 @@ const APP_ALLOWLISTS = {
     ['put', '/api/admin/profile/verify'],
     ['put', '/api/admin/profile/status'],
   ],
-  admin: [
-    // Master Admin auth + ops (exclude mobile Admin Profile; payments included here)
-    ['post', '/api/sys-admin/auth/login'],
-    ['get', '/api/sys-admin/auth/me'],
-    ['get', '/api/sys-admin/dashboard/stats'],
-    ['get', '/api/sys-admin/users'],
-    ['delete', '/api/sys-admin/users/{id}'],
-    ['get', '/api/sys-admin/articles'],
-    ['get', '/api/sys-admin/articles/by-owner'],
-    ['get', '/api/sys-admin/service-requests'],
-    ['get', '/api/sys-admin/service-requests/{id}'],
-    ['patch', '/api/sys-admin/service-requests/{id}'],
-    ['delete', '/api/sys-admin/service-requests/{id}'],
-    ['get', '/api/sys-admin/cobblers'],
-    ['patch', '/api/sys-admin/cobblers/{id}/verify'],
-    ['get', '/api/sys-admin/delivery-partners'],
-    ['get', '/api/sys-admin/payments/cost-approval'],
-    ['patch', '/api/sys-admin/payments/cost/{serviceRequestId}'],
-    ['get', '/api/sys-admin/payments/status'],
-    ['get', '/api/sys-admin/payments/status/{orderId}'],
-    ['get', '/api/sys-admin/payments/jobs/paid'],
-    ['get', '/api/sys-admin/payments/jobs/unpaid'],
-    ['get', '/api/sys-admin/payments/revenue'],
-    ['get', '/api/sys-admin/payments/transactions'],
-    ['get', '/api/sys-admin/payments/transactions/{paymentId}'],
-    ['get', '/api/sys-admin/payments/history/{serviceRequestId}'],
-    ['get', '/api/sys-admin/payments/settlements'],
-    ['post', '/api/sys-admin/payments/settlements/{settlementId}/process'],
-    ['get', '/api/sys-admin/payments/reports/monthly'],
-    ['get', '/api/sys-admin/payments/notifications'],
-    ['get', '/api/sys-admin/db/overview'],
-    ['post', '/api/sys-admin/db/clear/collection'],
-    ['post', '/api/sys-admin/db/clear/group'],
-    ['post', '/api/sys-admin/db/clear/all'],
+  masteradmin: [
+    ['post', '/api/masteradmin/auth/login'],
+    ['get', '/api/masteradmin/auth/me'],
+    ['get', '/api/masteradmin/dashboard/stats'],
+    ['get', '/api/masteradmin/users'],
+    ['delete', '/api/masteradmin/users/{id}'],
+    ['get', '/api/masteradmin/articles'],
+    ['get', '/api/masteradmin/articles/by-owner'],
+    ['get', '/api/masteradmin/service-requests'],
+    ['get', '/api/masteradmin/service-requests/{id}'],
+    ['patch', '/api/masteradmin/service-requests/{id}'],
+    ['delete', '/api/masteradmin/service-requests/{id}'],
+    ['get', '/api/masteradmin/cobblers'],
+    ['patch', '/api/masteradmin/cobblers/{id}/verify'],
+    ['get', '/api/masteradmin/delivery-partners'],
+    ['get', '/api/masteradmin/payments/cost-approval'],
+    ['patch', '/api/masteradmin/payments/cost/{serviceRequestId}'],
+    ['get', '/api/masteradmin/payments/status'],
+    ['get', '/api/masteradmin/payments/status/{orderId}'],
+    ['get', '/api/masteradmin/payments/jobs/paid'],
+    ['get', '/api/masteradmin/payments/jobs/unpaid'],
+    ['get', '/api/masteradmin/payments/revenue'],
+    ['get', '/api/masteradmin/payments/transactions'],
+    ['get', '/api/masteradmin/payments/transactions/{paymentId}'],
+    ['get', '/api/masteradmin/payments/history/{serviceRequestId}'],
+    ['get', '/api/masteradmin/payments/settlements'],
+    ['post', '/api/masteradmin/payments/settlements/{settlementId}/process'],
+    ['get', '/api/masteradmin/payments/reports/monthly'],
+    ['get', '/api/masteradmin/payments/notifications'],
+    ['get', '/api/masteradmin/db/overview'],
+    ['post', '/api/masteradmin/db/clear/collection'],
+    ['post', '/api/masteradmin/db/clear/group'],
+    ['post', '/api/masteradmin/db/clear/all'],
   ],
 };
 
@@ -295,12 +301,13 @@ const APP_META = {
     appType: 'Darkworkstore Dashboard',
     title: 'GetMyPair – Darkworkstore Dashboard APIs',
     description:
-      'Darkworkstore payment operations via /api/sys-admin/payments (cost approval, settlements, reports). Uses master admin JWT.',
+      'Darkworkstore dashboard APIs under /api/darkworkstore (auth + payments). Uses master-admin JWT. Future store APIs reserved.',
     status: 'Active',
     route: '/api-docs/darkworkstore',
     tags: [
+      { name: 'Darkworkstore Auth', description: 'Darkworkstore login (master-admin JWT)' },
       {
-        name: 'Master Admin Payments',
+        name: 'Darkworkstore Payments',
         description: 'Payment workflow — cost approval through settlements and reports',
       },
     ],
@@ -316,82 +323,85 @@ const APP_META = {
   retailer: {
     id: 'retailer',
     slug: 'retailer',
-    appType: 'Retailer Dashboard',
-    title: 'GetMyPair – Retailer Dashboard APIs',
+    appType: 'Retailer App',
+    title: 'GetMyPair – Retailer App APIs',
     description:
-      'Retailer / mobile ADMIN profile management APIs under /api/admin/profile (X-App-Source: ADMIN_APP).',
+      'Retailer app APIs under /api/retailer (canonical) and legacy /api/admin/profile (X-App-Source: ADMIN_APP). Future retailer modules reserved.',
     status: 'Active',
     route: '/api-docs/retailer',
     tags: [
       {
+        name: 'Retailer Profile',
+        description: 'Retailer profile management — Role: ADMIN',
+      },
+      {
         name: 'Admin Profile',
-        description: 'Admin management APIs for all profiles — Role: ADMIN',
+        description: 'Legacy mobile ADMIN profile APIs under /api/admin/profile',
       },
     ],
     securitySchemes: {
       bearerAuth: fullSpec.components.securitySchemes.bearerAuth,
     },
   },
-  admin: {
-    id: 'admin',
-    slug: 'admin',
-    appType: 'Master Admin Dashboard',
-    title: 'GetMyPair – Master Admin Dashboard APIs',
+  masteradmin: {
+    id: 'masteradmin',
+    slug: 'masteradmin',
+    appType: 'Masteradmin Dashboard',
+    title: 'GetMyPair – Masteradmin Dashboard APIs',
     description:
-      'Master admin HTML dashboard (/admin/) APIs under /api/sys-admin — auth, ops overview, users, articles, services, cobblers, delivery, payments, DB maintenance.',
+      'Masteradmin React dashboard APIs under /api/masteradmin — auth, ops overview, users, articles, services, cobblers, delivery, payments, DB maintenance. Legacy alias: /api/sys-admin.',
     status: 'Active',
-    route: '/api-docs/admin',
+    route: '/api-docs/masteradmin',
     tags: [
       { name: 'Master Admin Dashboard', description: 'Operations overview and platform statistics' },
       { name: 'Master Admin Payments', description: 'Payment workflow — cost approval through settlements and reports' },
       { name: 'Master Admin Database', description: 'MongoDB overview and clear collection/group/all' },
     ],
-    /** Hub table modules (finer than OpenAPI tags) — path prefix match */
     hubModules: [
       {
         title: 'Authentication',
-        description: 'Master admin login (not in sidebar; entry page)',
-        match: (method, p) => p.startsWith('/api/sys-admin/auth'),
+        description: 'Masteradmin login',
+        match: (method, p) => p.startsWith('/api/masteradmin/auth'),
       },
       {
         title: 'Dashboard',
         description: 'Operations overview and platform statistics',
-        match: (method, p) => p.startsWith('/api/sys-admin/dashboard'),
+        match: (method, p) => p.startsWith('/api/masteradmin/dashboard'),
       },
       {
         title: 'Users',
         description: 'List and delete platform users',
-        match: (method, p) => p.startsWith('/api/sys-admin/users'),
+        match: (method, p) => p.startsWith('/api/masteradmin/users'),
       },
       {
         title: 'Articles',
         description: 'List articles and owners with article counts',
-        match: (method, p) => p.startsWith('/api/sys-admin/articles'),
+        match: (method, p) => p.startsWith('/api/masteradmin/articles'),
       },
       {
         title: 'Service requests',
         description: 'List, view, update workflow, and delete service requests',
-        match: (method, p) => p.startsWith('/api/sys-admin/service-requests'),
+        match: (method, p) => p.startsWith('/api/masteradmin/service-requests'),
       },
       {
         title: 'Cobblers',
         description: 'List cobblers and verify profiles',
-        match: (method, p) => p.startsWith('/api/sys-admin/cobblers'),
+        match: (method, p) => p.startsWith('/api/masteradmin/cobblers'),
       },
       {
         title: 'Delivery',
         description: 'List delivery partners',
-        match: (method, p) => p.startsWith('/api/sys-admin/delivery-partners'),
+        match: (method, p) => p.startsWith('/api/masteradmin/delivery-partners'),
       },
       {
         title: 'Payments',
         description: 'Payment workflow — cost approval through settlements and reports',
-        match: (method, p) => p.startsWith('/api/sys-admin/payments'),
+        match: (method, p) => p.startsWith('/api/masteradmin/payments'),
       },
       {
         title: 'DB maintenance',
         description: 'MongoDB overview and clear collection/group/all',
-        match: (method, p) => p.startsWith('/api/sys-admin/db'),
+        match: (method, p) => p.startsWith('/api/masteradmin/db'),
       },
     ],
     securitySchemes: {
@@ -399,7 +409,7 @@ const APP_META = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Master admin JWT access token (HTML dashboard)',
+        description: 'Masteradmin JWT access token',
       },
     },
   },
@@ -484,11 +494,12 @@ for (const [id, meta] of Object.entries(APP_META)) {
 
 function emptyCounts() {
   return { post: 0, get: 0, put: 0, patch: 0, delete: 0, total: 0 };
-}
+} 
 
 function countMethods(spec) {
   const counts = emptyCounts();
-  for (const pathItem of Object.values(spec.paths || {})) {
+  for (const pathItem of Object.values(spec.paths || {}))
+     {
     for (const method of HTTP_METHODS) {
       if (pathItem[method]) {
         counts[method] += 1;
@@ -568,7 +579,7 @@ function buildHubHtml(baseUrl = '') {
           app.tags.find((t) => t.name === title)?.description ||
           title;
         return `<tr>
-          <td>${i + (app.id === 'admin' ? 0 : 1)}</td>
+          <td>${i + (app.id === 'masteradmin' ? 0 : 1)}</td>
           <td>${app.appType}</td>
           <td>${title}</td>
           <td>${desc}</td>

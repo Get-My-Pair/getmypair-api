@@ -13,16 +13,17 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 |--------|------|------|------|-------|
 | GET | `/health` | `app.js` | 103 | Health check JSON |
 | GET | `/api/version` | `app.js` | 112 | Package version JSON |
-| GET | `/admin` | `app.js` | 86 | Redirect to `/admin/` |
+| GET | `/admin` | `app.js` | — | **Removed** — HTML admin UI deleted; use React client |
+| — | `/api-docs/masteradmin` | `app.js` | — | Masteradmin Dashboard Swagger |
+| — | `/api-docs/admin` | `app.js` | — | Legacy alias → Masteradmin Swagger |
 | — | `/api-docs` | `app.js` | — | Swagger hub (per-app table) |
 | — | `/api-docs/user` | `app.js` | — | User App Swagger |
 | — | `/api-docs/cobbler` | `app.js` | — | Cobbler App Swagger |
 | — | `/api-docs/delivery` | `app.js` | — | Delivery App Swagger |
 | — | `/api-docs/darkworkstore` | `app.js` | — | Darkworkstore Dashboard Swagger |
-| — | `/api-docs/retailer` | `app.js` | — | Retailer Dashboard Swagger |
-| — | `/api-docs/admin` | `app.js` | — | Master Admin Dashboard Swagger |
+| — | `/api-docs/retailer` | `app.js` | — | Retailer App Swagger |
 | — | `/api-docs/all` | `app.js` | — | Full API catalog Swagger |
-| — | `/uploads/*` | `app.js` | 139 | Static uploads |
+| — | `/uploads/*` | `app.js` | — | Static uploads |
 
 ---
 
@@ -108,12 +109,12 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | POST | `/api/delivery/profile/upload-image` | 38 | `uploadProfileImage` |
 | GET | `/api/delivery/profile/verification` | 39 | `getVerificationStatus` |
 
-### Admin profile (mobile JWT)
+### Admin profile (mobile JWT) — Retailer legacy
 
-**Base:** `/api/admin/profile`  
-**File:** `server/src/routes/adminProfile.routes.js`  
+**Base:** `/api/admin/profile` (legacy) · canonical: `/api/retailer/profile`  
+**Files:** `adminProfile.routes.js`, `retailer.routes.js`  
 **Auth:** JWT + role `ADMIN`  
-*(Separate from master HTML admin under `/api/sys-admin`.)*
+*(Separate from Masteradmin / Darkworkstore under `/api/masteradmin` and `/api/darkworkstore`.)*
 
 | Method | Full path | Line | Controller handler |
 |--------|-----------|------|----------------------|
@@ -123,6 +124,8 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | GET | `/api/admin/profile/:id` | 35 | `getProfileById` |
 | PUT | `/api/admin/profile/verify` | 36 | `verifyProfile` |
 | PUT | `/api/admin/profile/status` | 37 | `updateAccountStatus` |
+
+Same handlers also mounted under `/api/retailer/profile/*`.
 
 ---
 
@@ -220,34 +223,38 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 
 ---
 
-## Master admin dashboard (sys-admin)
+## Masteradmin dashboard
 
-**Base:** `/api/sys-admin`  
-**File:** `server/src/routes/adminDashboard.routes.js`  
-**Auth:** Master admin session / cookie (see `adminMasterAuth.middleware`); login route is public.
+**Base:** `/api/masteradmin` (legacy alias: `/api/sys-admin`)  
+**File:** `server/src/routes/masteradmin.routes.js`  
+**Auth:** Masteradmin JWT (`adminMasterAuth`); login is public.
 
-| Method | Full path | Line | Controller handler |
-|--------|-----------|------|----------------------|
-| POST | `/api/sys-admin/auth/login` | 17 | `login` |
-| GET | `/api/sys-admin/auth/me` | 25 | `me` |
-| GET | `/api/sys-admin/dashboard/stats` | 26 | `dashboardStats` |
-| GET | `/api/sys-admin/users` | 27 | `listUsers` |
-| DELETE | `/api/sys-admin/users/:id` | 28 | `deleteUser` |
-| GET | `/api/sys-admin/articles/by-owner` | 29 | `listArticleOwnersSummary` |
-| GET | `/api/sys-admin/articles` | 34 | `listArticles` |
-| GET | `/api/sys-admin/service-requests` | 35 | `listServiceRequests` |
-| GET | `/api/sys-admin/service-requests/:id` | 36 | `getServiceRequestById` |
-| PATCH | `/api/sys-admin/service-requests/:id` | 41 | `patchServiceRequestWorkflow` |
-| DELETE | `/api/sys-admin/service-requests/:id` | 46 | `deleteServiceRequest` |
-| GET | `/api/sys-admin/cobblers` | 51 | `listCobblers` |
-| PATCH | `/api/sys-admin/cobblers/:id/verify` | 52 | `verifyCobbler` |
-| GET | `/api/sys-admin/delivery-partners` | 53 | `listDeliveryPartners` |
+| Method | Full path | Controller handler |
+|--------|-----------|----------------------|
+| POST | `/api/masteradmin/auth/login` | `login` |
+| GET | `/api/masteradmin/auth/me` | `me` |
+| GET | `/api/masteradmin/dashboard/stats` | `dashboardStats` |
+| GET/DELETE | `/api/masteradmin/users` | `listUsers` / `deleteUser` |
+| GET | `/api/masteradmin/articles` | `listArticles` |
+| GET/PATCH/DELETE | `/api/masteradmin/service-requests` | list / patch / delete |
+| GET/PATCH | `/api/masteradmin/cobblers` | list / verify |
+| GET | `/api/masteradmin/delivery-partners` | `listDeliveryPartners` |
+| * | `/api/masteradmin/payments/*` | Darkstore payment controllers |
+| * | `/api/masteradmin/db/*` | DB maintenance |
+
+## Darkworkstore dashboard
+
+**Base:** `/api/darkworkstore`  
+**File:** `server/src/routes/darkworkstore.routes.js`  
+**Auth:** same masteradmin JWT; login is public.
+
+Includes `/auth/*` and `/payments/*` only. Future store APIs are reserved (empty stubs).
 
 ---
 
 ## OpenAPI (Swagger) sources
 
-Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagger UIs are served from `/api-docs/{user|cobbler|delivery|darkworkstore|retailer|admin}`; hub at `/api-docs`; full catalog at `/api-docs/all`.
+Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagger UIs are served from `/api-docs/{user|cobbler|darkworkstore|masteradmin|retailer|delivery}`; hub at `/api-docs`; full catalog at `/api-docs/all`. Legacy `/api-docs/admin` → masteradmin.
 
 ---
 

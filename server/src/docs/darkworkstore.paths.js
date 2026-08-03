@@ -1,0 +1,441 @@
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : darkworkstore.paths.js
+ * Description: Swagger path definitions – Darkworkstore Dashboard APIs
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Darkworkstore Auth
+ *   description: Darkworkstore login (master-admin JWT)
+ */
+void 0;
+
+/**
+ * @swagger
+ * tags:
+ *   name: Darkworkstore Payments
+ *   description: Payment workflow — cost approval through settlements and reports
+ */
+void 0;
+
+/**
+ * ----------------------------------------------------------------------------
+ * Project    : GetMypair
+ * File       : adminDashboard.paths.js
+ * Description: Swagger path definitions – Masteradmin Dashboard APIs
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Darkworkstore Auth
+ *   description: Masteradmin dashboard APIs (React client). Separate from Retailer / mobile ADMIN APIs.
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/auth/login:
+ *   post:
+ *     summary: Master admin login
+ *     tags: [Darkworkstore Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, example: "ranjith.c96me@gmail.com" }
+ *               password: { type: string, example: "Admin@123" }
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid email or password
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/auth/me:
+ *   get:
+ *     summary: Get current master admin
+ *     tags: [Darkworkstore Auth]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: OK
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/cost-approval:
+ *   get:
+ *     summary: List jobs awaiting cost approval
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cost approval jobs list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/cost/{serviceRequestId}:
+ *   patch:
+ *     summary: Set actual cost (admin)
+ *     description: Updates `actualCost` on a service request and notifies the user for approval.
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: serviceRequestId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [actualCost]
+ *             properties:
+ *               actualCost:
+ *                 type: number
+ *                 minimum: 0
+ *                 example: 650
+ *     responses:
+ *       200:
+ *         description: Actual cost updated â€” awaiting user approval
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/status:
+ *   get:
+ *     summary: List payment statuses
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Payment status list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/status/{orderId}:
+ *   get:
+ *     summary: Payment status by order id
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string }
+ *         example: "GMP-c9d99-1730000000000"
+ *     responses:
+ *       200:
+ *         description: Payment status retrieved
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Payment not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/jobs/paid:
+ *   get:
+ *     summary: List paid jobs
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Paid jobs list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/jobs/unpaid:
+ *   get:
+ *     summary: List unpaid jobs
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Unpaid jobs list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/revenue:
+ *   get:
+ *     summary: Revenue dashboard
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Revenue dashboard data
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/transactions:
+ *   get:
+ *     summary: List payment transactions
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Transactions list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/transactions/{paymentId}:
+ *   get:
+ *     summary: Transaction details
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: paymentId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Transaction details
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Payment not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/history/{serviceRequestId}:
+ *   get:
+ *     summary: Payment history for service request
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: serviceRequestId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Service payment history
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/settlements:
+ *   get:
+ *     summary: List settlements
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Settlements list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/settlements/{settlementId}/process:
+ *   post:
+ *     summary: Process settlement payout
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: settlementId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Settlement processed
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Settlement not found
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/reports/monthly:
+ *   get:
+ *     summary: Monthly payment report
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema: { type: integer, example: 2026 }
+ *       - in: query
+ *         name: month
+ *         schema: { type: integer, minimum: 1, maximum: 12, example: 6 }
+ *       - in: query
+ *         name: darkStoreId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Monthly report generated
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/payments/notifications:
+ *   get:
+ *     summary: Payment-related admin notifications
+ *     tags: [Darkworkstore Payments]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Notifications list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+

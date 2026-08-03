@@ -33,14 +33,17 @@ const cobblerProfileRoutes = require('./routes/cobblerProfile.routes');
 const cobblerHomeRoutes = require('./routes/cobblerHome.routes');
 const deliveryProfileRoutes = require('./routes/deliveryProfile.routes');
 const adminProfileRoutes = require('./routes/adminProfile.routes');
+const retailerRoutes = require('./routes/retailer.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
 const articleRoutes = require('./routes/article.routes');
 const serviceRoutes = require('./routes/service.routes');
 const paymentRoutes = require('./routes/payment.routes');
-const adminDashboardRoutes = require('./routes/adminDashboard.routes');
+const masteradminRoutes = require('./routes/masteradmin.routes');
+const darkworkstoreRoutes = require('./routes/darkworkstore.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
+const path = require('path');
 
 const app = express();
 
@@ -137,12 +140,7 @@ if (config.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Static files BEFORE global rate limit — admin pages load many assets per view; throttling them caused 429 on /admin/*
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../public')));
-app.get('/admin', (req, res) => res.redirect(302, '/admin/'));
-
-// Global rate limiter (API + dynamic routes only; see skip in rateLimit.js for /api/sys-admin)
+// Global rate limiter (API routes; see skip in rateLimit.js for dashboard APIs)
 app.use(globalRateLimiter);
 
 // Per-app Swagger UIs (serveFiles avoids multi-mount conflicts with swagger-ui-express)
@@ -154,14 +152,22 @@ const swaggerUiOpts = (title) => ({
 [
   { route: '/api-docs/user', spec: appSpecs.user, title: 'GetMyPair User App APIs' },
   { route: '/api-docs/cobbler', spec: appSpecs.cobbler, title: 'GetMyPair Cobbler App APIs' },
-  { route: '/api-docs/delivery', spec: appSpecs.delivery, title: 'GetMyPair Delivery App APIs' },
   { route: '/api-docs/darkworkstore', spec: appSpecs.darkworkstore, title: 'GetMyPair Darkworkstore APIs' },
-  { route: '/api-docs/retailer', spec: appSpecs.retailer, title: 'GetMyPair Retailer Dashboard APIs' },
-  { route: '/api-docs/admin', spec: appSpecs.admin, title: 'GetMyPair Master Admin APIs' },
+  { route: '/api-docs/masteradmin', spec: appSpecs.masteradmin, title: 'GetMyPair Masteradmin APIs' },
+  { route: '/api-docs/retailer', spec: appSpecs.retailer, title: 'GetMyPair Retailer App APIs' },
+  // Existing delivery APIs (not one of the five primary apps — kept for current mobile usage)
+  { route: '/api-docs/delivery', spec: appSpecs.delivery, title: 'GetMyPair Delivery App APIs' },
   { route: '/api-docs/all', spec: swaggerSpec, title: 'GetMyPair API – Full Catalog' },
 ].forEach(({ route, spec, title }) => {
   app.use(route, swaggerUi.serveFiles(spec), swaggerUi.setup(spec, swaggerUiOpts(title)));
 });
+
+// Legacy Swagger alias
+app.use(
+  '/api-docs/admin',
+  swaggerUi.serveFiles(appSpecs.masteradmin),
+  swaggerUi.setup(appSpecs.masteradmin, swaggerUiOpts('GetMyPair Masteradmin APIs'))
+);
 
 // Hub index: app-wise module table with links to each Swagger
 app.get(['/api-docs', '/api-docs/'], (req, res) => {
@@ -186,26 +192,46 @@ app.get('/api/version', (req, res) => {
   });
 });
 
-// API routes
+// ---------------------------------------------------------------------------
+// Five primary app API surfaces
+//   1. User          — /api/auth, /api/user/*, /api/articles, /api/geocode,
+//                      /api/service, /api/payment (role-filtered)
+//   2. Cobbler       — /api/auth, /api/cobbler/*, /api/service, /api/payment
+//   3. Retailer      — /api/retailer (+ legacy /api/admin/profile)
+//   4. Darkworkstore — /api/darkworkstore
+//   5. Masteradmin   — /api/masteradmin
+// Delivery profile APIs remain mounted for current mobile usage.
+// ---------------------------------------------------------------------------
+
 app.use('/api/auth', authRoutes);
 
-// Module 2: Profile APIs
+// User app
 app.use('/api/user/profile', userProfileRoutes);
 app.use('/api/user/notifications', userNotificationRoutes);
+app.use('/api/geocode', geocodeRoutes);
+app.use('/api/articles', articleRoutes);
+app.use('/api/service', serviceRoutes);
+app.use('/api/payment', paymentRoutes);
+
+// Cobbler app
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
 app.use('/api/cobbler/home', cobblerHomeRoutes);
-app.use('/api/delivery/profile', deliveryProfileRoutes);
+
+// Retailer app (canonical) + legacy mobile ADMIN mount
+app.use('/api/retailer', retailerRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
-// Geocoding (reverse lookup)
-app.use('/api/geocode', geocodeRoutes);
-// Module 3: Articles (Digital Shoe Passport)
-app.use('/api/articles', articleRoutes);
-// Module 4: Service Requests
-app.use('/api/service', serviceRoutes);
-// Module 5: Payments (Zoho, cost approval, settlements)
-app.use('/api/payment', paymentRoutes);
-// Master admin HTML dashboard APIs (separate from /api/admin/profile mobile ADMIN JWT)
-app.use('/api/sys-admin', adminDashboardRoutes);
+
+// Darkworkstore dashboard APIs
+app.use('/api/darkworkstore', darkworkstoreRoutes);
+
+// Masteradmin dashboard APIs
+app.use('/api/masteradmin', masteradminRoutes);
+
+// Legacy alias (prefer /api/masteradmin)
+app.use('/api/sys-admin', masteradminRoutes);
+
+// Delivery app (existing — not one of the five primary apps)
+app.use('/api/delivery/profile', deliveryProfileRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

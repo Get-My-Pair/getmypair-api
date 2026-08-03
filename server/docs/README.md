@@ -2,6 +2,18 @@
 
 Module documentation for the **GetMyPair Node/Express API** (`getmypair-api/server`).
 
+## Five primary app surfaces
+
+| App | API prefix | Swagger |
+|-----|------------|---------|
+| **User** | `/api/auth`, `/api/user/*`, `/api/articles`, `/api/geocode`, `/api/service`, `/api/payment` | `/api-docs/user` |
+| **Cobbler** | `/api/auth`, `/api/cobbler/*`, `/api/service`, `/api/payment` | `/api-docs/cobbler` |
+| **Retailer** | `/api/retailer` (legacy `/api/admin/profile`) | `/api-docs/retailer` |
+| **Darkworkstore** | `/api/darkworkstore` | `/api-docs/darkworkstore` |
+| **Masteradmin** | `/api/masteradmin` (legacy `/api/sys-admin`) | `/api-docs/masteradmin` |
+
+Delivery profile APIs remain at `/api/delivery/profile` (`/api-docs/delivery`) for current mobile usage.
+
 | Module | Topic | Document |
 |--------|--------|----------|
 | **1** | Authentication & health | [MODULE_1_DOCUMENTATION.md](MODULE_1_DOCUMENTATION.md) |
@@ -14,10 +26,10 @@ Module documentation for the **GetMyPair Node/Express API** (`getmypair-api/serv
 | Resource | Location |
 |----------|----------|
 | Route mounts | `server/src/app.js` |
-| Full endpoint index (with line numbers) | [API-CATALOG.md](API-CATALOG.md) |
-| OpenAPI / Swagger UI | Hub: `GET /api-docs` · User: `/api-docs/user` · Cobbler: `/api-docs/cobbler` · Delivery: `/api-docs/delivery` · Darkworkstore: `/api-docs/darkworkstore` · Retailer: `/api-docs/retailer` · Master Admin: `/api-docs/admin` · Full: `/api-docs/all` |
+| Full endpoint index | [API-CATALOG.md](API-CATALOG.md) |
+| OpenAPI / Swagger UI | Hub: `GET /api-docs` · see table above · Full: `/api-docs/all` |
 | Health | `GET /health`, `GET /api/version` |
-| Master admin HTML UI | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) — `/admin/`, `/api/sys-admin` |
+| Dashboard APIs | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) |
 
 ## Base URL
 
@@ -47,6 +59,7 @@ Errors: `{ "success": false, "message": "...", "statusCode": 400, "errors": [] }
 
 ## Related client docs
 
+- Web (website + dashboards): `client/client`
 - Customer mobile app: `getmypair-mobile/gmp/docs/`
 - Cobblers app: `gmp-cobblers-app/cobbler_app/docs/` (if present)
 

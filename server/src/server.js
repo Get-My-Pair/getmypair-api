@@ -59,14 +59,11 @@ connectDB()
     const server = app.listen(config.PORT, () => {
       const backendUrl = `http://localhost:${config.PORT}`;
       const apiDocsUrl = `${backendUrl}/api-docs`;
-      const adminUrl = `${backendUrl}/admin/`;
-      const frontendUrl = backendUrl;
-      
+
       logger.info(
         `Server running in ${config.NODE_ENV} mode on port ${config.PORT}`
       );
-      
-      // Clear console and show success message
+
       console.clear();
       console.log('\n');
       console.log('============================================================');
@@ -79,8 +76,8 @@ connectDB()
       console.log('------------------------------------------------------------');
       console.log('  Backend URL:  ' + backendUrl);
       console.log('  API docs:     ' + apiDocsUrl + '  (hub)');
-      console.log('    user / cobbler / delivery / darkworkstore / retailer / admin / all');
-      console.log('  Admin panel:  ' + adminUrl);
+      console.log('    user / cobbler / darkworkstore / masteradmin / retailer');
+      console.log('    (+ delivery / all)');
       console.log('============================================================');
       console.log('\n');
     });

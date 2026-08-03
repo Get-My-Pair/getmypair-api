@@ -1,8 +1,8 @@
-/**
+﻿/**
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminDashboard.paths.js
- * Description: Swagger path definitions – Master Admin HTML Dashboard APIs
+ * Description: Swagger path definitions – Masteradmin Dashboard APIs
  * ----------------------------------------------------------------------------
  */
 
@@ -10,13 +10,13 @@
  * @swagger
  * tags:
  *   name: Master Admin Dashboard
- *   description: Master admin HTML dashboard APIs (separate from mobile ADMIN role APIs).
+ *   description: Masteradmin dashboard APIs (React client). Separate from Retailer / mobile ADMIN APIs.
  */
 void 0;
 
 /**
  * @swagger
- * /api/sys-admin/auth/login:
+ * /api/masteradmin/auth/login:
  *   post:
  *     summary: Master admin login
  *     tags: [Master Admin Dashboard]
@@ -40,7 +40,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/auth/me:
+ * /api/masteradmin/auth/me:
  *   get:
  *     summary: Get current master admin
  *     tags: [Master Admin Dashboard]
@@ -56,7 +56,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/dashboard/stats:
+ * /api/masteradmin/dashboard/stats:
  *   get:
  *     summary: Dashboard stats
  *     tags: [Master Admin Dashboard]
@@ -72,7 +72,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/users:
+ * /api/masteradmin/users:
  *   get:
  *     summary: List users
  *     tags: [Master Admin Dashboard]
@@ -95,7 +95,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/users/{id}:
+ * /api/masteradmin/users/{id}:
  *   delete:
  *     summary: Delete user and owned data
  *     description: |
@@ -124,7 +124,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/articles/by-owner:
+ * /api/masteradmin/articles/by-owner:
  *   get:
  *     summary: List article owners summary
  *     tags: [Master Admin Dashboard]
@@ -140,7 +140,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/articles:
+ * /api/masteradmin/articles:
  *   get:
  *     summary: List articles (optionally filtered by owner)
  *     tags: [Master Admin Dashboard]
@@ -167,7 +167,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/service-requests:
+ * /api/masteradmin/service-requests:
  *   get:
  *     summary: List service requests
  *     tags: [Master Admin Dashboard]
@@ -190,7 +190,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/service-requests/{id}:
+ * /api/masteradmin/service-requests/{id}:
  *   get:
  *     summary: Get service request detail (admin)
  *     tags: [Master Admin Dashboard]
@@ -267,7 +267,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/cobblers:
+ * /api/masteradmin/cobblers:
  *   get:
  *     summary: List cobbler profiles
  *     tags: [Master Admin Dashboard]
@@ -290,7 +290,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/cobblers/{id}/verify:
+ * /api/masteradmin/cobblers/{id}/verify:
  *   patch:
  *     summary: Update cobbler verification status
  *     tags: [Master Admin Dashboard]
@@ -328,7 +328,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/delivery-partners:
+ * /api/masteradmin/delivery-partners:
  *   get:
  *     summary: List delivery partner profiles
  *     tags: [Master Admin Dashboard]
@@ -359,7 +359,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/cost-approval:
+ * /api/masteradmin/payments/cost-approval:
  *   get:
  *     summary: List jobs awaiting cost approval
  *     tags: [Master Admin Payments]
@@ -385,7 +385,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/cost/{serviceRequestId}:
+ * /api/masteradmin/payments/cost/{serviceRequestId}:
  *   patch:
  *     summary: Set actual cost (admin)
  *     description: Updates `actualCost` on a service request and notifies the user for approval.
@@ -411,7 +411,7 @@ void 0;
  *                 example: 650
  *     responses:
  *       200:
- *         description: Actual cost updated — awaiting user approval
+ *         description: Actual cost updated â€” awaiting user approval
  *       400:
  *         description: Validation error
  *       401:
@@ -421,7 +421,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/status:
+ * /api/masteradmin/payments/status:
  *   get:
  *     summary: List payment statuses
  *     tags: [Master Admin Payments]
@@ -450,7 +450,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/status/{orderId}:
+ * /api/masteradmin/payments/status/{orderId}:
  *   get:
  *     summary: Payment status by order id
  *     tags: [Master Admin Payments]
@@ -474,7 +474,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/jobs/paid:
+ * /api/masteradmin/payments/jobs/paid:
  *   get:
  *     summary: List paid jobs
  *     tags: [Master Admin Payments]
@@ -500,7 +500,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/jobs/unpaid:
+ * /api/masteradmin/payments/jobs/unpaid:
  *   get:
  *     summary: List unpaid jobs
  *     tags: [Master Admin Payments]
@@ -526,7 +526,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/revenue:
+ * /api/masteradmin/payments/revenue:
  *   get:
  *     summary: Revenue dashboard
  *     tags: [Master Admin Payments]
@@ -552,7 +552,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/transactions:
+ * /api/masteradmin/payments/transactions:
  *   get:
  *     summary: List payment transactions
  *     tags: [Master Admin Payments]
@@ -578,7 +578,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/transactions/{paymentId}:
+ * /api/masteradmin/payments/transactions/{paymentId}:
  *   get:
  *     summary: Transaction details
  *     tags: [Master Admin Payments]
@@ -601,7 +601,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/history/{serviceRequestId}:
+ * /api/masteradmin/payments/history/{serviceRequestId}:
  *   get:
  *     summary: Payment history for service request
  *     tags: [Master Admin Payments]
@@ -622,7 +622,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/settlements:
+ * /api/masteradmin/payments/settlements:
  *   get:
  *     summary: List settlements
  *     tags: [Master Admin Payments]
@@ -648,7 +648,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/settlements/{settlementId}/process:
+ * /api/masteradmin/payments/settlements/{settlementId}/process:
  *   post:
  *     summary: Process settlement payout
  *     tags: [Master Admin Payments]
@@ -671,7 +671,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/reports/monthly:
+ * /api/masteradmin/payments/reports/monthly:
  *   get:
  *     summary: Monthly payment report
  *     tags: [Master Admin Payments]
@@ -697,7 +697,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/payments/notifications:
+ * /api/masteradmin/payments/notifications:
  *   get:
  *     summary: Payment-related admin notifications
  *     tags: [Master Admin Payments]
@@ -728,7 +728,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/db/overview:
+ * /api/masteradmin/db/overview:
  *   get:
  *     summary: Database overview
  *     description: Returns collection counts and logical delete groups for the maintenance UI.
@@ -745,7 +745,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/db/clear/collection:
+ * /api/masteradmin/db/clear/collection:
  *   post:
  *     summary: Clear a single collection
  *     description: Deletes all documents in one collection. `adminmasters` is protected.
@@ -778,7 +778,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/db/clear/group:
+ * /api/masteradmin/db/clear/group:
  *   post:
  *     summary: Clear a logical data group
  *     description: Deletes documents across a predefined group (auth, articles, services, payments, etc.).
@@ -811,7 +811,7 @@ void 0;
 
 /**
  * @swagger
- * /api/sys-admin/db/clear/all:
+ * /api/masteradmin/db/clear/all:
  *   post:
  *     summary: Clear all application data
  *     description: |
