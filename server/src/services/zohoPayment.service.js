@@ -418,7 +418,38 @@ function verifyReturnUrlSignature(params, signatureHeader) {
 }
 
 /**
- * Validate webhook signature (HMAC-SHA256 of raw body).
+ * Parse Zoho `X-Zoho-Webhook-Signature` (`t=<timestamp>,v=<hex>`) or a legacy plain hex.
+ * @see https://www.zoho.com/in/payments/developerdocs/webhooks/verification/
+ */
+function parseZohoWebhookSignature(signatureHeader) {
+  const raw = String(signatureHeader || '').trim();
+  if (!raw) return null;
+
+  const parts = {};
+  for (const segment of raw.split(',')) {
+    const idx = segment.indexOf('=');
+    if (idx === -1) continue;
+    const key = segment.slice(0, idx).trim();
+    const value = segment
+      .slice(idx + 1)
+      .trim()
+      .replace(/\s+/g, '');
+    if (key) parts[key] = value;
+  }
+
+  if (parts.t && parts.v) {
+    return { timestamp: parts.t, signature: parts.v };
+  }
+
+  return {
+    timestamp: null,
+    signature: raw.replace(/^sha256=/i, '').trim(),
+  };
+}
+
+/**
+ * Validate webhook signature per Zoho Payments:
+ * HMAC-SHA256(signing_key, `${timestamp}.${rawBody}`) compared to header `v`.
  */
 function verifyWebhookSignature(rawBody, signatureHeader) {
   const secret = config.ZOHO_WEBHOOK_SECRET;
@@ -426,13 +457,106 @@ function verifyWebhookSignature(rawBody, signatureHeader) {
     return config.NODE_ENV !== 'production';
   }
   if (!signatureHeader) return false;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  const provided = String(signatureHeader).replace(/^sha256=/i, '').trim();
+
+  const parsed = parseZohoWebhookSignature(signatureHeader);
+  if (!parsed?.signature) return false;
+
+  const body = typeof rawBody === 'string' ? rawBody : String(rawBody || '');
+  const signedPayload =
+    parsed.timestamp != null ? `${parsed.timestamp}.${body}` : body;
+  const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+  const provided = parsed.signature;
+
   try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(provided, 'utf8');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return expected === provided;
   }
+}
+
+/**
+ * Flatten Zoho webhook envelopes (`event_type` + `event_object`) into fields we process.
+ */
+function normalizeWebhookPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      eventType: 'unknown',
+      orderId: null,
+      paymentLinkId: null,
+      paymentId: null,
+      status: '',
+      failureReason: null,
+    };
+  }
+
+  const eventType = String(payload.event_type || payload.event || '').toLowerCase();
+  const eventObject =
+    payload.event_object && typeof payload.event_object === 'object'
+      ? payload.event_object
+      : {};
+  const link =
+    eventObject.payment_links ||
+    eventObject.payment_link ||
+    payload.payment_links ||
+    payload.payment_link ||
+    {};
+  const paymentObj = eventObject.payment || payload.payment || {};
+  const nestedPayment =
+    Array.isArray(link.payments) && link.payments[0] ? link.payments[0] : {};
+
+  let status = String(
+    link.status || paymentObj.status || payload.status || payload.payment_status || ''
+  ).toLowerCase();
+
+  if (!status && eventType) {
+    if (eventType === 'payment_link.paid' || eventType === 'payment.succeeded') {
+      status = 'paid';
+    } else if (eventType === 'payment.failed') {
+      status = 'failed';
+    } else if (
+      eventType === 'payment_link.canceled' ||
+      eventType === 'payment_link.cancelled'
+    ) {
+      status = 'canceled';
+    } else if (eventType === 'payment_link.expired') {
+      status = 'expired';
+    }
+  }
+
+  const orderId =
+    link.reference_id ||
+    paymentObj.reference_number ||
+    payload.reference_id ||
+    payload.order_id ||
+    payload.orderId ||
+    null;
+
+  const paymentLinkId =
+    link.payment_link_id || payload.payment_link_id || null;
+
+  const paymentId =
+    nestedPayment.payment_id ||
+    paymentObj.payment_id ||
+    payload.payment_id ||
+    null;
+
+  const failureReason =
+    paymentObj.failure_code ||
+    paymentObj.failure_category ||
+    payload.failure_reason ||
+    null;
+
+  return {
+    eventType: eventType || status || 'unknown',
+    orderId: orderId ? String(orderId) : null,
+    paymentLinkId: paymentLinkId ? String(paymentLinkId) : null,
+    paymentId: paymentId ? String(paymentId) : null,
+    status,
+    failureReason,
+  };
 }
 
 module.exports = {
@@ -441,6 +565,7 @@ module.exports = {
   verifyPayment,
   verifyReturnUrlSignature,
   verifyWebhookSignature,
+  normalizeWebhookPayload,
   normalizeCurrency,
   isPaidStatus,
   normalizeZohoMode,

@@ -39,6 +39,7 @@ ZOHO_REDIRECT_URI=https://getmypair-api.onrender.com/api/payment/callback
 ZOHO_PAYMENT_RETURN_URL=https://getmypair-api.onrender.com/api/payment/callback
 
 # Webhooks & signing (from Zoho Payments → Settings → Developer Space)
+# Use the webhook *signing key* (not ZOHO_API_KEY). Header: X-Zoho-Webhook-Signature
 ZOHO_WEBHOOK_SECRET=
 ZOHO_SIGNING_KEY=
 

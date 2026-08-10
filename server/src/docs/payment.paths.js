@@ -21,8 +21,9 @@
  *   post:
  *     summary: Zoho payment webhook
  *     description: |
- *       Callback from Zoho Payments after checkout. No JWT — verified via `X-Zoho-Signature` (or `X-Webhook-Signature`)
- *       HMAC when `ZOHO_WEBHOOK_SECRET` is set. Updates payment status and advances the service request to paid / pickup scheduled.
+ *       Callback from Zoho Payments after checkout. No JWT — verified via `X-Zoho-Webhook-Signature`
+ *       (`t=<timestamp>,v=<hex>` HMAC of `timestamp.rawBody`) when `ZOHO_WEBHOOK_SECRET` is set.
+ *       Accepts Zoho event envelopes (`event_type` + `event_object`) and updates payment / service request state.
  *     tags: [Payment]
  *     requestBody:
  *       required: true

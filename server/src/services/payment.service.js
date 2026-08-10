@@ -360,7 +360,10 @@ async function processPaymentPending(payment, req = null) {
 }
 
 async function handleZohoWebhook(rawBody, headers, req) {
-  const signature = headers['x-zoho-signature'] || headers['x-webhook-signature'];
+  const signature =
+    headers['x-zoho-webhook-signature'] ||
+    headers['x-zoho-signature'] ||
+    headers['x-webhook-signature'];
   const signatureValid = zohoPayment.verifyWebhookSignature(rawBody, signature);
 
   let payload;
@@ -370,10 +373,12 @@ async function handleZohoWebhook(rawBody, headers, req) {
     payload = rawBody;
   }
 
+  const normalized = zohoPayment.normalizeWebhookPayload(payload);
+
   const log = await WebhookLog.create({
     provider: 'zoho',
-    eventType: payload.event || payload.status || 'unknown',
-    orderId: payload.reference_id || payload.order_id || payload.orderId,
+    eventType: normalized.eventType,
+    orderId: normalized.orderId,
     signatureValid,
     payload,
     headers: { ...headers },
@@ -388,25 +393,43 @@ async function handleZohoWebhook(rawBody, headers, req) {
     throw err;
   }
 
-  const orderId =
-    payload.reference_id ||
-    payload.order_id ||
-    payload.orderId ||
-    payload.payment_link?.reference_id;
-
-  const payment = orderId ? await Payment.findOne({ orderId }) : null;
+  let payment = null;
+  if (normalized.orderId) {
+    payment = await Payment.findOne({ orderId: normalized.orderId });
+  }
+  if (!payment && normalized.paymentLinkId) {
+    payment = await Payment.findOne({ zohoOrderId: normalized.paymentLinkId });
+  }
   if (payment) {
     log.paymentId = payment._id;
-    log.orderId = orderId;
+    log.orderId = payment.orderId || normalized.orderId;
   }
 
   try {
-    const status = String(payload.status || payload.payment_status || '').toLowerCase();
+    const status = normalized.status;
     if (payment) {
       if (zohoPayment.isPaidStatus(status)) {
-        await processPaymentSuccess(payment, payload, req);
-      } else if (['failed', 'failure', 'declined'].includes(status)) {
-        await processPaymentFailed(payment, payload.failure_reason || status, req);
+        await processPaymentSuccess(
+          payment,
+          {
+            ...payload,
+            payment_id: normalized.paymentId,
+            reference_id: normalized.orderId,
+            payment_link_id: normalized.paymentLinkId,
+            status,
+          },
+          req
+        );
+      } else if (
+        ['failed', 'failure', 'declined', 'canceled', 'cancelled', 'expired'].includes(
+          status
+        )
+      ) {
+        await processPaymentFailed(
+          payment,
+          normalized.failureReason || status,
+          req
+        );
       } else if (['pending', 'initiated'].includes(status)) {
         await processPaymentPending(payment, req);
       }

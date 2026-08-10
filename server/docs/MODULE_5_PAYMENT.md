@@ -14,11 +14,14 @@ Implements the GetMyPair payment workflow: cost approval → Zoho payment link �
 Mount: `app.use('/api/payment', paymentRoutes)`  
 Webhook (no auth): `POST /api/payment/webhook/zoho` (registered in `app.js` before JSON body parser).
 
+Production URL: `https://getmypair-api.onrender.com/api/payment/webhook/zoho`  
+Signature: Zoho `X-Zoho-Webhook-Signature` (`t=…,v=…`) verified with `ZOHO_WEBHOOK_SECRET` (Developer Space signing key).
+
 ## Environment
 
 ```env
 ZOHO_API_KEY=
-ZOHO_WEBHOOK_SECRET=
+ZOHO_WEBHOOK_SECRET=   # Zoho Payments webhook signing key (not the API key)
 ZOHO_PAYMENTS_BASE_URL=https://payments.zoho.in/api/v1
 ZOHO_PAYMENT_RETURN_URL=https://your-app/callback
 ZOHO_PAYMENTS_MOCK=true
