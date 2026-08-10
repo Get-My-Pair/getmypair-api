@@ -163,6 +163,8 @@ const APP_ALLOWLISTS = {
   ],
   darkworkstore: [
     ['post', '/api/darkworkstore/auth/login'],
+    ['post', '/api/darkworkstore/auth/verify-otp'],
+    ['post', '/api/darkworkstore/auth/resend-otp'],
     ['get', '/api/darkworkstore/auth/me'],
     ['get', '/api/darkworkstore/payments/cost-approval'],
     ['patch', '/api/darkworkstore/payments/cost/{serviceRequestId}'],
@@ -196,6 +198,8 @@ const APP_ALLOWLISTS = {
   ],
   masteradmin: [
     ['post', '/api/masteradmin/auth/login'],
+    ['post', '/api/masteradmin/auth/verify-otp'],
+    ['post', '/api/masteradmin/auth/resend-otp'],
     ['get', '/api/masteradmin/auth/me'],
     ['get', '/api/masteradmin/dashboard/stats'],
     ['get', '/api/masteradmin/users'],

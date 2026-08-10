@@ -42,7 +42,7 @@ void 0;
  * @swagger
  * /api/darkworkstore/auth/login:
  *   post:
- *     summary: Master admin login
+ *     summary: Start Dark Work Store login (password + email OTP)
  *     tags: [Darkworkstore Auth]
  *     requestBody:
  *       required: true
@@ -56,9 +56,56 @@ void 0;
  *               password: { type: string, example: "Admin@123" }
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: OTP sent — complete with /auth/verify-otp
  *       401:
  *         description: Invalid email or password
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/auth/verify-otp:
+ *   post:
+ *     summary: Verify email OTP and issue Dark Work Store JWT
+ *     tags: [Darkworkstore Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken, otp]
+ *             properties:
+ *               challengeToken: { type: string }
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/auth/resend-otp:
+ *   post:
+ *     summary: Resend Dark Work Store login OTP
+ *     tags: [Darkworkstore Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken]
+ *             properties:
+ *               challengeToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: OTP resent
+ *       401:
+ *         description: OTP session expired
  */
 void 0;
 

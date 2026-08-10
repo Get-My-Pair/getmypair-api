@@ -13,6 +13,36 @@ Dashboards now live in the React client (`client/client`) on GoDaddy:
 - Darkworkstore: `/api-docs/darkworkstore`
 - Masteradmin: `/api-docs/masteradmin` (legacy alias: `/api-docs/admin`)
 
+## Portal login (email OTP)
+
+Darkworkstore and Masteradmin share the same `AdminMaster` account and require **password + email OTP**:
+
+1. `POST /api/{portal}/auth/login` `{ email, password }` → sends OTP email, returns `challengeToken`
+2. `POST /api/{portal}/auth/verify-otp` `{ challengeToken, otp }` → returns `accessToken`
+3. `POST /api/{portal}/auth/resend-otp` `{ challengeToken }` → resends OTP
+
+Configure Resend.com for real delivery (recommended):
+
+```env
+RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM_EMAIL=GetMyPair <noreply@yourdomain.com>
+```
+
+Use `GetMyPair <onboarding@resend.dev>` only while testing (Resend sandbox).  
+Verify your domain in the Resend dashboard before sending to real inboxes.
+
+Optional SMTP fallback:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=GetMyPair <noreply@getmypair.com>
+```
+
+In non-production (or with `RETURN_OTP_IN_RESPONSE=true`), the OTP is also returned in the API response for local testing.
+
 ## Default master account (first DB seed only)
 
 If the `adminmasters` collection is **empty**, the server creates **one** account:

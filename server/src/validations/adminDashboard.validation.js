@@ -14,6 +14,22 @@ const adminLoginValidation = [
   handleValidationErrors,
 ];
 
+const adminVerifyOtpValidation = [
+  body('challengeToken').trim().notEmpty().withMessage('challengeToken is required'),
+  body('otp')
+    .trim()
+    .notEmpty()
+    .withMessage('otp is required')
+    .isLength({ min: 4, max: 8 })
+    .withMessage('Invalid otp'),
+  handleValidationErrors,
+];
+
+const adminResendOtpValidation = [
+  body('challengeToken').trim().notEmpty().withMessage('challengeToken is required'),
+  handleValidationErrors,
+];
+
 const darkstoreUpdateCostValidation = [
   param('serviceRequestId').notEmpty().isMongoId().withMessage('Valid serviceRequestId required'),
   body('actualCost')
@@ -77,6 +93,8 @@ const dbMaintenanceGroupValidation = [
 
 module.exports = {
   adminLoginValidation,
+  adminVerifyOtpValidation,
+  adminResendOtpValidation,
   darkstoreUpdateCostValidation,
   darkstorePaymentQueryValidation,
   darkstoreOrderParamValidation,

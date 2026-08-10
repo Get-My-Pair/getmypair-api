@@ -28,6 +28,14 @@ const config = {
   OTP_EXPIRE_MINUTES: parseInt(process.env.OTP_EXPIRE_MINUTES) || 5,
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH) || 6,
   OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS) || 3,
+  /** Resend.com — preferred for portal OTP emails */
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  /** Verified sender, e.g. "GetMyPair <noreply@yourdomain.com>" or onboarding@resend.dev for tests */
+  RESEND_FROM_EMAIL:
+    process.env.RESEND_FROM_EMAIL ||
+    process.env.SMTP_FROM ||
+    process.env.MAIL_FROM ||
+    'GetMyPair <onboarding@resend.dev>',
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
   SMTP_USER: process.env.SMTP_USER || '',

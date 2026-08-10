@@ -28,6 +28,11 @@ const AuditLog = require('../models/auditLog.model');
 const mongoose = require('mongoose');
 const { success, error: errorResponse, unauthorized } = require('../utils/response');
 const logger = require('../utils/logger');
+const otpService = require('../services/otp.service');
+const emailService = require('../services/email.service');
+
+const ADMIN_OTP_CHALLENGE_TYPE = 'admin_otp_challenge';
+const ADMIN_OTP_CHALLENGE_EXPIRE = process.env.ADMIN_OTP_CHALLENGE_EXPIRE || '10m';
 
 const buildAdminToken = (adminId) =>
   jwt.sign(
@@ -41,13 +46,84 @@ const buildAdminToken = (adminId) =>
     }
   );
 
+const buildOtpChallengeToken = (admin) =>
+  jwt.sign(
+    {
+      type: ADMIN_OTP_CHALLENGE_TYPE,
+      adminMasterId: String(admin._id),
+      email: admin.email,
+    },
+    config.JWT_SECRET,
+    { expiresIn: ADMIN_OTP_CHALLENGE_EXPIRE }
+  );
+
+const maskEmail = (email) => {
+  const value = String(email || '').toLowerCase();
+  const [user, domain] = value.split('@');
+  if (!user || !domain) return '***';
+  const visible = user.slice(0, Math.min(2, user.length));
+  return `${visible}***@${domain}`;
+};
+
+const shouldExposeOtp = () =>
+  config.NODE_ENV !== 'production' || config.RETURN_OTP_IN_RESPONSE;
+
+const resolvePortalLabel = (req) => {
+  const path = String(req.baseUrl || req.originalUrl || '');
+  if (path.includes('darkworkstore')) return 'Dark Work Store';
+  return 'Master Console';
+};
+
+const verifyChallengeToken = (token) => {
+  try {
+    const decoded = jwt.verify(String(token || ''), config.JWT_SECRET);
+    if (decoded?.type !== ADMIN_OTP_CHALLENGE_TYPE || !decoded.adminMasterId || !decoded.email) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+};
+
+async function issueAndSendPortalOtp(admin, portalLabel) {
+  const rateLimited = await otpService.checkRateLimit(admin.email, null, 'email');
+  if (rateLimited) {
+    const err = new Error('Too many OTP requests. Please try again later.');
+    err.statusCode = 429;
+    throw err;
+  }
+
+  const { otp, expiresAt } = await otpService.createOTP(
+    admin.email,
+    null,
+    'email',
+    'login'
+  );
+
+  const delivery = await emailService.sendAdminLoginOtp({
+    to: admin.email,
+    otp,
+    portalLabel,
+  });
+
+  return {
+    otp,
+    expiresAt,
+    expiresIn: config.OTP_EXPIRE_MINUTES * 60,
+    delivery,
+  };
+}
+
 /**
- * POST /api/sys-admin/auth/login
+ * POST /api/{portal}/auth/login
+ * Step 1: validate password, email OTP, return challenge token (no access JWT yet).
  */
 const login = async (req, res) => {
   try {
     const email = String(req.body.email || '').toLowerCase().trim();
     const password = req.body.password;
+    const portalLabel = resolvePortalLabel(req);
 
     const admin = await AdminMaster.findOne({ email }).select('+passwordHash');
     if (!admin || !admin.isActive) {
@@ -59,12 +135,79 @@ const login = async (req, res) => {
       return unauthorized(res, 'Invalid email or password');
     }
 
+    let otpResult;
+    try {
+      otpResult = await issueAndSendPortalOtp(admin, portalLabel);
+    } catch (err) {
+      const code = err.statusCode || 500;
+      return errorResponse(res, err.message, code);
+    }
+
+    if (
+      config.NODE_ENV === 'production' &&
+      !otpResult.delivery.delivered &&
+      !config.RETURN_OTP_IN_RESPONSE
+    ) {
+      return errorResponse(
+        res,
+        'Could not send OTP email. Check SMTP configuration.',
+        503
+      );
+    }
+
+    const challengeToken = buildOtpChallengeToken(admin);
+    logger.info(`Master admin OTP challenge issued: ${email} (${portalLabel})`);
+
+    const payload = {
+      requiresOtp: true,
+      challengeToken,
+      email: admin.email,
+      emailMasked: maskEmail(admin.email),
+      expiresIn: otpResult.expiresIn,
+      deliveryMode: otpResult.delivery.mode,
+    };
+    if (shouldExposeOtp()) {
+      payload.otp = otpResult.otp;
+    }
+
+    return success(res, 'OTP sent to your email', payload);
+  } catch (err) {
+    logger.error(`Admin login error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/{portal}/auth/verify-otp
+ * Step 2: verify email OTP and issue admin access JWT.
+ */
+const verifyLoginOtp = async (req, res) => {
+  try {
+    const challengeToken = req.body.challengeToken;
+    const otpCode = String(req.body.otp || '').trim();
+    const decoded = verifyChallengeToken(challengeToken);
+    if (!decoded) {
+      return unauthorized(res, 'OTP session expired. Please sign in again.');
+    }
+    if (!otpCode) {
+      return errorResponse(res, 'OTP is required', 400);
+    }
+
+    const admin = await AdminMaster.findById(decoded.adminMasterId);
+    if (!admin || !admin.isActive || admin.email !== decoded.email) {
+      return unauthorized(res, 'Invalid OTP session');
+    }
+
+    const verified = await otpService.verifyOTP(admin.email, null, otpCode, 'email');
+    if (!verified.valid) {
+      return unauthorized(res, verified.message || 'Invalid OTP');
+    }
+
     admin.lastLoginAt = new Date();
     await admin.save();
 
     const accessToken = buildAdminToken(admin._id);
-
-    logger.info(`Master admin login: ${email}`);
+    logger.info(`Master admin login verified via OTP: ${admin.email}`);
 
     return success(res, 'Login successful', {
       accessToken,
@@ -74,7 +217,66 @@ const login = async (req, res) => {
       },
     });
   } catch (err) {
-    logger.error(`Admin login error: ${err.message}`);
+    logger.error(`Admin verify OTP error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/{portal}/auth/resend-otp
+ * Resend login OTP using a valid challenge token.
+ */
+const resendLoginOtp = async (req, res) => {
+  try {
+    const challengeToken = req.body.challengeToken;
+    const decoded = verifyChallengeToken(challengeToken);
+    if (!decoded) {
+      return unauthorized(res, 'OTP session expired. Please sign in again.');
+    }
+
+    const admin = await AdminMaster.findById(decoded.adminMasterId);
+    if (!admin || !admin.isActive || admin.email !== decoded.email) {
+      return unauthorized(res, 'Invalid OTP session');
+    }
+
+    const portalLabel = resolvePortalLabel(req);
+    let otpResult;
+    try {
+      otpResult = await issueAndSendPortalOtp(admin, portalLabel);
+    } catch (err) {
+      const code = err.statusCode || 500;
+      return errorResponse(res, err.message, code);
+    }
+
+    if (
+      config.NODE_ENV === 'production' &&
+      !otpResult.delivery.delivered &&
+      !config.RETURN_OTP_IN_RESPONSE
+    ) {
+      return errorResponse(
+        res,
+        'Could not send OTP email. Check SMTP configuration.',
+        503
+      );
+    }
+
+    logger.info(`Master admin OTP resent: ${admin.email} (${portalLabel})`);
+
+    const payload = {
+      requiresOtp: true,
+      challengeToken,
+      email: admin.email,
+      emailMasked: maskEmail(admin.email),
+      expiresIn: otpResult.expiresIn,
+      deliveryMode: otpResult.delivery.mode,
+    };
+    if (shouldExposeOtp()) {
+      payload.otp = otpResult.otp;
+    }
+
+    return success(res, 'OTP resent to your email', payload);
+  } catch (err) {
+    logger.error(`Admin resend OTP error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -1006,6 +1208,8 @@ const listDeliveryPartners = async (req, res) => {
 
 module.exports = {
   login,
+  verifyLoginOtp,
+  resendLoginOtp,
   me,
   dashboardStats,
   listUsers,

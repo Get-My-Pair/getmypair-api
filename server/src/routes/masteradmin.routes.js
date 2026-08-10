@@ -14,6 +14,8 @@ const darkstorePaymentController = require('../controllers/darkstorePayment.cont
 const dbMaintenanceController = require('../controllers/dbMaintenance.controller');
 const {
   adminLoginValidation,
+  adminVerifyOtpValidation,
+  adminResendOtpValidation,
   darkstoreUpdateCostValidation,
   darkstorePaymentQueryValidation,
   darkstoreOrderParamValidation,
@@ -27,12 +29,24 @@ const {
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 
-// Auth
+// Auth — email OTP after password
 router.post(
   '/auth/login',
   adminLoginRateLimiter,
   adminLoginValidation,
   adminDashboardController.login
+);
+router.post(
+  '/auth/verify-otp',
+  adminLoginRateLimiter,
+  adminVerifyOtpValidation,
+  adminDashboardController.verifyLoginOtp
+);
+router.post(
+  '/auth/resend-otp',
+  adminLoginRateLimiter,
+  adminResendOtpValidation,
+  adminDashboardController.resendLoginOtp
 );
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
