@@ -65,6 +65,7 @@ const adminMasterAuth = async (req, res, next) => {
       email: admin.email,
       name: admin.name,
       portal: accountPortal,
+      storeName: admin.storeName || admin.name || '',
     };
     next();
   } catch (error) {

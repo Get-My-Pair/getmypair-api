@@ -11,10 +11,18 @@ const handleError = (res, err) => {
   return errorResponse(res, err.message, code);
 };
 
+/** Store accounts only see their own jobs. Masteradmin on this portal can still filter. */
+const scopedStoreId = (req) => {
+  if (req.adminMaster?.portal === 'darkworkstore') {
+    return String(req.adminMaster._id);
+  }
+  return req.query.darkStoreId;
+};
+
 const costApprovalJobs = async (req, res) => {
   try {
     const data = await darkstorePayment.listCostApprovalJobs({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       page: req.query.page,
       limit: req.query.limit,
     });
@@ -41,7 +49,7 @@ const updateActualCost = async (req, res) => {
 const paymentStatusList = async (req, res) => {
   try {
     const data = await darkstorePayment.listPaymentStatus({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       status: req.query.status,
       page: req.query.page,
       limit: req.query.limit,
@@ -64,7 +72,7 @@ const paymentStatusByOrder = async (req, res) => {
 const paidJobs = async (req, res) => {
   try {
     const data = await darkstorePayment.listPaidJobs({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       from: req.query.from,
       to: req.query.to,
       page: req.query.page,
@@ -79,7 +87,7 @@ const paidJobs = async (req, res) => {
 const unpaidJobs = async (req, res) => {
   try {
     const data = await darkstorePayment.listUnpaidJobs({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       page: req.query.page,
       limit: req.query.limit,
     });
@@ -92,7 +100,7 @@ const unpaidJobs = async (req, res) => {
 const revenueDashboard = async (req, res) => {
   try {
     const data = await darkstorePayment.getRevenueDashboard({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       from: req.query.from,
       to: req.query.to,
     });
@@ -105,7 +113,7 @@ const revenueDashboard = async (req, res) => {
 const transactions = async (req, res) => {
   try {
     const data = await darkstorePayment.listTransactions({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       status: req.query.status,
       from: req.query.from,
       to: req.query.to,
@@ -139,7 +147,7 @@ const servicePaymentHistory = async (req, res) => {
 const settlements = async (req, res) => {
   try {
     const data = await darkstorePayment.listSettlements({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       status: req.query.status,
       page: req.query.page,
       limit: req.query.limit,
@@ -166,7 +174,7 @@ const processSettlement = async (req, res) => {
 const monthlyReport = async (req, res) => {
   try {
     const data = await darkstorePayment.getMonthlyReport({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       year: req.query.year,
       month: req.query.month,
     });
@@ -179,7 +187,7 @@ const monthlyReport = async (req, res) => {
 const paymentNotifications = async (req, res) => {
   try {
     const data = await darkstorePayment.listPaymentNotifications({
-      darkStoreId: req.query.darkStoreId,
+      darkStoreId: scopedStoreId(req),
       page: req.query.page,
       limit: req.query.limit,
     });

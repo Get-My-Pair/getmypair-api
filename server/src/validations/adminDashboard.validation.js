@@ -124,6 +124,39 @@ const darkworkstoreUserUpdateValidation = [
   handleValidationErrors,
 ];
 
+const darkworkstoreJobQueryValidation = [
+  query('status').optional().isIn(['inbox', 'accepted', 'all']).withMessage('status must be inbox, accepted, or all'),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  handleValidationErrors,
+];
+
+const darkworkstoreJobIdValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid job id required'),
+  handleValidationErrors,
+];
+
+const darkworkstoreAssignCobblerValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid job id required'),
+  body('cobblerId').trim().notEmpty().withMessage('cobblerId is required').isMongoId().withMessage('Valid cobblerId required'),
+  handleValidationErrors,
+];
+
+const darkworkstoreCreateCobblerValidation = [
+  body('name').trim().notEmpty().withMessage('name is required'),
+  body('phone').trim().notEmpty().withMessage('phone is required'),
+  body('shopName').optional({ nullable: true }).trim(),
+  body('shopAddress').optional({ nullable: true }).trim(),
+  body('gender').optional().isIn(['male', 'female', 'other']),
+  body('dateOfBirth').optional().isISO8601().withMessage('Invalid dateOfBirth'),
+  handleValidationErrors,
+];
+
+const darkworkstoreCobblerIdValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid cobbler id required'),
+  handleValidationErrors,
+];
+
 module.exports = {
   adminLoginValidation,
   adminVerifyOtpValidation,
@@ -141,4 +174,9 @@ module.exports = {
   darkworkstoreRegisterValidation,
   darkworkstoreUserIdValidation,
   darkworkstoreUserUpdateValidation,
+  darkworkstoreJobQueryValidation,
+  darkworkstoreJobIdValidation,
+  darkworkstoreAssignCobblerValidation,
+  darkworkstoreCreateCobblerValidation,
+  darkworkstoreCobblerIdValidation,
 };

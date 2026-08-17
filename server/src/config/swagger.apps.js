@@ -181,6 +181,13 @@ const APP_ALLOWLISTS = {
     ['post', '/api/darkworkstore/payments/settlements/{settlementId}/process'],
     ['get', '/api/darkworkstore/payments/reports/monthly'],
     ['get', '/api/darkworkstore/payments/notifications'],
+    ['get', '/api/darkworkstore/jobs'],
+    ['post', '/api/darkworkstore/jobs/{id}/accept'],
+    ['post', '/api/darkworkstore/jobs/{id}/reject'],
+    ['post', '/api/darkworkstore/jobs/{id}/assign-cobbler'],
+    ['get', '/api/darkworkstore/cobblers'],
+    ['post', '/api/darkworkstore/cobblers'],
+    ['delete', '/api/darkworkstore/cobblers/{id}'],
   ],
   retailer: [
     // Canonical retailer mount + legacy /api/admin/profile
@@ -312,14 +319,44 @@ const APP_META = {
     appType: 'Darkworkstore Dashboard',
     title: 'GetMyPair – Darkworkstore Dashboard APIs',
     description:
-      'Darkworkstore dashboard APIs under /api/darkworkstore (auth + payments). Uses master-admin JWT. Future store APIs reserved.',
+      'Darkworkstore dashboard APIs under /api/darkworkstore (auth, jobs, cobblers, payments). Uses master-admin JWT.',
     status: 'Active',
     route: '/api-docs/darkworkstore',
     tags: [
       { name: 'Darkworkstore Auth', description: 'Darkworkstore login (master-admin JWT)' },
       {
+        name: 'Darkworkstore Jobs',
+        description: 'Inbox of user-app jobs — accept, reject, and assign a store cobbler',
+      },
+      {
+        name: 'Darkworkstore Cobblers',
+        description: 'Internal cobbler employees for this store',
+      },
+      {
         name: 'Darkworkstore Payments',
         description: 'Payment workflow — cost approval through settlements and reports',
+      },
+    ],
+    hubModules: [
+      {
+        title: 'Authentication',
+        description: 'Darkworkstore login',
+        match: (method, p) => p.startsWith('/api/darkworkstore/auth'),
+      },
+      {
+        title: 'Jobs',
+        description: 'User-app jobs — accept, reject, assign cobbler',
+        match: (method, p) => p.startsWith('/api/darkworkstore/jobs'),
+      },
+      {
+        title: 'Cobblers',
+        description: 'Internal cobbler employees',
+        match: (method, p) => p.startsWith('/api/darkworkstore/cobblers'),
+      },
+      {
+        title: 'Payments',
+        description: 'Payment workflow — cost approval through settlements and reports',
+        match: (method, p) => p.startsWith('/api/darkworkstore/payments'),
       },
     ],
     securitySchemes: {

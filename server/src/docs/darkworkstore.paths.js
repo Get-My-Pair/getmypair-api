@@ -518,3 +518,188 @@ void 0;
  */
 void 0;
 
+/**
+ * @swagger
+ * tags:
+ *   name: Darkworkstore Jobs
+ *   description: Inbox of user-app jobs — accept, reject, and assign a store cobbler
+ */
+void 0;
+
+/**
+ * @swagger
+ * tags:
+ *   name: Darkworkstore Cobblers
+ *   description: Internal cobbler employees for this store
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs:
+ *   get:
+ *     summary: List jobs for this Darkworkstore
+ *     description: inbox = unclaimed user-app jobs. accepted = jobs this store took. all = both.
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [inbox, accepted, all], example: inbox }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Jobs list
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/accept:
+ *   post:
+ *     summary: Accept a user-app job
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Job accepted — assign a cobbler next
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/reject:
+ *   post:
+ *     summary: Reject a user-app job
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason: { type: string }
+ *     responses:
+ *       200:
+ *         description: Job rejected for this store
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/assign-cobbler:
+ *   post:
+ *     summary: Assign an internal cobbler to an accepted job
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [cobblerId]
+ *             properties:
+ *               cobblerId: { type: string, description: Cobbler User _id }
+ *     responses:
+ *       200:
+ *         description: Cobbler assigned
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/cobblers:
+ *   get:
+ *     summary: List this store's cobbler employees
+ *     tags: [Darkworkstore Cobblers]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Cobblers list
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Add an internal cobbler employee
+ *     tags: [Darkworkstore Cobblers]
+ *     security:
+ *       - adminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, phone]
+ *             properties:
+ *               name: { type: string, example: "Ravi Kumar" }
+ *               phone: { type: string, example: "9876543210" }
+ *               shopName: { type: string }
+ *               shopAddress: { type: string }
+ *               gender: { type: string, enum: [male, female, other] }
+ *               dateOfBirth: { type: string, format: date }
+ *     responses:
+ *       201:
+ *         description: Cobbler created
+ *       409:
+ *         description: Mobile already registered
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/cobblers/{id}:
+ *   delete:
+ *     summary: Remove a cobbler employee
+ *     tags: [Darkworkstore Cobblers]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cobbler removed
+ *       400:
+ *         description: Cobbler has active jobs
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+

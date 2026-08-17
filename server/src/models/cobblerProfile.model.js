@@ -46,6 +46,13 @@ const cobblerProfileSchema = new mongoose.Schema(
             unique: true,
             index: true,
         },
+        /** Darkworkstore AdminMaster _id that employs this cobbler. Null = independent cobbler. */
+        darkStoreId: {
+            type: String,
+            trim: true,
+            default: null,
+            index: true,
+        },
         name: {
             type: String,
             required: true,
@@ -160,6 +167,7 @@ const cobblerProfileSchema = new mongoose.Schema(
 
 cobblerProfileSchema.index({ userId: 1 }, { unique: true });
 cobblerProfileSchema.index({ verificationStatus: 1 });
+cobblerProfileSchema.index({ darkStoreId: 1, verificationStatus: 1 });
 cobblerProfileSchema.index({ lastKnownLocation: '2dsphere' });
 
 const CobblerProfile = mongoose.model('CobblerProfile', cobblerProfileSchema);

@@ -24,9 +24,16 @@ const {
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
   darkworkstoreRegisterValidation,
+  darkworkstoreJobQueryValidation,
+  darkworkstoreJobIdValidation,
+  darkworkstoreAssignCobblerValidation,
+  darkworkstoreCreateCobblerValidation,
+  darkworkstoreCobblerIdValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
+const darkworkstoreJobsController = require('../controllers/darkworkstoreJobs.controller');
+const darkworkstoreCobblerController = require('../controllers/darkworkstoreCobbler.controller');
 
 // Public store registration (no JWT). Login is allowed only after Masteradmin verifies.
 router.post(
@@ -143,9 +150,40 @@ router.get(
   darkstorePaymentController.paymentNotifications
 );
 
-// ---------------------------------------------------------------------------
-// Future Darkworkstore APIs (store profile, inventory, staffing, etc.)
-// Intentionally empty — implement when product requirements are ready.
-// ---------------------------------------------------------------------------
+// Jobs — user-app service requests for this store
+router.get('/jobs', adminMasterAuth, darkworkstoreJobQueryValidation, darkworkstoreJobsController.listJobs);
+router.post(
+  '/jobs/:id/accept',
+  adminMasterAuth,
+  darkworkstoreJobIdValidation,
+  darkworkstoreJobsController.acceptJob
+);
+router.post(
+  '/jobs/:id/reject',
+  adminMasterAuth,
+  darkworkstoreJobIdValidation,
+  darkworkstoreJobsController.rejectJob
+);
+router.post(
+  '/jobs/:id/assign-cobbler',
+  adminMasterAuth,
+  darkworkstoreAssignCobblerValidation,
+  darkworkstoreJobsController.assignCobbler
+);
+
+// Internal cobblers / employees
+router.get('/cobblers', adminMasterAuth, darkworkstoreCobblerController.listCobblers);
+router.post(
+  '/cobblers',
+  adminMasterAuth,
+  darkworkstoreCreateCobblerValidation,
+  darkworkstoreCobblerController.createCobbler
+);
+router.delete(
+  '/cobblers/:id',
+  adminMasterAuth,
+  darkworkstoreCobblerIdValidation,
+  darkworkstoreCobblerController.deleteCobbler
+);
 
 module.exports = router;

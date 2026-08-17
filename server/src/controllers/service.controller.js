@@ -703,6 +703,7 @@ const cobblerListNewRequests = async (req, res) => {
       status: 'pending',
       cobblerId: null,
       cobblerDeclinedBy: { $ne: cobblerId },
+      routingType: { $ne: 'dark_store' },
     })
       .sort({ createdAt: -1 })
       .limit(200)
@@ -802,6 +803,9 @@ const cobblerAcceptRequest = async (req, res) => {
     }
     if (request.cobblerId) {
       return errorResponse(res, 'This request is already assigned to a cobbler', 400);
+    }
+    if (request.routingType === 'dark_store') {
+      return errorResponse(res, 'This request is routed to a Darkworkstore', 400);
     }
 
     request.cobblerId = cobblerId;
