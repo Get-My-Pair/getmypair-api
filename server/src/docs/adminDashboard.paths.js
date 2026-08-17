@@ -886,3 +886,143 @@ void 0;
  */
 void 0;
 
+/**
+ * @swagger
+ * /api/masteradmin/darkworkstore-users:
+ *   get:
+ *     summary: List Darkworkstore portal users
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [pending, verified, rejected] }
+ *     responses:
+ *       200:
+ *         description: Darkworkstore users list
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a Darkworkstore user
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, phone, storeName]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               storeName: { type: string }
+ *               address: { type: string }
+ *               city: { type: string }
+ *               state: { type: string }
+ *               pincode: { type: string }
+ *               notes: { type: string }
+ *     responses:
+ *       201:
+ *         description: Darkworkstore user created (pending verification)
+ *       409:
+ *         description: Email already exists
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/darkworkstore-users/{id}:
+ *   get:
+ *     summary: Get Darkworkstore user details
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Darkworkstore user
+ *       404:
+ *         description: Not found
+ *   patch:
+ *     summary: Update a Darkworkstore user
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               storeName: { type: string }
+ *               address: { type: string }
+ *               city: { type: string }
+ *               state: { type: string }
+ *               pincode: { type: string }
+ *               notes: { type: string }
+ *               isActive: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *   delete:
+ *     summary: Delete a Darkworkstore user
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/darkworkstore-users/{id}/verify:
+ *   patch:
+ *     summary: Verify a Darkworkstore user and email login credentials
+ *     description: |
+ *       Sets the account to verified, generates a random password, and emails the
+ *       Darkworkstore login link plus credentials via Resend. Login is allowed only after this step.
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Verified and credentials emailed
+ *       404:
+ *         description: Not found
+ */
+void 0;
+

@@ -54,6 +54,13 @@ const config = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 
+  /** Public website origin used in Darkworkstore credential emails */
+  CLIENT_WEB_URL: (
+    process.env.CLIENT_WEB_URL ||
+    process.env.PUBLIC_WEB_URL ||
+    (process.env.NODE_ENV === 'production' ? 'https://getmypair.com' : 'http://localhost:5173')
+  ).replace(/\/$/, ''),
+
   /** Master admin HTML dashboard (/admin) – JWT lifetime */
   ADMIN_JWT_EXPIRE: process.env.ADMIN_JWT_EXPIRE || '12h',
   /** Seeded only if AdminMaster collection is empty; override in production via .env */

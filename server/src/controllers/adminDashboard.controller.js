@@ -34,11 +34,20 @@ const emailService = require('../services/email.service');
 const ADMIN_OTP_CHALLENGE_TYPE = 'admin_otp_challenge';
 const ADMIN_OTP_CHALLENGE_EXPIRE = process.env.ADMIN_OTP_CHALLENGE_EXPIRE || '10m';
 
-const buildAdminToken = (adminId) =>
+const accountPortal = (admin) => admin?.portal || 'masteradmin';
+
+const resolvePortalKey = (req) => {
+  const path = String(req.baseUrl || req.originalUrl || '');
+  if (path.includes('darkworkstore')) return 'darkworkstore';
+  return 'masteradmin';
+};
+
+const buildAdminToken = (adminId, portal = 'masteradmin') =>
   jwt.sign(
     {
       type: 'admin_master',
       adminMasterId: String(adminId),
+      portal,
     },
     config.JWT_SECRET,
     {
@@ -46,12 +55,13 @@ const buildAdminToken = (adminId) =>
     }
   );
 
-const buildOtpChallengeToken = (admin) =>
+const buildOtpChallengeToken = (admin, portal = 'masteradmin') =>
   jwt.sign(
     {
       type: ADMIN_OTP_CHALLENGE_TYPE,
       adminMasterId: String(admin._id),
       email: admin.email,
+      portal,
     },
     config.JWT_SECRET,
     { expiresIn: ADMIN_OTP_CHALLENGE_EXPIRE }
@@ -123,10 +133,26 @@ const login = async (req, res) => {
   try {
     const email = String(req.body.email || '').toLowerCase().trim();
     const password = req.body.password;
+    const portalKey = resolvePortalKey(req);
     const portalLabel = resolvePortalLabel(req);
 
     const admin = await AdminMaster.findOne({ email }).select('+passwordHash');
     if (!admin || !admin.isActive) {
+      return unauthorized(res, 'Invalid email or password');
+    }
+
+    if (portalKey === 'darkworkstore') {
+      if (accountPortal(admin) === 'darkworkstore') {
+        if (!admin.isVerified || admin.status !== 'verified') {
+          return unauthorized(
+            res,
+            'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
+          );
+        }
+      } else if (accountPortal(admin) !== 'masteradmin') {
+        return unauthorized(res, 'Invalid email or password');
+      }
+    } else if (accountPortal(admin) !== 'masteradmin') {
       return unauthorized(res, 'Invalid email or password');
     }
 
@@ -155,7 +181,7 @@ const login = async (req, res) => {
       );
     }
 
-    const challengeToken = buildOtpChallengeToken(admin);
+    const challengeToken = buildOtpChallengeToken(admin, portalKey);
     logger.info(`Master admin OTP challenge issued: ${email} (${portalLabel})`);
 
     const payload = {
@@ -193,12 +219,28 @@ const verifyLoginOtp = async (req, res) => {
       return errorResponse(res, 'OTP is required', 400);
     }
 
+    const portalKey = resolvePortalKey(req);
+    if ((decoded.portal || 'masteradmin') !== portalKey) {
+      return unauthorized(res, 'Invalid OTP session');
+    }
+
     const admin = await AdminMaster.findById(decoded.adminMasterId);
     if (!admin || !admin.isActive || admin.email !== decoded.email) {
       return unauthorized(res, 'Invalid OTP session');
     }
-
-    const verified = await otpService.verifyOTP(admin.email, null, otpCode, 'email');
+    if (accountPortal(admin) === 'darkworkstore') {
+      if (portalKey !== 'darkworkstore') {
+        return unauthorized(res, 'Invalid OTP session');
+      }
+      if (!admin.isVerified || admin.status !== 'verified') {
+        return unauthorized(
+          res,
+          'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
+        );
+      }
+    } else if (accountPortal(admin) !== 'masteradmin') {
+      return unauthorized(res, 'Invalid OTP session');
+    }
     if (!verified.valid) {
       return unauthorized(res, verified.message || 'Invalid OTP');
     }
@@ -206,7 +248,7 @@ const verifyLoginOtp = async (req, res) => {
     admin.lastLoginAt = new Date();
     await admin.save();
 
-    const accessToken = buildAdminToken(admin._id);
+    const accessToken = buildAdminToken(admin._id, portalKey);
     logger.info(`Master admin login verified via OTP: ${admin.email}`);
 
     return success(res, 'Login successful', {
@@ -214,6 +256,7 @@ const verifyLoginOtp = async (req, res) => {
       admin: {
         email: admin.email,
         name: admin.name,
+        portal: portalKey,
       },
     });
   } catch (err) {
@@ -234,8 +277,26 @@ const resendLoginOtp = async (req, res) => {
       return unauthorized(res, 'OTP session expired. Please sign in again.');
     }
 
+    const portalKey = resolvePortalKey(req);
+    if ((decoded.portal || 'masteradmin') !== portalKey) {
+      return unauthorized(res, 'Invalid OTP session');
+    }
+
     const admin = await AdminMaster.findById(decoded.adminMasterId);
     if (!admin || !admin.isActive || admin.email !== decoded.email) {
+      return unauthorized(res, 'Invalid OTP session');
+    }
+    if (accountPortal(admin) === 'darkworkstore') {
+      if (portalKey !== 'darkworkstore') {
+        return unauthorized(res, 'Invalid OTP session');
+      }
+      if (!admin.isVerified || admin.status !== 'verified') {
+        return unauthorized(
+          res,
+          'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
+        );
+      }
+    } else if (accountPortal(admin) !== 'masteradmin') {
       return unauthorized(res, 'Invalid OTP session');
     }
 
@@ -286,7 +347,12 @@ const resendLoginOtp = async (req, res) => {
  */
 const me = async (req, res) => {
   try {
-    return success(res, 'OK', { admin: req.adminMaster });
+    return success(res, 'OK', {
+      admin: {
+        ...req.adminMaster,
+        portal: req.adminMaster?.portal || resolvePortalKey(req),
+      },
+    });
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }

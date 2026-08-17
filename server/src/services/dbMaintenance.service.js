@@ -89,7 +89,7 @@ const COLLECTION_GROUPS = {
 };
 
 const MODEL_REGISTRY = [
-  { collection: 'adminmasters', model: AdminMaster, label: 'Master admins (Darkworkstore login)', group: null, protected: true },
+  { collection: 'adminmasters', model: AdminMaster, label: 'Portal logins (Masteradmin + Darkworkstore)', group: null, protected: true },
   { collection: 'users', model: User, label: 'Users', group: 'auth' },
   { collection: 'userprofiles', model: UserProfile, label: 'User profiles', group: 'auth' },
   { collection: 'sessions', model: Session, label: 'Sessions', group: 'auth' },

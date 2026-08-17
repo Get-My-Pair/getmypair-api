@@ -23,11 +23,15 @@ const {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
+  darkworkstoreRegisterValidation,
+  darkworkstoreUserIdValidation,
+  darkworkstoreUserUpdateValidation,
   dbMaintenanceConfirmValidation,
   dbMaintenanceCollectionValidation,
   dbMaintenanceGroupValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
+const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -79,6 +83,39 @@ router.delete(
 router.get('/cobblers', adminMasterAuth, adminDashboardController.listCobblers);
 router.patch('/cobblers/:id/verify', adminMasterAuth, adminDashboardController.verifyCobbler);
 router.get('/delivery-partners', adminMasterAuth, adminDashboardController.listDeliveryPartners);
+
+// Darkworkstore portal users (create / view / update / delete / verify)
+router.get('/darkworkstore-users', adminMasterAuth, darkworkstoreUserController.list);
+router.post(
+  '/darkworkstore-users',
+  adminMasterAuth,
+  darkworkstoreRegisterValidation,
+  darkworkstoreUserController.create
+);
+router.get(
+  '/darkworkstore-users/:id',
+  adminMasterAuth,
+  darkworkstoreUserIdValidation,
+  darkworkstoreUserController.getById
+);
+router.patch(
+  '/darkworkstore-users/:id',
+  adminMasterAuth,
+  darkworkstoreUserUpdateValidation,
+  darkworkstoreUserController.update
+);
+router.delete(
+  '/darkworkstore-users/:id',
+  adminMasterAuth,
+  darkworkstoreUserIdValidation,
+  darkworkstoreUserController.remove
+);
+router.patch(
+  '/darkworkstore-users/:id/verify',
+  adminMasterAuth,
+  darkworkstoreUserIdValidation,
+  darkworkstoreUserController.verify
+);
 
 // Payments (same handlers as Darkworkstore — Masteradmin also manages payments)
 router.get(

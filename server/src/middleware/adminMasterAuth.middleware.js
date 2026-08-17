@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminMasterAuth.middleware.js
- * Description: JWT auth for master admin dashboard (not mobile User/Session)
+ * Description: JWT auth for master admin / Darkworkstore dashboards
  * ----------------------------------------------------------------------------
  */
 
@@ -10,6 +10,13 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/env');
 const AdminMaster = require('../models/adminMaster.model');
 const { unauthorized } = require('../utils/response');
+
+const resolveRequiredPortal = (req) => {
+  const path = String(req.baseUrl || req.originalUrl || '');
+  if (path.includes('darkworkstore')) return 'darkworkstore';
+  if (path.includes('masteradmin') || path.includes('sys-admin')) return 'masteradmin';
+  return null;
+};
 
 const adminMasterAuth = async (req, res, next) => {
   try {
@@ -27,16 +34,37 @@ const adminMasterAuth = async (req, res, next) => {
       return unauthorized(res, 'Invalid admin token');
     }
 
+    const requiredPortal = resolveRequiredPortal(req);
+    const tokenPortal = decoded.portal || 'masteradmin';
+    if (requiredPortal && tokenPortal !== requiredPortal) {
+      return unauthorized(res, 'Invalid admin token');
+    }
+
     const admin = await AdminMaster.findById(decoded.adminMasterId).lean();
 
     if (!admin || !admin.isActive) {
       return unauthorized(res, 'Admin not found or inactive');
     }
 
+    const accountPortal = admin.portal || 'masteradmin';
+    if (requiredPortal === 'masteradmin' && accountPortal !== 'masteradmin') {
+      return unauthorized(res, 'Invalid admin token');
+    }
+    if (requiredPortal === 'darkworkstore') {
+      if (accountPortal === 'darkworkstore') {
+        if (!admin.isVerified || admin.status !== 'verified') {
+          return unauthorized(res, 'Darkworkstore account is not verified');
+        }
+      } else if (accountPortal !== 'masteradmin') {
+        return unauthorized(res, 'Invalid admin token');
+      }
+    }
+
     req.adminMaster = {
       _id: admin._id,
       email: admin.email,
       name: admin.name,
+      portal: accountPortal,
     };
     next();
   } catch (error) {

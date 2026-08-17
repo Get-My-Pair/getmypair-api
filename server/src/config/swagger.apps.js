@@ -162,6 +162,7 @@ const APP_ALLOWLISTS = {
     ['get', '/health'],
   ],
   darkworkstore: [
+    ['post', '/api/darkworkstore/auth/register'],
     ['post', '/api/darkworkstore/auth/login'],
     ['post', '/api/darkworkstore/auth/verify-otp'],
     ['post', '/api/darkworkstore/auth/resend-otp'],
@@ -213,6 +214,12 @@ const APP_ALLOWLISTS = {
     ['get', '/api/masteradmin/cobblers'],
     ['patch', '/api/masteradmin/cobblers/{id}/verify'],
     ['get', '/api/masteradmin/delivery-partners'],
+    ['get', '/api/masteradmin/darkworkstore-users'],
+    ['post', '/api/masteradmin/darkworkstore-users'],
+    ['get', '/api/masteradmin/darkworkstore-users/{id}'],
+    ['patch', '/api/masteradmin/darkworkstore-users/{id}'],
+    ['delete', '/api/masteradmin/darkworkstore-users/{id}'],
+    ['patch', '/api/masteradmin/darkworkstore-users/{id}/verify'],
     ['get', '/api/masteradmin/payments/cost-approval'],
     ['patch', '/api/masteradmin/payments/cost/{serviceRequestId}'],
     ['get', '/api/masteradmin/payments/status'],
@@ -396,6 +403,11 @@ const APP_META = {
         title: 'Delivery',
         description: 'List delivery partners',
         match: (method, p) => p.startsWith('/api/masteradmin/delivery-partners'),
+      },
+      {
+        title: 'Darkworkstore users',
+        description: 'Create, view, update, delete, and verify Darkworkstore portal accounts',
+        match: (method, p) => p.startsWith('/api/masteradmin/darkworkstore-users'),
       },
       {
         title: 'Payments',

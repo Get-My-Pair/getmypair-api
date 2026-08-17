@@ -91,6 +91,39 @@ const dbMaintenanceGroupValidation = [
   handleValidationErrors,
 ];
 
+const darkworkstoreRegisterValidation = [
+  body('name').trim().notEmpty().withMessage('name is required'),
+  body('email').trim().notEmpty().withMessage('email is required').isEmail().withMessage('Invalid email'),
+  body('phone').trim().notEmpty().withMessage('phone is required'),
+  body('storeName').trim().notEmpty().withMessage('storeName is required'),
+  body('address').optional({ nullable: true }).trim(),
+  body('city').optional({ nullable: true }).trim(),
+  body('state').optional({ nullable: true }).trim(),
+  body('pincode').optional({ nullable: true }).trim(),
+  body('notes').optional({ nullable: true }).trim(),
+  handleValidationErrors,
+];
+
+const darkworkstoreUserIdValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid Darkworkstore user id required'),
+  handleValidationErrors,
+];
+
+const darkworkstoreUserUpdateValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid Darkworkstore user id required'),
+  body('name').optional().trim().notEmpty().withMessage('name cannot be empty'),
+  body('email').optional().trim().isEmail().withMessage('Invalid email'),
+  body('phone').optional().trim(),
+  body('storeName').optional().trim().notEmpty().withMessage('storeName cannot be empty'),
+  body('address').optional({ nullable: true }).trim(),
+  body('city').optional({ nullable: true }).trim(),
+  body('state').optional({ nullable: true }).trim(),
+  body('pincode').optional({ nullable: true }).trim(),
+  body('notes').optional({ nullable: true }).trim(),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+  handleValidationErrors,
+];
+
 module.exports = {
   adminLoginValidation,
   adminVerifyOtpValidation,
@@ -105,4 +138,7 @@ module.exports = {
   dbMaintenanceConfirmValidation,
   dbMaintenanceCollectionValidation,
   dbMaintenanceGroupValidation,
+  darkworkstoreRegisterValidation,
+  darkworkstoreUserIdValidation,
+  darkworkstoreUserUpdateValidation,
 };

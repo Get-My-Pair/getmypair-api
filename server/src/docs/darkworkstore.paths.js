@@ -40,6 +40,38 @@ void 0;
 
 /**
  * @swagger
+ * /api/darkworkstore/auth/register:
+ *   post:
+ *     summary: Register a Darkworkstore account
+ *     description: Public signup. Sends a thank-you email. Login is blocked until Masteradmin verifies the store.
+ *     tags: [Darkworkstore Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, phone, storeName]
+ *             properties:
+ *               name: { type: string, example: "Priya Store" }
+ *               email: { type: string, example: "store@example.com" }
+ *               phone: { type: string, example: "9876543210" }
+ *               storeName: { type: string, example: "Anna Nagar Workshop" }
+ *               address: { type: string }
+ *               city: { type: string }
+ *               state: { type: string }
+ *               pincode: { type: string }
+ *               notes: { type: string }
+ *     responses:
+ *       201:
+ *         description: Registration received — pending verification
+ *       409:
+ *         description: Email already registered
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/darkworkstore/auth/login:
  *   post:
  *     summary: Start Dark Work Store login (password + email OTP)

@@ -23,8 +23,18 @@ const {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
+  darkworkstoreRegisterValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
+const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
+
+// Public store registration (no JWT). Login is allowed only after Masteradmin verifies.
+router.post(
+  '/auth/register',
+  adminLoginRateLimiter,
+  darkworkstoreRegisterValidation,
+  darkworkstoreUserController.register
+);
 
 // Auth (same master-admin JWT as Masteradmin) — email OTP after password
 router.post(
