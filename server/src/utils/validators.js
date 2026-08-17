@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : validators.js
- * Description: Shared validators – email, phone (10+ digits), name (letters only), handleValidationErrors
+ * Description: Shared validators – email, Indian mobile (exactly 10 digits), name (letters only), handleValidationErrors
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -26,24 +26,34 @@ const isValidEmail = (value) => {
 };
 
 /**
- * Custom phone validator
- * Accepts: +1234567890 or 1234567890 (must have at least 10 digits, max 15)
+ * Extract the 10-digit local Indian mobile number.
+ * Accepts 9876543210 or +919876543210 / 919876543210.
  */
-const isValidPhone = (value) => {
+const getLocalMobileDigits = (value) => {
   if (!value || typeof value !== 'string') {
-    return false;
+    return '';
   }
-  const cleaned = value.trim();
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  if (digitsOnly.length < 10) {
-    return false;
+  let digits = value.trim().replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
   }
-  if (digitsOnly.length > 15) {
-    return false;
-  }
-  const phoneRegex = /^(\+?[1-9]\d{1,14}|[1-9]\d{9,14})$/;
-  return phoneRegex.test(cleaned);
+  return digits;
 };
+
+/**
+ * Indian mobile: exactly 10 digits, starting with 6-9.
+ * Optional +91 / 91 country code is allowed only when the local number is 10 digits.
+ */
+const isValidIndianMobile = (value) => {
+  const local = getLocalMobileDigits(value);
+  return /^[6-9]\d{9}$/.test(local);
+};
+
+/**
+ * Custom phone validator
+ * Auth APIs require exactly 10 Indian mobile digits (optional +91).
+ */
+const isValidPhone = (value) => isValidIndianMobile(value);
 
 /**
  * Custom name validator - only letters and spaces (no special characters or numbers)
@@ -103,6 +113,8 @@ const handleValidationErrors = (req, res, next) => {
 module.exports = {
   isValidEmail,
   isValidPhone,
+  isValidIndianMobile,
+  getLocalMobileDigits,
   isValidName,
   isValidCityStateName,
   handleValidationErrors,

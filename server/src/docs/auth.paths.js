@@ -33,10 +33,10 @@
  *             properties:
  *               mobile:
  *                 type: string
- *                 example: "+1234567890"
- *                 description: User mobile number
+ *                 example: "9876543210"
+ *                 description: 10-digit Indian mobile number (optional +91 prefix)
  *           example:
- *             mobile: "+1234567890"
+ *             mobile: "9876543210"
  *     responses:
  *       200:
  *         description: OTP sent successfully
@@ -81,13 +81,13 @@ void 0;
  *             properties:
  *               mobile:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "9876543210"
  *               otp:
  *                 type: string
  *                 example: "123456"
  *                 description: 6-digit OTP code
  *           example:
- *             mobile: "+1234567890"
+ *             mobile: "9876543210"
  *             otp: "123456"
  *     responses:
  *       200:

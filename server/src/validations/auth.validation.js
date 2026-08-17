@@ -16,25 +16,27 @@
  */
 
 const { body } = require('express-validator');
-const { isValidPhone, isValidName, handleValidationErrors } = require('../utils/validators');
+const { isValidIndianMobile, getLocalMobileDigits, isValidName, handleValidationErrors } = require('../utils/validators');
 const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 
-// Send OTP validation (mobile number only, minimum 10 digits)
+const assertExactTenDigitMobile = (value) => {
+  const localDigits = getLocalMobileDigits(value);
+  if (localDigits.length !== 10) {
+    throw new Error('Mobile number must contain exactly 10 digits');
+  }
+  if (!isValidIndianMobile(value)) {
+    throw new Error('Please provide a valid mobile number');
+  }
+  return true;
+};
+
+// Send OTP validation (mobile number only, exactly 10 digits)
 const sendOTPValidation = [
   body('mobile')
     .trim()
     .notEmpty()
     .withMessage('Mobile number is required')
-    .custom((value) => {
-      const digitsOnly = (value || '').replace(/\D/g, '');
-      if (digitsOnly.length < 10) {
-        throw new Error('Mobile number must be at least 10 digits');
-      }
-      if (!isValidPhone(value)) {
-        throw new Error('Please provide a valid mobile number');
-      }
-      return true;
-    }),
+    .custom(assertExactTenDigitMobile),
   handleValidationErrors,
 ];
 
@@ -44,16 +46,7 @@ const verifyOTPValidation = [
     .trim()
     .notEmpty()
     .withMessage('Mobile number is required')
-    .custom((value) => {
-      const digitsOnly = (value || '').replace(/\D/g, '');
-      if (digitsOnly.length < 10) {
-        throw new Error('Mobile number must be at least 10 digits');
-      }
-      if (!isValidPhone(value)) {
-        throw new Error('Please provide a valid mobile number');
-      }
-      return true;
-    }),
+    .custom(assertExactTenDigitMobile),
   body('otp')
     .notEmpty()
     .withMessage('OTP is required')
@@ -70,16 +63,7 @@ const completeProfileValidation = [
     .trim()
     .notEmpty()
     .withMessage('Mobile number is required')
-    .custom((value) => {
-      const digitsOnly = (value || '').replace(/\D/g, '');
-      if (digitsOnly.length < 10) {
-        throw new Error('Mobile number must be at least 10 digits');
-      }
-      if (!isValidPhone(value)) {
-        throw new Error('Please provide a valid mobile number');
-      }
-      return true;
-    }),
+    .custom(assertExactTenDigitMobile),
   body('name')
     .trim()
     .notEmpty()
