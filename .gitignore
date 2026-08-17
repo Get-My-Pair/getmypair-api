@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # Uploads
 uploads/
+
+# Local env dumps — never commit secrets
+server/test.txt

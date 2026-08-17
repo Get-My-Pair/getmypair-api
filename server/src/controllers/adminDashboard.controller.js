@@ -75,9 +75,6 @@ const maskEmail = (email) => {
   return `${visible}***@${domain}`;
 };
 
-const shouldExposeOtp = () =>
-  config.NODE_ENV !== 'production' || config.RETURN_OTP_IN_RESPONSE;
-
 const resolvePortalLabel = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
   if (path.includes('darkworkstore')) return 'Dark Work Store';
@@ -169,14 +166,10 @@ const login = async (req, res) => {
       return errorResponse(res, err.message, code);
     }
 
-    if (
-      config.NODE_ENV === 'production' &&
-      !otpResult.delivery.delivered &&
-      !config.RETURN_OTP_IN_RESPONSE
-    ) {
+    if (!otpResult.delivery.delivered) {
       return errorResponse(
         res,
-        'Could not send OTP email. Check SMTP configuration.',
+        'Could not send OTP email. Check Resend configuration.',
         503
       );
     }
@@ -184,19 +177,14 @@ const login = async (req, res) => {
     const challengeToken = buildOtpChallengeToken(admin, portalKey);
     logger.info(`Master admin OTP challenge issued: ${email} (${portalLabel})`);
 
-    const payload = {
+    return success(res, 'OTP sent to your email', {
       requiresOtp: true,
       challengeToken,
       email: admin.email,
       emailMasked: maskEmail(admin.email),
       expiresIn: otpResult.expiresIn,
       deliveryMode: otpResult.delivery.mode,
-    };
-    if (shouldExposeOtp()) {
-      payload.otp = otpResult.otp;
-    }
-
-    return success(res, 'OTP sent to your email', payload);
+    });
   } catch (err) {
     logger.error(`Admin login error: ${err.message}`);
     return errorResponse(res, err.message, 500);
@@ -241,6 +229,8 @@ const verifyLoginOtp = async (req, res) => {
     } else if (accountPortal(admin) !== 'masteradmin') {
       return unauthorized(res, 'Invalid OTP session');
     }
+
+    const verified = await otpService.verifyOTP(admin.email, null, otpCode, 'email');
     if (!verified.valid) {
       return unauthorized(res, verified.message || 'Invalid OTP');
     }
@@ -309,33 +299,24 @@ const resendLoginOtp = async (req, res) => {
       return errorResponse(res, err.message, code);
     }
 
-    if (
-      config.NODE_ENV === 'production' &&
-      !otpResult.delivery.delivered &&
-      !config.RETURN_OTP_IN_RESPONSE
-    ) {
+    if (!otpResult.delivery.delivered) {
       return errorResponse(
         res,
-        'Could not send OTP email. Check SMTP configuration.',
+        'Could not send OTP email. Check Resend configuration.',
         503
       );
     }
 
     logger.info(`Master admin OTP resent: ${admin.email} (${portalLabel})`);
 
-    const payload = {
+    return success(res, 'OTP resent to your email', {
       requiresOtp: true,
       challengeToken,
       email: admin.email,
       emailMasked: maskEmail(admin.email),
       expiresIn: otpResult.expiresIn,
       deliveryMode: otpResult.delivery.mode,
-    };
-    if (shouldExposeOtp()) {
-      payload.otp = otpResult.otp;
-    }
-
-    return success(res, 'OTP resent to your email', payload);
+    });
   } catch (err) {
     logger.error(`Admin resend OTP error: ${err.message}`);
     return errorResponse(res, err.message, 500);
