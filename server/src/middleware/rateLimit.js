@@ -23,6 +23,7 @@ const isNonProduction = config.NODE_ENV !== 'production';
 
 const OTP_WINDOW_MS = 15 * 60 * 1000;
 const OTP_SEND_MAX = 5;
+const OTP_VERIFY_MAX = config.MAX_LOGIN_ATTEMPTS || 5;
 
 const otpLimitMessage = (message) => ({
   success: false,
@@ -70,8 +71,21 @@ const otpSendRateLimiter = rateLimit({
   validate: false,
 });
 
-/** @deprecated Use otpSendRateLimiter */
+/** @deprecated Use otpSendRateLimiter / otpVerifyRateLimiter */
 const otpRateLimiter = otpSendRateLimiter;
+
+// Verify OTP – 5 failed attempts per 15 minutes per mobile (all environments)
+const otpVerifyRateLimiter = rateLimit({
+  windowMs: OTP_WINDOW_MS,
+  max: OTP_VERIFY_MAX,
+  message: otpLimitMessage('Too many failed OTP verification attempts. Account locked. Please try again later.'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => mobileKey('otp-verify', req),
+  validate: false,
+});
 
 /** Masteradmin / Darkworkstore login — global limiter skips those prefixes, so login stays protected */
 const adminLoginRateLimiter = rateLimit({
@@ -91,5 +105,6 @@ module.exports = {
   globalRateLimiter,
   otpRateLimiter,
   otpSendRateLimiter,
+  otpVerifyRateLimiter,
   adminLoginRateLimiter,
 };

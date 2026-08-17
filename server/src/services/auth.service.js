@@ -116,7 +116,9 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
         userAgent,
         details: { mobile, type: 'phone', attemptsRemaining: verification.attemptsRemaining },
       });
-      throw new Error(verification.message);
+      const verifyError = new Error(verification.message);
+      verifyError.statusCode = verification.statusCode || 400;
+      throw verifyError;
     }
 
     // Check if user exists (try both formats)

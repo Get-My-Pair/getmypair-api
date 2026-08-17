@@ -140,6 +140,8 @@ void 0;
  *                           type: string
  *       400:
  *         description: Invalid or expired OTP
+ *       429:
+ *         description: Too many failed OTP verification attempts — account locked
  */
 void 0;
 

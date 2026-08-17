@@ -154,7 +154,7 @@ const verifyOTP = async (req, res) => {
       details: { mobile: req.body.mobile },
     });
     logger.error(`Verify OTP error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
+    return errorResponse(res, err.message, err.statusCode || 400);
   }
 };
 

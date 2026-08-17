@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : otp.service.js
- * Description: OTP service – create, verify, rate limit, hash
+ * Description: OTP service – create, verify, rate limit, lockout
  * ----------------------------------------------------------------------------
  * Developer  : C Ranjith Kumar
  * LinkedIn         : https://www.linkedin.com/in/coding-ranjith/
@@ -11,16 +11,18 @@
  * Personal Email   : ranjith.c96me@gmail.com
  * Project Email    : ranjith.kumar@getmypair.com
  * ----------------------------------------------------------------------------
- * Last modified : 2025-03-03
+ * Last modified : 2026-08-17
  * ----------------------------------------------------------------------------
  */
 
 const OTP = require('../models/otp.model');
+const OtpLockout = require('../models/otpLockout.model');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 
 const OTP_SEND_WINDOW_MS = 15 * 60 * 1000;
 const OTP_SEND_MAX = 5;
+const VERIFY_WINDOW_MS = 15 * 60 * 1000;
 
 const normalizePhone = (phone) => {
   if (!phone) return phone;
@@ -35,7 +37,6 @@ const normalizePhone = (phone) => {
  * @returns {String} 6-digit OTP
  */
 const generateOTP = () => {
-  // Generate a random numeric OTP
   const min = Math.pow(10, config.OTP_LENGTH - 1);
   const max = Math.pow(10, config.OTP_LENGTH) - 1;
   const numericOTP = Math.floor(Math.random() * (max - min + 1) + min).toString();
@@ -52,16 +53,13 @@ const generateOTP = () => {
  */
 const createOTP = async (email, phone, type, purpose = 'verification') => {
   try {
-    // Normalize phone number format for consistency
     let normalizedPhone = phone;
     if (phone && type === 'phone') {
-      // Ensure consistent format - if no +, add country code
       if (!phone.startsWith('+')) {
-        // Default to India +91 if no country code
         normalizedPhone = '+91' + phone;
       }
     }
-    
+
     // Invalidate unused OTPs but keep records so send-OTP rate limits still count
     let query;
     if (type === 'email') {
@@ -77,11 +75,9 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
     }
     await OTP.updateMany(query, { $set: { isUsed: true } });
 
-    // Generate new OTP
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + config.OTP_EXPIRE_MINUTES * 60 * 1000);
 
-    // Create OTP document (will be hashed by pre-save hook)
     const otp = new OTP({
       email: type === 'email' ? email : undefined,
       phone: type === 'phone' ? normalizedPhone : undefined,
@@ -93,7 +89,6 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
 
     await otp.save();
 
-    // Return plain OTP code for sending (before hashing)
     return {
       otp: otpCode,
       expiresAt,
@@ -103,6 +98,60 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
     logger.error(`Error creating OTP: ${error.message}`);
     throw error;
   }
+};
+
+const lockoutIdentifier = (email, phone, type) =>
+  type === 'email' ? `email:${email}` : `phone:${normalizePhone(phone)}`;
+
+const getLockoutStatus = async (identifier) => {
+  const rec = await OtpLockout.findOne({ identifier });
+  if (!rec) {
+    return { locked: false, rec: null };
+  }
+  if (rec.lockedUntil && rec.lockedUntil > new Date()) {
+    return { locked: true, rec };
+  }
+  return { locked: false, rec };
+};
+
+const recordFailedVerifyAttempt = async (identifier) => {
+  const maxAttempts = config.MAX_LOGIN_ATTEMPTS || 5;
+  const lockMinutes = config.LOCKOUT_DURATION_MINUTES || 30;
+  const now = new Date();
+
+  let rec = await OtpLockout.findOne({ identifier });
+  if (!rec) {
+    rec = await OtpLockout.create({
+      identifier,
+      failedAttempts: 1,
+      windowStartedAt: now,
+    });
+  } else {
+    const windowExpired =
+      !rec.windowStartedAt || now - rec.windowStartedAt > VERIFY_WINDOW_MS;
+    const lockExpired = rec.lockedUntil && rec.lockedUntil <= now;
+
+    if (windowExpired || lockExpired) {
+      rec.failedAttempts = 1;
+      rec.windowStartedAt = now;
+      rec.lockedUntil = null;
+    } else {
+      rec.failedAttempts += 1;
+    }
+    await rec.save();
+  }
+
+  if (rec.failedAttempts >= maxAttempts) {
+    rec.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
+    await rec.save();
+    return { locked: true, rec };
+  }
+
+  return { locked: false, rec };
+};
+
+const resetLockout = async (identifier) => {
+  await OtpLockout.deleteOne({ identifier });
 };
 
 /**
@@ -115,27 +164,36 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
  */
 const verifyOTP = async (email, phone, otpCode, type) => {
   try {
-    // Normalize phone number - try both with and without + prefix
+    const identifier = lockoutIdentifier(email, phone, type);
+    const lockStatus = await getLockoutStatus(identifier);
+    if (lockStatus.locked) {
+      return {
+        valid: false,
+        locked: true,
+        statusCode: 429,
+        message: 'Too many failed OTP verification attempts. Account locked. Please try again later.',
+      };
+    }
+
     let query;
     if (type === 'email') {
       query = { email, type };
     } else {
-      // Try to find OTP with exact phone match, or try alternative formats
       const phoneVariants = [phone];
       if (phone && !phone.startsWith('+')) {
         phoneVariants.push('+' + phone);
-        phoneVariants.push('+91' + phone); // India country code
+        phoneVariants.push('+91' + phone);
       } else if (phone && phone.startsWith('+91')) {
-        phoneVariants.push(phone.substring(3)); // Remove +91
-        phoneVariants.push(phone.substring(1)); // Remove +
+        phoneVariants.push(phone.substring(3));
+        phoneVariants.push(phone.substring(1));
       }
-      
-      query = { 
+
+      query = {
         type,
-        $or: phoneVariants.map(p => ({ phone: p }))
+        $or: phoneVariants.map((p) => ({ phone: p })),
       };
     }
-    
+
     const otp = await OTP.findOne({
       ...query,
       isUsed: false,
@@ -143,35 +201,57 @@ const verifyOTP = async (email, phone, otpCode, type) => {
     }).sort({ createdAt: -1 });
 
     if (!otp) {
+      const afterFail = await recordFailedVerifyAttempt(identifier);
+      if (afterFail.locked) {
+        return {
+          valid: false,
+          locked: true,
+          statusCode: 429,
+          message: 'Too many failed OTP verification attempts. Account locked. Please try again later.',
+        };
+      }
       return {
         valid: false,
+        statusCode: 400,
         message: 'OTP not found or expired',
       };
     }
 
-    // Check attempts (max 3)
     const maxAttempts = config.OTP_MAX_ATTEMPTS ?? 3;
     if (otp.attempts >= maxAttempts) {
       return {
         valid: false,
-        message: 'Maximum verification attempts exceeded',
+        locked: true,
+        statusCode: 429,
+        message: 'Maximum verification attempts exceeded. Account locked.',
       };
     }
 
-    // Verify OTP
     const isValid = await otp.compareOTP(otpCode);
 
     if (!isValid) {
       await otp.incrementAttempts();
+      const afterFail = await recordFailedVerifyAttempt(identifier);
+      const attemptsRemaining = Math.max(0, maxAttempts - otp.attempts);
+      if (otp.attempts >= maxAttempts || afterFail.locked) {
+        return {
+          valid: false,
+          locked: true,
+          statusCode: 429,
+          message: 'Too many failed OTP verification attempts. Account locked. Please try again later.',
+          attemptsRemaining: 0,
+        };
+      }
       return {
         valid: false,
+        statusCode: 400,
         message: 'Invalid OTP',
-        attemptsRemaining: Math.max(0, maxAttempts - otp.attempts - 1),
+        attemptsRemaining,
       };
     }
 
-    // Mark OTP as used
     await otp.markAsUsed();
+    await resetLockout(identifier);
 
     return {
       valid: true,
