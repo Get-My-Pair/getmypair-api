@@ -172,13 +172,16 @@ async function sendViaSmtp({ to, subject, text, html }) {
 }
 
 async function deliverEmail({ to, subject, text, html, logLabel }) {
+  let lastError = '';
+
   if (resendConfigured()) {
     try {
       const id = await sendViaResend({ to, subject, text, html });
       logger.info(`[email] ${logLabel} sent via Resend to ${to} id=${id}`);
       return { delivered: true, mode: 'resend' };
     } catch (err) {
-      logger.error(`[email] Resend failed for ${to}: ${err.message}`);
+      lastError = err.message || 'Resend API error';
+      logger.error(`[email] Resend failed for ${to}: ${lastError}`);
     }
   }
 
@@ -188,12 +191,13 @@ async function deliverEmail({ to, subject, text, html, logLabel }) {
       logger.info(`[email] ${logLabel} sent via SMTP to ${to}`);
       return { delivered: true, mode: 'smtp' };
     } catch (err) {
-      logger.error(`[email] SMTP failed for ${to}: ${err.message}`);
+      lastError = err.message || 'SMTP error';
+      logger.error(`[email] SMTP failed for ${to}: ${lastError}`);
     }
   }
 
   logger.info(`[email] No mail provider delivered — ${logLabel} for ${to}`);
-  return { delivered: false, mode: 'log' };
+  return { delivered: false, mode: 'log', error: lastError || 'No email provider configured' };
 }
 
 /**

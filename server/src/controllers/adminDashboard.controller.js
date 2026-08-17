@@ -169,7 +169,8 @@ const login = async (req, res) => {
     if (!otpResult.delivery.delivered) {
       return errorResponse(
         res,
-        'Could not send OTP email. Check Resend configuration.',
+        otpResult.delivery.error ||
+          'Could not send OTP email. Verify your domain on Resend or use the Resend account owner email.',
         503
       );
     }
@@ -302,7 +303,8 @@ const resendLoginOtp = async (req, res) => {
     if (!otpResult.delivery.delivered) {
       return errorResponse(
         res,
-        'Could not send OTP email. Check Resend configuration.',
+        otpResult.delivery.error ||
+          'Could not send OTP email. Verify your domain on Resend or use the Resend account owner email.',
         503
       );
     }

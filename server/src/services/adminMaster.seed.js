@@ -16,13 +16,13 @@ const SALT_ROUNDS = 12;
 /**
  * Ensure exactly one Masteradmin account exists.
  * Default (override with MASTER_ADMIN_EMAIL / MASTER_ADMIN_PASSWORD in .env):
- *   ranjith.c96me@gmail.com / 123455678
+ *   ranjith.kumar@getmypair.com / 123455678
  *
  * Darkworkstore portal accounts are not removed.
  */
 const ensureMasterAdmin = async () => {
   try {
-    const email = (config.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com').toLowerCase().trim();
+    const email = (config.MASTER_ADMIN_EMAIL || 'ranjith.kumar@getmypair.com').toLowerCase().trim();
     const plainPassword = config.MASTER_ADMIN_PASSWORD || '123455678';
     const passwordHash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
 

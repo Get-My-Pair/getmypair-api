@@ -63,8 +63,12 @@ const config = {
 
   /** Master admin HTML dashboard (/admin) – JWT lifetime */
   ADMIN_JWT_EXPIRE: process.env.ADMIN_JWT_EXPIRE || '12h',
+  /** Resend sandbox only delivers to the account owner until a domain is verified */
+  RESEND_SANDBOX_OWNER_EMAIL:
+    process.env.RESEND_SANDBOX_OWNER_EMAIL || 'ranjith.kumar@getmypair.com',
+
   /** Single Masteradmin account — override in production via .env on Render */
-  MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com',
+  MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.kumar@getmypair.com',
   MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || '123455678',
 
   // Zoho Payments (OAuth — do not put Client ID in ZOHO_API_KEY)
