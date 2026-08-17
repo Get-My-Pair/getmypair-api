@@ -63,9 +63,9 @@ const config = {
 
   /** Master admin HTML dashboard (/admin) – JWT lifetime */
   ADMIN_JWT_EXPIRE: process.env.ADMIN_JWT_EXPIRE || '12h',
-  /** Seeded only if AdminMaster collection is empty; override in production via .env */
+  /** Single Masteradmin account — override in production via .env on Render */
   MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com',
-  MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || 'Admin@123',
+  MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || '123455678',
 
   // Zoho Payments (OAuth — do not put Client ID in ZOHO_API_KEY)
   ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID || '',

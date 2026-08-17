@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminMaster.seed.js
- * Description: Ensures exactly one master admin exists (seed on server start)
+ * Description: Ensures exactly one Masteradmin portal account on server start
  * ----------------------------------------------------------------------------
  */
 
@@ -14,14 +14,21 @@ const logger = require('../utils/logger');
 const SALT_ROUNDS = 12;
 
 /**
- * Create master admin if none exists. Backfill portal on legacy rows.
- * Default credentials (override with MASTER_ADMIN_EMAIL / MASTER_ADMIN_PASSWORD in .env):
- *   ranjith.c96me@gmail.com / Admin@123
+ * Ensure exactly one Masteradmin account exists.
+ * Default (override with MASTER_ADMIN_EMAIL / MASTER_ADMIN_PASSWORD in .env):
+ *   ranjith.c96me@gmail.com / 123455678
+ *
+ * Darkworkstore portal accounts are not removed.
  */
 const ensureMasterAdmin = async () => {
   try {
+    const email = (config.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com').toLowerCase().trim();
+    const plainPassword = config.MASTER_ADMIN_PASSWORD || '123455678';
+    const passwordHash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
+
     const backfill = await AdminMaster.updateMany(
       {
+        email,
         $or: [{ portal: { $exists: false } }, { portal: null }, { portal: '' }],
       },
       {
@@ -29,33 +36,35 @@ const ensureMasterAdmin = async () => {
           portal: 'masteradmin',
           isVerified: true,
           status: 'verified',
+          isActive: true,
         },
       }
     );
     if (backfill.modifiedCount) {
-      logger.info(`Backfilled portal=masteradmin on ${backfill.modifiedCount} AdminMaster row(s)`);
+      logger.info(`Backfilled portal=masteradmin on ${backfill.modifiedCount} row(s) for ${email}`);
     }
 
-    const masterCount = await AdminMaster.countDocuments({ portal: 'masteradmin' });
-    if (masterCount > 0) {
-      logger.info('Master admin already exists; skipping seed');
+    const removed = await AdminMaster.deleteMany({
+      portal: 'masteradmin',
+      email: { $ne: email },
+    });
+    if (removed.deletedCount) {
+      logger.info(`Removed ${removed.deletedCount} extra Masteradmin account(s)`);
+    }
+
+    const master = await AdminMaster.findOne({ email }).select('+passwordHash');
+    if (master) {
+      master.portal = 'masteradmin';
+      master.name = master.name || 'Master Admin';
+      master.isActive = true;
+      master.isVerified = true;
+      master.status = 'verified';
+      master.registeredVia = 'masteradmin';
+      master.passwordHash = passwordHash;
+      await master.save();
+      logger.info(`Masteradmin ready: ${email}`);
       return;
     }
-
-    const email = (config.MASTER_ADMIN_EMAIL || 'ranjith.c96me@gmail.com').toLowerCase().trim();
-    const existing = await AdminMaster.findOne({ email });
-    if (existing) {
-      existing.portal = 'masteradmin';
-      existing.isVerified = true;
-      existing.status = 'verified';
-      existing.isActive = true;
-      await existing.save();
-      logger.info(`Existing AdminMaster promoted to masteradmin: ${email}`);
-      return;
-    }
-
-    const plainPassword = config.MASTER_ADMIN_PASSWORD || 'Admin@123';
-    const passwordHash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
 
     await AdminMaster.create({
       email,
@@ -68,7 +77,7 @@ const ensureMasterAdmin = async () => {
       registeredVia: 'masteradmin',
     });
 
-    logger.info(`Master admin seeded: ${email} (change password after first login in production)`);
+    logger.info(`Masteradmin seeded: ${email}`);
   } catch (err) {
     logger.error(`Master admin seed failed: ${err.message}`);
     throw err;
