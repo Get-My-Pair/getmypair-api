@@ -294,6 +294,8 @@ void 0;
  *     responses:
  *       200:
  *         description: Logout successful
+ *       400:
+ *         description: Empty refreshToken
  *       401:
  *         description: Unauthorized - Invalid or missing token
  */

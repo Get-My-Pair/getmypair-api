@@ -139,10 +139,13 @@ const completeProfileValidation = [
 // Refresh token validation
 const refreshTokenValidation = [
   body('refreshToken')
+    .trim()
     .notEmpty()
     .withMessage('Refresh token is required'),
   handleValidationErrors,
 ];
+
+const logoutValidation = refreshTokenValidation;
 
 // Update preferred language (cobbler app: English and Kannada only)
 const updateLanguageValidation = [
@@ -161,5 +164,6 @@ module.exports = {
   verifyOTPValidation,
   completeProfileValidation,
   refreshTokenValidation,
+  logoutValidation,
   updateLanguageValidation,
 };

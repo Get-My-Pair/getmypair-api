@@ -275,12 +275,14 @@ const logout = async (req, res) => {
     const userAgent = req.get('user-agent') || 'unknown';
     const userId = req.user?._id;
 
+    if (!refreshToken || !String(refreshToken).trim()) {
+      return errorResponse(res, 'Refresh token is required', 400);
+    }
+
     const tokenService = require('../services/token.service');
     const AuditLog = require('../models/auditLog.model');
 
-    if (refreshToken) {
-      await tokenService.revokeSession(refreshToken);
-    }
+    await tokenService.revokeSession(refreshToken);
 
     // Log logout
     await AuditLog.createLog({
