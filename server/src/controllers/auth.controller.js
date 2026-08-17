@@ -109,7 +109,7 @@ const sendOTP = async (req, res) => {
       details: { mobile: req.body.mobile },
     });
     logger.error(`Send OTP error: ${err.message}`);
-    return errorResponse(res, err.message, 400);
+    return errorResponse(res, err.message, err.statusCode || 400);
   }
 };
 

@@ -58,7 +58,9 @@
  *                       type: number
  *                       example: 600
  *       400:
- *         description: Bad request - Validation error or rate limit exceeded
+ *         description: Bad request - Validation error or invalid mobile number
+ *       429:
+ *         description: Too many OTP requests — rate limit exceeded
  */
 void 0;
 

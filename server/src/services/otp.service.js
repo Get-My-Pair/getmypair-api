@@ -19,6 +19,17 @@ const OTP = require('../models/otp.model');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 
+const OTP_SEND_WINDOW_MS = 15 * 60 * 1000;
+const OTP_SEND_MAX = 5;
+
+const normalizePhone = (phone) => {
+  if (!phone) return phone;
+  if (!phone.startsWith('+')) {
+    return '+91' + phone;
+  }
+  return phone;
+};
+
 /**
  * Generate OTP
  * @returns {String} 6-digit OTP
@@ -51,21 +62,20 @@ const createOTP = async (email, phone, type, purpose = 'verification') => {
       }
     }
     
-    // Delete any existing unused OTPs for this email/phone (check both formats)
+    // Invalidate unused OTPs but keep records so send-OTP rate limits still count
     let query;
     if (type === 'email') {
       query = { email, isUsed: false };
     } else {
-      // Check both normalized and original format
       const phoneFormats = [normalizedPhone];
       if (phone !== normalizedPhone) {
         phoneFormats.push(phone);
       }
-      query = { 
-        $or: phoneFormats.map(p => ({ phone: p, isUsed: false }))
+      query = {
+        $or: phoneFormats.map((p) => ({ phone: p, isUsed: false })),
       };
     }
-    await OTP.deleteMany(query);
+    await OTP.updateMany(query, { $set: { isUsed: true } });
 
     // Generate new OTP
     const otpCode = generateOTP();
@@ -183,15 +193,25 @@ const verifyOTP = async (email, phone, otpCode, type) => {
  */
 const checkRateLimit = async (email, phone, type) => {
   try {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const query = type === 'email' ? { email, type } : { phone, type };
-    
+    const windowStart = new Date(Date.now() - OTP_SEND_WINDOW_MS);
+    let query;
+    if (type === 'email') {
+      query = { email, type };
+    } else {
+      const normalized = normalizePhone(phone);
+      const phoneFormats = [normalized];
+      if (phone && phone !== normalized) {
+        phoneFormats.push(phone);
+      }
+      query = { type, phone: { $in: phoneFormats } };
+    }
+
     const recentOTPs = await OTP.countDocuments({
       ...query,
-      createdAt: { $gte: oneHourAgo },
+      createdAt: { $gte: windowStart },
     });
 
-    return recentOTPs >= 5; // Max 5 OTPs per hour
+    return recentOTPs >= OTP_SEND_MAX;
   } catch (error) {
     logger.error(`Error checking OTP rate limit: ${error.message}`);
     return false;

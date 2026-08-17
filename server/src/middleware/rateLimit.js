@@ -17,7 +17,23 @@
 
 const rateLimit = require('express-rate-limit');
 const config = require('../config/env');
+const { getLocalMobileDigits } = require('../utils/validators');
+
 const isNonProduction = config.NODE_ENV !== 'production';
+
+const OTP_WINDOW_MS = 15 * 60 * 1000;
+const OTP_SEND_MAX = 5;
+
+const otpLimitMessage = (message) => ({
+  success: false,
+  message,
+  statusCode: 429,
+});
+
+const mobileKey = (prefix, req) => {
+  const mobile = getLocalMobileDigits(req.body?.mobile || '');
+  return `${prefix}:${mobile || req.ip}`;
+};
 
 // Global rate limiter
 const globalRateLimiter = rateLimit({
@@ -41,18 +57,21 @@ const globalRateLimiter = rateLimit({
   },
 });
 
-// OTP rate limiter - more lenient for development
-const otpRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isNonProduction ? 100000 : 5, // Effectively disabled for testing/dev
-  message: {
-    success: false,
-    message: 'Too many OTP requests, please try again later.',
-    statusCode: 429,
-  },
-  skip: () => isNonProduction,
+// Send OTP – 5 requests per 15 minutes per mobile number (all environments)
+const otpSendRateLimiter = rateLimit({
+  windowMs: OTP_WINDOW_MS,
+  max: OTP_SEND_MAX,
+  message: otpLimitMessage('Too many OTP requests, please try again later.'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
   skipSuccessfulRequests: false,
+  keyGenerator: (req) => mobileKey('otp-send', req),
+  validate: false,
 });
+
+/** @deprecated Use otpSendRateLimiter */
+const otpRateLimiter = otpSendRateLimiter;
 
 /** Masteradmin / Darkworkstore login — global limiter skips those prefixes, so login stays protected */
 const adminLoginRateLimiter = rateLimit({
@@ -71,5 +90,6 @@ const adminLoginRateLimiter = rateLimit({
 module.exports = {
   globalRateLimiter,
   otpRateLimiter,
+  otpSendRateLimiter,
   adminLoginRateLimiter,
 };

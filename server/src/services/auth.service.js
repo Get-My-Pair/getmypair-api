@@ -54,7 +54,9 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
         userAgent,
         details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
       });
-      throw new Error('Too many OTP requests. Please try again later.');
+      const rateLimitError = new Error('Too many OTP requests. Please try again later.');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
     }
 
     // Create OTP with normalized mobile

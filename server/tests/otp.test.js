@@ -31,7 +31,7 @@ describe('OTP Service', () => {
       expect(result.otp).toHaveLength(6);
     });
 
-    it('should delete existing unused OTPs', async () => {
+    it('should keep only one unused OTP for the same identifier', async () => {
       await otpService.createOTP('test@example.com', null, 'email', 'verification');
       await otpService.createOTP('test@example.com', null, 'email', 'verification');
 

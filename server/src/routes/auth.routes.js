@@ -28,10 +28,11 @@ const {
   updateLanguageValidation,
 } = require('../validations/auth.validation');
 const {
+  otpSendRateLimiter,
   otpRateLimiter,
 } = require('../middleware/rateLimit');
 
-router.post('/send-otp', otpRateLimiter, sendOTPValidation, authController.sendOTP);
+router.post('/send-otp', sendOTPValidation, otpSendRateLimiter, authController.sendOTP);
 router.post('/verify-otp', otpRateLimiter, verifyOTPValidation, authController.verifyOTP);
 router.post('/complete-profile', completeProfileValidation, authController.completeProfile);
 router.post('/refresh-token', refreshTokenValidation, authController.refreshToken);
