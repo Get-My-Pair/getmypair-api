@@ -218,24 +218,20 @@ const completeProfile = async (
   ipAddress,
   userAgent,
   deviceInfo,
-  appSource = 'USER_APP',
+  appSource,
   location = null,
   householdType = 'just_me'
 ) => {
   try {
-    // Role from app source (USER_APP -> USER, COBBER_APP -> COBBER, etc.)
-    let roleDoc = null;
-    try {
-      const roleName = getRoleFromAppSource(appSource);
+    const roleName = getRoleFromAppSource(appSource);
+    let roleDoc = await Role.findOne({ name: roleName });
+    if (!roleDoc) {
+      await Role.initializeDefaultRoles();
       roleDoc = await Role.findOne({ name: roleName });
-      if (!roleDoc) {
-        await Role.initializeDefaultRoles();
-        roleDoc = await Role.findOne({ name: roleName });
-      }
-    } catch (_) {
-      roleDoc = await Role.findOne({ name: 'USER' });
     }
-    if (!roleDoc) roleDoc = await Role.findOne({ name: 'USER' });
+    if (!roleDoc) {
+      throw new Error('Invalid application identifier');
+    }
 
     // Normalize mobile number format
     let normalizedMobile = mobile;
@@ -282,12 +278,12 @@ const completeProfile = async (
     await user.save();
 
     // Create app-specific profile (same as user collection – one profile per role)
-    const roleName = roleDoc ? String(roleDoc.name).toUpperCase() : 'USER';
+    const profileRoleName = roleDoc ? String(roleDoc.name).toUpperCase() : 'USER';
     const normalizedHouseholdType = ['just_me', 'with_partner', 'with_children', 'with_elder']
       .includes(String(householdType || '').trim())
       ? String(householdType).trim()
       : 'just_me';
-    if (roleName === 'USER') {
+    if (profileRoleName === 'USER') {
       await UserProfile.create({
         userId: user._id,
         name: name || 'User',
@@ -295,13 +291,13 @@ const completeProfile = async (
         email: null,
         householdType: normalizedHouseholdType,
       });
-    } else if (roleName === 'COBBER') {
+    } else if (profileRoleName === 'COBBER') {
       await CobblerProfile.create({
         userId: user._id,
         name: name || 'Cobbler',
         phone: normalizedMobile,
       });
-    } else if (roleName === 'DELIVERY') {
+    } else if (profileRoleName === 'DELIVERY') {
       await DeliveryProfile.create({
         userId: user._id,
         name: name || 'Delivery',

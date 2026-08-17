@@ -6,6 +6,7 @@
  * ----------------------------------------------------------------------------
  */
 
+const { VALID_APP_SOURCES } = require('../config/roles');
 const { error } = require('../utils/response');
 
 const getAppSourceHeader = (req) => {
@@ -24,7 +25,12 @@ const requireAppSource = (req, res, next) => {
     return error(res, 'The required X-App header is missing', 400);
   }
 
-  req.appSource = appSource.toUpperCase();
+  const normalized = appSource.toUpperCase();
+  if (!VALID_APP_SOURCES.includes(normalized)) {
+    return error(res, 'Invalid application identifier', 400);
+  }
+
+  req.appSource = normalized;
   next();
 };
 

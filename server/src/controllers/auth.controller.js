@@ -170,7 +170,7 @@ const completeProfile = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
-    const appSource = req.appSource || req.get('X-App-Source') || req.get('X-App') || 'USER_APP';
+    const appSource = req.appSource || req.get('X-App-Source') || req.get('X-App');
     const appVersion = req.get('X-App-Version') || '';
 
     logger.info(`Complete profile: mobile=${mobile}, appSource=${appSource}, appVersion=${appVersion}`);
@@ -208,7 +208,10 @@ const completeProfile = async (req, res) => {
     });
     logger.error(`Complete profile error: ${err.message}`);
     logger.error(`Request body: ${JSON.stringify(req.body)}`);
-    return errorResponse(res, err.message, 400);
+    const message = /invalid app source/i.test(err.message)
+      ? 'Invalid application identifier'
+      : err.message;
+    return errorResponse(res, message, 400);
   }
 };
 

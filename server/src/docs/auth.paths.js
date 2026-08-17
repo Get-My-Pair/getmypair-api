@@ -156,7 +156,7 @@ void 0;
  *       - **USER_APP** → User + UserProfile
  *       - **COBBER_APP** → User + CobblerProfile
  *       - **DELIVERY_APP** → User + DeliveryProfile
- *       Header is required. Missing values are rejected.
+ *       Header is required. Invalid or missing values are rejected.
  *       No separate profile create endpoint is needed; use profile **PUT** endpoints to update.
  *       Returns JWT tokens upon successful registration.
  *     tags: [Authentication]
@@ -239,7 +239,7 @@ void 0;
  *                         expiresIn:
  *                           type: string
  *       400:
- *         description: Bad request - Validation error, missing X-App header, or user already exists
+ *         description: Bad request - Validation error, missing/invalid X-App header, or user already exists
  */
 void 0;
 
