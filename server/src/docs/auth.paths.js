@@ -190,6 +190,7 @@ void 0;
  *                 type: string
  *                 format: date
  *                 example: "1990-01-01"
+ *                 description: Date of birth in YYYY-MM-DD format only
  *               gender:
  *                 type: string
  *                 enum: [male, female, other]

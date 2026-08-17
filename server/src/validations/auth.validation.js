@@ -80,15 +80,19 @@ const completeProfileValidation = [
     .notEmpty()
     .withMessage('Date of birth is required')
     .custom((value) => {
-      // Accept both YYYY-MM-DD and ISO 8601 formats
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(value) && !Date.parse(value)) {
-        throw new Error('Please provide a valid date of birth (YYYY-MM-DD format)');
+      if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new Error('Invalid date format');
       }
-      
-      const dob = new Date(value);
-      if (isNaN(dob.getTime())) {
-        throw new Error('Please provide a valid date of birth');
+
+      const [year, month, day] = value.split('-').map(Number);
+      const dob = new Date(year, month - 1, day);
+      if (
+        isNaN(dob.getTime()) ||
+        dob.getFullYear() !== year ||
+        dob.getMonth() !== month - 1 ||
+        dob.getDate() !== day
+      ) {
+        throw new Error('Invalid date format');
       }
       
       const today = new Date();
