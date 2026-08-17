@@ -31,10 +31,11 @@ const {
   otpSendRateLimiter,
   otpVerifyRateLimiter,
 } = require('../middleware/rateLimit');
+const { requireAppSource } = require('../middleware/appSource.middleware');
 
 router.post('/send-otp', sendOTPValidation, otpSendRateLimiter, authController.sendOTP);
 router.post('/verify-otp', verifyOTPValidation, otpVerifyRateLimiter, authController.verifyOTP);
-router.post('/complete-profile', completeProfileValidation, authController.completeProfile);
+router.post('/complete-profile', requireAppSource, completeProfileValidation, authController.completeProfile);
 router.post('/refresh-token', refreshTokenValidation, authController.refreshToken);
 router.post('/logout', authMiddleware, authController.logout);
 

@@ -152,22 +152,22 @@ void 0;
  *     summary: Complete profile for new user
  *     description: |
  *       Create user account and **app-specific profile** in one step.
- *       Send **X-App-Source** header to determine role and which profile is created:
+ *       Send **X-App-Source** (or **X-App**) header to determine role and which profile is created:
  *       - **USER_APP** → User + UserProfile
  *       - **COBBER_APP** → User + CobblerProfile
  *       - **DELIVERY_APP** → User + DeliveryProfile
+ *       Header is required. Missing values are rejected.
  *       No separate profile create endpoint is needed; use profile **PUT** endpoints to update.
  *       Returns JWT tokens upon successful registration.
  *     tags: [Authentication]
  *     parameters:
  *       - in: header
  *         name: X-App-Source
- *         required: false
+ *         required: true
  *         schema:
  *           type: string
  *           enum: [USER_APP, COBBER_APP, DELIVERY_APP, ADMIN_APP]
- *           default: USER_APP
- *         description: App identifier — determines user role and which profile collection is created
+ *         description: App identifier — determines user role and which profile collection is created. Alias header **X-App** is also accepted.
  *     requestBody:
  *       required: true
  *       content:
@@ -239,7 +239,7 @@ void 0;
  *                         expiresIn:
  *                           type: string
  *       400:
- *         description: Bad request - Validation error or user already exists
+ *         description: Bad request - Validation error, missing X-App header, or user already exists
  */
 void 0;
 

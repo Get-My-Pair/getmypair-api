@@ -170,7 +170,7 @@ const completeProfile = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
-    const appSource = req.get('X-App-Source') || 'USER_APP';
+    const appSource = req.appSource || req.get('X-App-Source') || req.get('X-App') || 'USER_APP';
     const appVersion = req.get('X-App-Version') || '';
 
     logger.info(`Complete profile: mobile=${mobile}, appSource=${appSource}, appVersion=${appVersion}`);

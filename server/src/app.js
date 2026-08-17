@@ -99,6 +99,7 @@ app.use(
     allowedHeaders: [
       'Content-Type',
       'Authorization',
+      'X-App',
       'X-App-Source',
       'X-App-Version',
       'Accept',
