@@ -139,6 +139,12 @@ const completeProfileValidation = [
 // Refresh token validation
 const refreshTokenValidation = [
   body('refreshToken')
+    .exists()
+    .withMessage('The refreshToken field is mandatory')
+    .bail()
+    .isString()
+    .withMessage('Refresh token is required')
+    .bail()
     .trim()
     .notEmpty()
     .withMessage('Refresh token is required'),

@@ -282,20 +282,24 @@ void 0;
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - refreshToken
  *             properties:
  *               refreshToken:
  *                 type: string
  *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *           example:
+ *             refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
  *         description: Logout successful
  *       400:
- *         description: Empty refreshToken
+ *         description: Missing or empty refreshToken
  *       401:
  *         description: Unauthorized - Invalid or missing token
  */
