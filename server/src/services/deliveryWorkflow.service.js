@@ -138,7 +138,7 @@ function receivedAtStoreFilter(storeId) {
   };
 }
 
-function pushLifecycle(request, { actorType, actorId, note }) {
+function pushLifecycle(request, { actorType, actorId, note, photos = [] }) {
   request.lifecycleEvents = Array.isArray(request.lifecycleEvents) ? request.lifecycleEvents : [];
   request.lifecycleEvents.push({
     state: request.trackingState || 'request_created',
@@ -146,7 +146,7 @@ function pushLifecycle(request, { actorType, actorId, note }) {
     actorType,
     actorId: actorId ? String(actorId) : null,
     note,
-    media: { photos: [], videos: [] },
+    media: { photos: photos.filter(Boolean), videos: [] },
     timestamp: new Date(),
   });
 }
@@ -230,6 +230,7 @@ async function enrichDeliveryJobs(requests, origin = null) {
           ? { line: user.location.address, city: '', pincode: '' }
           : null,
       pickupGeo: lat != null && lng != null ? { lat, lng } : null,
+      orderCode: String(r._id).slice(-8).toUpperCase(),
       store: store
         ? {
             name: store.storeName || store.name,

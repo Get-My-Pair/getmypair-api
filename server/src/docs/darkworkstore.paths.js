@@ -75,7 +75,7 @@ void 0;
  * /api/darkworkstore/auth/login:
  *   post:
  *     summary: Dark Work Store login (password; email OTP once)
- *     description: First login sends an email OTP. After that, email and password are enough.
+ *     description: First login sends an email OTP. After that, email and password are enough — OTP is not sent again.
  *     tags: [Darkworkstore Auth]
  *     requestBody:
  *       required: true

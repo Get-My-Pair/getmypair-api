@@ -6,9 +6,35 @@ const AdminMaster = require('../models/adminMaster.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const workflow = require('../services/deliveryWorkflow.service');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 function memberId(req) {
   return req.adminMaster._id;
+}
+
+function orderCode(id) {
+  return String(id || '').slice(-8).toUpperCase();
+}
+
+function orderIdMatches(jobId, entered) {
+  const id = String(jobId || '').toLowerCase();
+  const raw = String(entered || '')
+    .replace(/[#\s-]/g, '')
+    .toLowerCase();
+  if (!raw || raw.length < 4) return false;
+  return id === raw || id.endsWith(raw) || orderCode(jobId).toLowerCase() === raw;
+}
+
+async function resolveProofPhoto(photo) {
+  const value = String(photo || '').trim();
+  if (!value) return '';
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  if (!value.startsWith('data:image')) return '';
+  const base64 = value.split(',')[1];
+  if (!base64) return '';
+  const buf = Buffer.from(base64, 'base64');
+  const uploaded = await uploadToCloudinary(buf, { folder: 'getmypair/delivery-proofs' });
+  return uploaded.secure_url || '';
 }
 
 async function rememberLocation(req) {
@@ -70,6 +96,8 @@ const listJobs = async (req, res) => {
           row.pickupAddress?.line,
           row.store?.name,
           row.serviceType,
+          row.orderCode,
+          String(row._id || ''),
         ]
           .filter(Boolean)
           .join(' ')
@@ -194,6 +222,42 @@ const updateStatus = async (req, res) => {
       );
     }
 
+    const needsProof = action === 'picked_up' || action === 'delivered';
+    let proofUrl = '';
+    if (needsProof) {
+      const orderId = String(req.body.orderId || '').trim();
+      const photo = req.body.photo;
+      const idOk = orderIdMatches(request._id, orderId);
+      if (!idOk && !photo) {
+        return errorResponse(
+          res,
+          'Upload a pickup photo or enter the matching order id to confirm collection',
+          400
+        );
+      }
+      if (orderId && !idOk) {
+        return errorResponse(res, 'Order id does not match this job', 400);
+      }
+      if (photo) {
+        try {
+          proofUrl = await resolveProofPhoto(photo);
+        } catch (err) {
+          logger.warn(`Delivery proof upload failed: ${err.message}`);
+        }
+      }
+      if (!idOk && !proofUrl) {
+        return errorResponse(
+          res,
+          'Upload a pickup photo or enter the matching order id to confirm collection',
+          400
+        );
+      }
+      if (proofUrl) {
+        request.photos = Array.isArray(request.photos) ? request.photos : [];
+        request.photos.push(proofUrl);
+      }
+    }
+
     workflow.applyTracking(request, spec.trackingState, { workflowStatus: spec.workflowStatus });
     if (action === 'delivered') {
       request.status = 'completed';
@@ -202,7 +266,8 @@ const updateStatus = async (req, res) => {
     workflow.pushLifecycle(request, {
       actorType: 'delivery',
       actorId: memberId(req),
-      note: spec.note,
+      note: proofUrl ? `${spec.note} (photo proof)` : spec.note,
+      photos: proofUrl ? [proofUrl] : [],
     });
     await request.save();
 

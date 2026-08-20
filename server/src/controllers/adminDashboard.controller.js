@@ -117,13 +117,21 @@ function canUsePortal(admin, portalKey) {
   return false;
 }
 
-/** Darkworkstore / delivery accounts verify email OTP once; later logins use email + password only. */
-const hasCompletedPortalEmailOtp = (admin) =>
-  Boolean(admin?.emailVerifiedAt || admin?.lastLoginAt);
+/** Darkworkstore / delivery portals: OTP once per account, then email + password only. */
+const shouldSkipPortalOtp = (admin, portalKey) => {
+  if (portalKey !== 'darkworkstore' && portalKey !== 'delivery') return false;
+  if (admin?.emailVerifiedAt) return true;
+  // Legacy store/delivery rows that already logged in before emailVerifiedAt existed
+  return accountPortal(admin) === portalKey && Boolean(admin?.lastLoginAt);
+};
 
-const completePortalLogin = async (admin, portalKey) => {
+const completePortalLogin = async (admin, portalKey, { fromOtp } = {}) => {
   admin.lastLoginAt = new Date();
-  if (isOtpOnceAccount(admin) && !admin.emailVerifiedAt) {
+  if (
+    fromOtp &&
+    (portalKey === 'darkworkstore' || portalKey === 'delivery') &&
+    !admin.emailVerifiedAt
+  ) {
     admin.emailVerifiedAt = admin.lastLoginAt;
   }
   await admin.save();
@@ -170,7 +178,7 @@ async function issueAndSendPortalOtp(admin, portalLabel) {
 /**
  * POST /api/{portal}/auth/login
  * Masteradmin: password then email OTP every time.
- * Darkworkstore store accounts: email OTP once; later logins issue JWT after password.
+ * Darkworkstore / delivery: email OTP once (any account on that portal); later logins issue JWT after password.
  */
 const login = async (req, res) => {
   try {
@@ -206,14 +214,9 @@ const login = async (req, res) => {
       return unauthorized(res, 'Invalid email or password');
     }
 
-    if (
-      portalKey !== 'masteradmin' &&
-      isOtpOnceAccount(admin) &&
-      accountPortal(admin) === portalKey &&
-      hasCompletedPortalEmailOtp(admin)
-    ) {
+    if (shouldSkipPortalOtp(admin, portalKey)) {
       const payload = await completePortalLogin(admin, portalKey);
-      logger.info(`${portalKey} password login: ${email}`);
+      logger.info(`${portalKey} password login (OTP already verified): ${email}`);
       return success(res, 'Login successful', {
         requiresOtp: false,
         ...payload,
@@ -291,8 +294,8 @@ const verifyLoginOtp = async (req, res) => {
       return unauthorized(res, verified.message || 'Invalid OTP');
     }
 
-    const payload = await completePortalLogin(admin, portalKey);
-    logger.info(`Master admin login verified via OTP: ${admin.email}`);
+    const payload = await completePortalLogin(admin, portalKey, { fromOtp: true });
+    logger.info(`${portalKey} login verified via OTP: ${admin.email}`);
 
     return success(res, 'Login successful', payload);
   } catch (err) {
