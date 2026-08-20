@@ -29,9 +29,15 @@ const {
   dbMaintenanceConfirmValidation,
   dbMaintenanceCollectionValidation,
   dbMaintenanceGroupValidation,
+  deliveryMemberCreateValidation,
+  deliveryMemberIdValidation,
+  deliveryMemberUpdateValidation,
+  assignDeliveryValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
+const deliveryMemberController = require('../controllers/deliveryMember.controller');
+const darkworkstoreJobsController = require('../controllers/darkworkstoreJobs.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -84,6 +90,46 @@ router.get('/cobblers', adminMasterAuth, adminDashboardController.listCobblers);
 router.patch('/cobblers/:id/verify', adminMasterAuth, adminDashboardController.verifyCobbler);
 router.get('/delivery-partners', adminMasterAuth, adminDashboardController.listDeliveryPartners);
 router.get('/email-templates', adminMasterAuth, adminDashboardController.listEmailTemplates);
+
+router.get('/delivery-members', adminMasterAuth, deliveryMemberController.list);
+router.post(
+  '/delivery-members',
+  adminMasterAuth,
+  deliveryMemberCreateValidation,
+  deliveryMemberController.create
+);
+router.get(
+  '/delivery-members/:id',
+  adminMasterAuth,
+  deliveryMemberIdValidation,
+  deliveryMemberController.getById
+);
+router.patch(
+  '/delivery-members/:id',
+  adminMasterAuth,
+  deliveryMemberUpdateValidation,
+  deliveryMemberController.update
+);
+router.delete(
+  '/delivery-members/:id',
+  adminMasterAuth,
+  deliveryMemberIdValidation,
+  deliveryMemberController.remove
+);
+router.patch(
+  '/delivery-members/:id/send-email',
+  adminMasterAuth,
+  deliveryMemberIdValidation,
+  deliveryMemberController.sendEmail
+);
+router.get('/delivery-jobs/pickup', adminMasterAuth, darkworkstoreJobsController.listPickupJobs);
+router.get('/delivery-jobs/return', adminMasterAuth, darkworkstoreJobsController.listReturnJobs);
+router.post(
+  '/delivery-jobs/:id/assign',
+  adminMasterAuth,
+  assignDeliveryValidation,
+  darkworkstoreJobsController.assignDelivery
+);
 
 // Darkworkstore portal users (create / view / update / delete / verify)
 router.get('/darkworkstore-users', adminMasterAuth, darkworkstoreUserController.list);

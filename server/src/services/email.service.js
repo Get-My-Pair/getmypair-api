@@ -9,6 +9,7 @@ const {
   buildOtpContent,
   buildRegistrationReceivedContent,
   buildCredentialsContent,
+  buildDeliveryMemberCredentials,
   listEmailTemplates,
 } = require('./email.templates');
 
@@ -163,11 +164,28 @@ async function sendDarkworkstoreCredentials({ to, name, storeName, email, passwo
   });
 }
 
+async function sendDeliveryMemberCredentials({ to, name, email, password, loginUrl }) {
+  const { subject, text, html } = buildDeliveryMemberCredentials({
+    name,
+    email,
+    password,
+    loginUrl,
+  });
+  return deliverEmail({
+    to,
+    subject,
+    text,
+    html,
+    logLabel: 'Delivery member credentials',
+  });
+}
+
 module.exports = {
   resendConfigured,
   smtpConfigured,
   sendAdminLoginOtp,
   sendDarkworkstoreRegistrationReceived,
   sendDarkworkstoreCredentials,
+  sendDeliveryMemberCredentials,
   listEmailTemplates,
 };

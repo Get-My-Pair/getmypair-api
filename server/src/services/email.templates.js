@@ -250,14 +250,27 @@ function buildRegistrationReceivedContent({ name, storeName }) {
   return { subject, text, html };
 }
 
-function buildCredentialsContent({ name, storeName, email, password, loginUrl }) {
+function buildCredentialsContent({
+  name,
+  storeName,
+  email,
+  password,
+  loginUrl,
+  portalLabel = 'Dark Work Store',
+  ctaLabel = 'Sign in to Dark Work Store',
+  title = 'Your store is ready to sign in',
+  intro,
+}) {
   const displayName = name || 'there';
-  const store = storeName || 'your Dark Work Store';
-  const subject = 'Your Dark Work Store account is verified — login details';
+  const store = storeName || `your ${portalLabel}`;
+  const subject = `Your ${portalLabel} account is verified — login details`;
+  const bodyIntro =
+    intro ||
+    `<strong>${escapeHtml(store)}</strong> has been verified. Use the details below to open the ${escapeHtml(portalLabel)} dashboard.`;
   const text = [
     `Hi ${displayName},`,
     '',
-    `Your Dark Work Store account (${store}) has been verified.`,
+    `Your ${portalLabel} account (${store}) is ready.`,
     'You can now sign in with these details:',
     '',
     `Login link: ${loginUrl}`,
@@ -267,17 +280,15 @@ function buildCredentialsContent({ name, storeName, email, password, loginUrl })
     'After signing in you will receive a one-time email code to complete login.',
     'Please change this password after your first login if possible.',
     '',
-    '— GetMyPair Dark Work Store team',
+    `— GetMyPair ${portalLabel} team`,
   ].join('\n');
   const html = renderEmail({
-    preheader: `${store} is verified. Your login details are inside.`,
-    kicker: 'Account verified',
-    title: 'Your store is ready to sign in',
+    preheader: `${store} is ready. Your login details are inside.`,
+    kicker: 'Account ready',
+    title,
     bodyHtml: [
       p(`Hi ${escapeHtml(displayName)},`),
-      p(
-        `<strong>${escapeHtml(store)}</strong> has been verified. Use the details below to open the Dark Work Store dashboard.`
-      ),
+      p(bodyIntro),
       detailRows([
         ['Login email', escapeHtml(email)],
         [
@@ -285,13 +296,27 @@ function buildCredentialsContent({ name, storeName, email, password, loginUrl })
           `<span style="font-size:18px;letter-spacing:0.04em">${escapeHtml(password)}</span>`,
         ],
       ]),
-      ctaButton(loginUrl, 'Sign in to Dark Work Store'),
+      ctaButton(loginUrl, ctaLabel),
       muted(
         'After you enter your password you will receive a one-time email code. Keep this password private and change it after your first login.'
       ),
     ].join(''),
   });
   return { subject, text, html };
+}
+
+function buildDeliveryMemberCredentials({ name, email, password, loginUrl }) {
+  return buildCredentialsContent({
+    name,
+    storeName: name || 'Delivery member',
+    email,
+    password,
+    loginUrl,
+    portalLabel: 'Delivery member',
+    ctaLabel: 'Open delivery dashboard',
+    title: 'Your delivery dashboard is ready',
+    intro: 'Your GetMyPair delivery member account is ready. Use the details below to sign in and view assigned pickup jobs.',
+  });
 }
 
 function listEmailTemplates() {
@@ -335,6 +360,18 @@ function listEmailTemplates() {
         loginUrl,
       }),
     },
+    {
+      id: 'delivery-member-credentials',
+      name: 'Delivery member — login details',
+      trigger: 'Masteradmin clicks Send email on a delivery member',
+      audience: 'Delivery member',
+      ...buildDeliveryMemberCredentials({
+        name: 'Arun Kumar',
+        email: 'rider@example.com',
+        password: 'Rk4!nPq8Wx1C',
+        loginUrl: `${siteUrl()}/delivery/login`,
+      }),
+    },
   ];
 }
 
@@ -342,5 +379,6 @@ module.exports = {
   buildOtpContent,
   buildRegistrationReceivedContent,
   buildCredentialsContent,
+  buildDeliveryMemberCredentials,
   listEmailTemplates,
 };

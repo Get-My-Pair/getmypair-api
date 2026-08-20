@@ -29,11 +29,13 @@ const {
   darkworkstoreAssignCobblerValidation,
   darkworkstoreCreateCobblerValidation,
   darkworkstoreCobblerIdValidation,
+  assignDeliveryValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
 const darkworkstoreJobsController = require('../controllers/darkworkstoreJobs.controller');
 const darkworkstoreCobblerController = require('../controllers/darkworkstoreCobbler.controller');
+const deliveryMemberController = require('../controllers/deliveryMember.controller');
 
 // Public store registration (no JWT). Login is allowed only after Masteradmin verifies.
 router.post(
@@ -154,6 +156,9 @@ router.get(
 
 // Jobs — user-app service requests for this store
 router.get('/jobs', adminMasterAuth, darkworkstoreJobQueryValidation, darkworkstoreJobsController.listJobs);
+router.get('/jobs/pickup', adminMasterAuth, darkworkstoreJobsController.listPickupJobs);
+router.get('/jobs/return', adminMasterAuth, darkworkstoreJobsController.listReturnJobs);
+router.get('/jobs/workflow', adminMasterAuth, darkworkstoreJobsController.listWorkflowJobs);
 router.post(
   '/jobs/:id/accept',
   adminMasterAuth,
@@ -172,6 +177,26 @@ router.post(
   darkworkstoreAssignCobblerValidation,
   darkworkstoreJobsController.assignCobbler
 );
+router.post(
+  '/jobs/:id/assign-delivery',
+  adminMasterAuth,
+  assignDeliveryValidation,
+  darkworkstoreJobsController.assignDelivery
+);
+router.post(
+  '/jobs/:id/receive',
+  adminMasterAuth,
+  darkworkstoreJobIdValidation,
+  darkworkstoreJobsController.receiveAtStore
+);
+router.post(
+  '/jobs/:id/progress',
+  adminMasterAuth,
+  darkworkstoreJobIdValidation,
+  darkworkstoreJobsController.updateProgress
+);
+
+router.get('/delivery-members', adminMasterAuth, deliveryMemberController.list);
 
 // Internal cobblers / employees
 router.get('/cobblers', adminMasterAuth, darkworkstoreCobblerController.listCobblers);

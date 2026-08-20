@@ -40,6 +40,7 @@ const serviceRoutes = require('./routes/service.routes');
 const paymentRoutes = require('./routes/payment.routes');
 const masteradminRoutes = require('./routes/masteradmin.routes');
 const darkworkstoreRoutes = require('./routes/darkworkstore.routes');
+const deliveryPortalRoutes = require('./routes/delivery.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
 const pkg = require('../package.json');
@@ -231,8 +232,9 @@ app.use('/api/masteradmin', masteradminRoutes);
 // Legacy alias (prefer /api/masteradmin)
 app.use('/api/sys-admin', masteradminRoutes);
 
-// Delivery app (existing — not one of the five primary apps)
+// Delivery app (existing mobile profile + new member dashboard portal)
 app.use('/api/delivery/profile', deliveryProfileRoutes);
+app.use('/api/delivery', deliveryPortalRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

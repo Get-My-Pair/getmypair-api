@@ -14,6 +14,7 @@ const { unauthorized } = require('../utils/response');
 const resolveRequiredPortal = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
   if (path.includes('darkworkstore')) return 'darkworkstore';
+  if (path.includes('/api/delivery')) return 'delivery';
   if (path.includes('masteradmin') || path.includes('sys-admin')) return 'masteradmin';
   return null;
 };
@@ -57,6 +58,11 @@ const adminMasterAuth = async (req, res, next) => {
         }
       } else if (accountPortal !== 'masteradmin') {
         return unauthorized(res, 'Invalid admin token');
+      }
+    }
+    if (requiredPortal === 'delivery') {
+      if (accountPortal !== 'delivery' || !admin.isVerified || admin.status !== 'verified') {
+        return unauthorized(res, 'Delivery member account is not verified');
       }
     }
 

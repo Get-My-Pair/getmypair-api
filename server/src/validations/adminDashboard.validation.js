@@ -157,6 +157,52 @@ const darkworkstoreCobblerIdValidation = [
   handleValidationErrors,
 ];
 
+const deliveryMemberCreateValidation = [
+  body('name').trim().notEmpty().withMessage('name is required'),
+  body('email').trim().notEmpty().withMessage('email is required').isEmail().withMessage('Invalid email'),
+  body('phone').trim().notEmpty().withMessage('phone is required'),
+  body('aadhaarNumber')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .matches(/^\d{12}$/)
+    .withMessage('Aadhaar number must be 12 digits'),
+  body('photoUrl').optional({ nullable: true }).trim(),
+  body('photo').optional({ nullable: true }).trim(),
+  body('notes').optional({ nullable: true }).trim(),
+  handleValidationErrors,
+];
+
+const deliveryMemberIdValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid delivery member id required'),
+  handleValidationErrors,
+];
+
+const deliveryMemberUpdateValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid delivery member id required'),
+  body('name').optional().trim().notEmpty().withMessage('name cannot be empty'),
+  body('email').optional().trim().isEmail().withMessage('Invalid email'),
+  body('phone').optional().trim(),
+  body('aadhaarNumber')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .matches(/^\d{12}$/)
+    .withMessage('Aadhaar number must be 12 digits'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+  handleValidationErrors,
+];
+
+const assignDeliveryValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid job id required'),
+  body('deliveryMemberId')
+    .trim()
+    .notEmpty()
+    .withMessage('deliveryMemberId is required')
+    .isMongoId()
+    .withMessage('Valid deliveryMemberId required'),
+  body('assignmentType').optional().isIn(['pickup', 'return']),
+  handleValidationErrors,
+];
+
 module.exports = {
   adminLoginValidation,
   adminVerifyOtpValidation,
@@ -179,4 +225,8 @@ module.exports = {
   darkworkstoreAssignCobblerValidation,
   darkworkstoreCreateCobblerValidation,
   darkworkstoreCobblerIdValidation,
+  deliveryMemberCreateValidation,
+  deliveryMemberIdValidation,
+  deliveryMemberUpdateValidation,
+  assignDeliveryValidation,
 };

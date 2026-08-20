@@ -167,6 +167,22 @@ const serviceRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /** Web delivery-member portal account (AdminMaster portal=delivery). */
+    deliveryMemberId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'AdminMaster',
+      default: null,
+      index: true,
+    },
+    deliveryAssignmentType: {
+      type: String,
+      enum: ['pickup', 'return', null],
+      default: null,
+    },
+    deliveryAssignedAt: {
+      type: Date,
+      default: null,
+    },
     routingType: {
       type: String,
       enum: ['dark_store', 'direct'],

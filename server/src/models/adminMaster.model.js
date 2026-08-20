@@ -2,13 +2,13 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminMaster.model.js
- * Description: Masteradmin + Darkworkstore portal accounts (email + password)
+ * Description: Masteradmin + Darkworkstore + Delivery portal accounts (email + password)
  * ----------------------------------------------------------------------------
  */
 
 const mongoose = require('mongoose');
 
-const PORTALS = ['masteradmin', 'darkworkstore'];
+const PORTALS = ['masteradmin', 'darkworkstore', 'delivery'];
 const STATUSES = ['pending', 'verified', 'rejected'];
 const REGISTERED_VIA = ['self', 'masteradmin'];
 
@@ -108,6 +108,24 @@ const adminMasterSchema = new mongoose.Schema(
     // Darkworkstore: email OTP is required once; later logins use email + password only.
     emailVerifiedAt: {
       type: Date,
+      default: null,
+    },
+    photoUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    aadhaarNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    lastLat: {
+      type: Number,
+      default: null,
+    },
+    lastLng: {
+      type: Number,
       default: null,
     },
   },

@@ -39,6 +39,7 @@ const accountPortal = (admin) => admin?.portal || 'masteradmin';
 const resolvePortalKey = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
   if (path.includes('darkworkstore')) return 'darkworkstore';
+  if (path.includes('/api/delivery')) return 'delivery';
   return 'masteradmin';
 };
 
@@ -78,6 +79,7 @@ const maskEmail = (email) => {
 const resolvePortalLabel = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
   if (path.includes('darkworkstore')) return 'Dark Work Store';
+  if (path.includes('/api/delivery')) return 'Delivery member';
   return 'Master Console';
 };
 
@@ -94,14 +96,34 @@ const verifyChallengeToken = (token) => {
 };
 
 const isDarkworkstoreAccount = (admin) => accountPortal(admin) === 'darkworkstore';
+const isDeliveryAccount = (admin) => accountPortal(admin) === 'delivery';
+const isOtpOnceAccount = (admin) => isDarkworkstoreAccount(admin) || isDeliveryAccount(admin);
 
-/** Darkworkstore store accounts verify email OTP once; later logins skip OTP. */
-const hasCompletedDarkworkstoreEmailOtp = (admin) =>
+const pendingPortalMessage = (portalKey) =>
+  portalKey === 'delivery'
+    ? 'Your delivery member account is pending. Wait for the login email from Masteradmin.'
+    : 'Your Darkworkstore account is pending verification. Our team will contact you shortly.';
+
+function canUsePortal(admin, portalKey) {
+  const account = accountPortal(admin);
+  if (portalKey === 'masteradmin') return account === 'masteradmin';
+  if (portalKey === 'darkworkstore') {
+    if (account === 'darkworkstore') return Boolean(admin.isVerified && admin.status === 'verified');
+    return account === 'masteradmin';
+  }
+  if (portalKey === 'delivery') {
+    return account === 'delivery' && Boolean(admin.isVerified && admin.status === 'verified');
+  }
+  return false;
+}
+
+/** Darkworkstore / delivery accounts verify email OTP once; later logins use email + password only. */
+const hasCompletedPortalEmailOtp = (admin) =>
   Boolean(admin?.emailVerifiedAt || admin?.lastLoginAt);
 
 const completePortalLogin = async (admin, portalKey) => {
   admin.lastLoginAt = new Date();
-  if (isDarkworkstoreAccount(admin) && !admin.emailVerifiedAt) {
+  if (isOtpOnceAccount(admin) && !admin.emailVerifiedAt) {
     admin.emailVerifiedAt = admin.lastLoginAt;
   }
   await admin.save();
@@ -165,12 +187,14 @@ const login = async (req, res) => {
     if (portalKey === 'darkworkstore') {
       if (isDarkworkstoreAccount(admin)) {
         if (!admin.isVerified || admin.status !== 'verified') {
-          return unauthorized(
-            res,
-            'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
-          );
+          return unauthorized(res, pendingPortalMessage('darkworkstore'));
         }
       } else if (accountPortal(admin) !== 'masteradmin') {
+        return unauthorized(res, 'Invalid email or password');
+      }
+    } else if (portalKey === 'delivery') {
+      if (!canUsePortal(admin, 'delivery')) {
+        if (isDeliveryAccount(admin)) return unauthorized(res, pendingPortalMessage('delivery'));
         return unauthorized(res, 'Invalid email or password');
       }
     } else if (accountPortal(admin) !== 'masteradmin') {
@@ -183,12 +207,13 @@ const login = async (req, res) => {
     }
 
     if (
-      portalKey === 'darkworkstore' &&
-      isDarkworkstoreAccount(admin) &&
-      hasCompletedDarkworkstoreEmailOtp(admin)
+      portalKey !== 'masteradmin' &&
+      isOtpOnceAccount(admin) &&
+      accountPortal(admin) === portalKey &&
+      hasCompletedPortalEmailOtp(admin)
     ) {
       const payload = await completePortalLogin(admin, portalKey);
-      logger.info(`Darkworkstore password login: ${email}`);
+      logger.info(`${portalKey} password login: ${email}`);
       return success(res, 'Login successful', {
         requiresOtp: false,
         ...payload,
@@ -254,17 +279,10 @@ const verifyLoginOtp = async (req, res) => {
     if (!admin || !admin.isActive || admin.email !== decoded.email) {
       return unauthorized(res, 'Invalid OTP session');
     }
-    if (accountPortal(admin) === 'darkworkstore') {
-      if (portalKey !== 'darkworkstore') {
-        return unauthorized(res, 'Invalid OTP session');
+    if (!canUsePortal(admin, portalKey)) {
+      if (isOtpOnceAccount(admin) && accountPortal(admin) === portalKey) {
+        return unauthorized(res, pendingPortalMessage(portalKey));
       }
-      if (!admin.isVerified || admin.status !== 'verified') {
-        return unauthorized(
-          res,
-          'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
-        );
-      }
-    } else if (accountPortal(admin) !== 'masteradmin') {
       return unauthorized(res, 'Invalid OTP session');
     }
 
@@ -304,17 +322,10 @@ const resendLoginOtp = async (req, res) => {
     if (!admin || !admin.isActive || admin.email !== decoded.email) {
       return unauthorized(res, 'Invalid OTP session');
     }
-    if (accountPortal(admin) === 'darkworkstore') {
-      if (portalKey !== 'darkworkstore') {
-        return unauthorized(res, 'Invalid OTP session');
+    if (!canUsePortal(admin, portalKey)) {
+      if (isOtpOnceAccount(admin) && accountPortal(admin) === portalKey) {
+        return unauthorized(res, pendingPortalMessage(portalKey));
       }
-      if (!admin.isVerified || admin.status !== 'verified') {
-        return unauthorized(
-          res,
-          'Your Darkworkstore account is pending verification. Our team will contact you shortly.'
-        );
-      }
-    } else if (accountPortal(admin) !== 'masteradmin') {
       return unauthorized(res, 'Invalid OTP session');
     }
 
