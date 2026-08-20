@@ -7,6 +7,7 @@ const { ServiceRequest } = require('../models/serviceRequest.model');
 const User = require('../models/user.model');
 const Article = require('../models/article.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
+const darkstorePayment = require('../services/darkstorePayment.service');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -82,6 +83,28 @@ function acceptedFilter(sid) {
     status: { $ne: 'cancelled' },
   };
 }
+
+const overviewStats = async (req, res) => {
+  try {
+    const sid = storeId(req);
+    const [inboxCount, acceptedCount, cobblerCount, revenue] = await Promise.all([
+      ServiceRequest.countDocuments(inboxFilter(sid)),
+      ServiceRequest.countDocuments(acceptedFilter(sid)),
+      CobblerProfile.countDocuments({ darkStoreId: sid }),
+      darkstorePayment.getRevenueDashboard({ darkStoreId: sid }),
+    ]);
+
+    return success(res, 'Dashboard stats', {
+      jobCounts: { inbox: inboxCount, accepted: acceptedCount },
+      cobblerCount,
+      revenue,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error(`Darkworkstore overview stats error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
 
 const listJobs = async (req, res) => {
   try {
@@ -269,6 +292,7 @@ const assignCobbler = async (req, res) => {
 };
 
 module.exports = {
+  overviewStats,
   listJobs,
   acceptJob,
   rejectJob,

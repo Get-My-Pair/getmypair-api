@@ -1282,6 +1282,21 @@ const listDeliveryPartners = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/masteradmin/email-templates
+ * Preview HTML for every transactional email (sample data, nothing is sent).
+ */
+const listEmailTemplates = async (req, res) => {
+  try {
+    return success(res, 'Email templates', {
+      templates: emailService.listEmailTemplates(),
+    });
+  } catch (err) {
+    logger.error(`List email templates error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 module.exports = {
   login,
   verifyLoginOtp,
@@ -1299,4 +1314,5 @@ module.exports = {
   listCobblers,
   verifyCobbler,
   listDeliveryPartners,
+  listEmailTemplates,
 };

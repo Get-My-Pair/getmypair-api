@@ -83,6 +83,7 @@ router.delete(
 router.get('/cobblers', adminMasterAuth, adminDashboardController.listCobblers);
 router.patch('/cobblers/:id/verify', adminMasterAuth, adminDashboardController.verifyCobbler);
 router.get('/delivery-partners', adminMasterAuth, adminDashboardController.listDeliveryPartners);
+router.get('/email-templates', adminMasterAuth, adminDashboardController.listEmailTemplates);
 
 // Darkworkstore portal users (create / view / update / delete / verify)
 router.get('/darkworkstore-users', adminMasterAuth, darkworkstoreUserController.list);

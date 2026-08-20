@@ -1026,3 +1026,18 @@ void 0;
  */
 void 0;
 
+/**
+ * @swagger
+ * /api/masteradmin/email-templates:
+ *   get:
+ *     summary: Preview all transactional email templates
+ *     description: Returns branded HTML + plaintext for every email GetMyPair sends, filled with sample data. Nothing is sent.
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Template list with subject, trigger, and HTML preview
+ */
+void 0;
+

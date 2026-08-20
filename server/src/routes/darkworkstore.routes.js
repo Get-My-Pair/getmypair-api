@@ -64,6 +64,8 @@ router.post(
 );
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
+router.get('/dashboard/stats', adminMasterAuth, darkworkstoreJobsController.overviewStats);
+
 // Payments
 router.get(
   '/payments/cost-approval',

@@ -160,6 +160,31 @@ void 0;
 
 /**
  * @swagger
+ * tags:
+ *   name: Darkworkstore Dashboard
+ *   description: Store overview stats for the dashboard home
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/dashboard/stats:
+ *   get:
+ *     summary: Darkworkstore overview stats
+ *     description: Job inbox/accepted counts, cobbler staff count, and revenue for this store.
+ *     tags: [Darkworkstore Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Overview stats
+ *       401:
+ *         description: Unauthorized
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/darkworkstore/payments/cost-approval:
  *   get:
  *     summary: List jobs awaiting cost approval

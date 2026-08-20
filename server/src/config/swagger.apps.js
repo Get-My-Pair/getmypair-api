@@ -167,6 +167,7 @@ const APP_ALLOWLISTS = {
     ['post', '/api/darkworkstore/auth/verify-otp'],
     ['post', '/api/darkworkstore/auth/resend-otp'],
     ['get', '/api/darkworkstore/auth/me'],
+    ['get', '/api/darkworkstore/dashboard/stats'],
     ['get', '/api/darkworkstore/payments/cost-approval'],
     ['patch', '/api/darkworkstore/payments/cost/{serviceRequestId}'],
     ['get', '/api/darkworkstore/payments/status'],
@@ -221,6 +222,7 @@ const APP_ALLOWLISTS = {
     ['get', '/api/masteradmin/cobblers'],
     ['patch', '/api/masteradmin/cobblers/{id}/verify'],
     ['get', '/api/masteradmin/delivery-partners'],
+    ['get', '/api/masteradmin/email-templates'],
     ['get', '/api/masteradmin/darkworkstore-users'],
     ['post', '/api/masteradmin/darkworkstore-users'],
     ['get', '/api/masteradmin/darkworkstore-users/{id}'],
@@ -324,6 +326,7 @@ const APP_META = {
     route: '/api-docs/darkworkstore',
     tags: [
       { name: 'Darkworkstore Auth', description: 'Darkworkstore login (master-admin JWT)' },
+      { name: 'Darkworkstore Dashboard', description: 'Store overview stats for the dashboard home' },
       {
         name: 'Darkworkstore Jobs',
         description: 'Inbox of user-app jobs — accept, reject, and assign a store cobbler',
@@ -342,6 +345,11 @@ const APP_META = {
         title: 'Authentication',
         description: 'Darkworkstore login',
         match: (method, p) => p.startsWith('/api/darkworkstore/auth'),
+      },
+      {
+        title: 'Dashboard',
+        description: 'Store overview stats',
+        match: (method, p) => p.startsWith('/api/darkworkstore/dashboard'),
       },
       {
         title: 'Jobs',
