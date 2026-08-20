@@ -93,6 +93,29 @@ const verifyChallengeToken = (token) => {
   }
 };
 
+const isDarkworkstoreAccount = (admin) => accountPortal(admin) === 'darkworkstore';
+
+/** Darkworkstore store accounts verify email OTP once; later logins skip OTP. */
+const hasCompletedDarkworkstoreEmailOtp = (admin) =>
+  Boolean(admin?.emailVerifiedAt || admin?.lastLoginAt);
+
+const completePortalLogin = async (admin, portalKey) => {
+  admin.lastLoginAt = new Date();
+  if (isDarkworkstoreAccount(admin) && !admin.emailVerifiedAt) {
+    admin.emailVerifiedAt = admin.lastLoginAt;
+  }
+  await admin.save();
+
+  return {
+    accessToken: buildAdminToken(admin._id, portalKey),
+    admin: {
+      email: admin.email,
+      name: admin.name,
+      portal: portalKey,
+    },
+  };
+};
+
 async function issueAndSendPortalOtp(admin, portalLabel) {
   const rateLimited = await otpService.checkRateLimit(admin.email, null, 'email');
   if (rateLimited) {
@@ -124,7 +147,8 @@ async function issueAndSendPortalOtp(admin, portalLabel) {
 
 /**
  * POST /api/{portal}/auth/login
- * Step 1: validate password, email OTP, return challenge token (no access JWT yet).
+ * Masteradmin: password then email OTP every time.
+ * Darkworkstore store accounts: email OTP once; later logins issue JWT after password.
  */
 const login = async (req, res) => {
   try {
@@ -139,7 +163,7 @@ const login = async (req, res) => {
     }
 
     if (portalKey === 'darkworkstore') {
-      if (accountPortal(admin) === 'darkworkstore') {
+      if (isDarkworkstoreAccount(admin)) {
         if (!admin.isVerified || admin.status !== 'verified') {
           return unauthorized(
             res,
@@ -156,6 +180,19 @@ const login = async (req, res) => {
     const ok = await bcrypt.compare(password, admin.passwordHash);
     if (!ok) {
       return unauthorized(res, 'Invalid email or password');
+    }
+
+    if (
+      portalKey === 'darkworkstore' &&
+      isDarkworkstoreAccount(admin) &&
+      hasCompletedDarkworkstoreEmailOtp(admin)
+    ) {
+      const payload = await completePortalLogin(admin, portalKey);
+      logger.info(`Darkworkstore password login: ${email}`);
+      return success(res, 'Login successful', {
+        requiresOtp: false,
+        ...payload,
+      });
     }
 
     let otpResult;
@@ -236,20 +273,10 @@ const verifyLoginOtp = async (req, res) => {
       return unauthorized(res, verified.message || 'Invalid OTP');
     }
 
-    admin.lastLoginAt = new Date();
-    await admin.save();
-
-    const accessToken = buildAdminToken(admin._id, portalKey);
+    const payload = await completePortalLogin(admin, portalKey);
     logger.info(`Master admin login verified via OTP: ${admin.email}`);
 
-    return success(res, 'Login successful', {
-      accessToken,
-      admin: {
-        email: admin.email,
-        name: admin.name,
-        portal: portalKey,
-      },
-    });
+    return success(res, 'Login successful', payload);
   } catch (err) {
     logger.error(`Admin verify OTP error: ${err.message}`);
     return errorResponse(res, err.message, 500);

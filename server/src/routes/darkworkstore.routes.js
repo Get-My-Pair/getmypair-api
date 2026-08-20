@@ -43,7 +43,7 @@ router.post(
   darkworkstoreUserController.register
 );
 
-// Auth (same master-admin JWT as Masteradmin) — email OTP after password
+// Auth — first login: password + one-time email OTP; later: email + password only
 router.post(
   '/auth/login',
   adminLoginRateLimiter,

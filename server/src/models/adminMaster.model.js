@@ -105,6 +105,11 @@ const adminMasterSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Darkworkstore: email OTP is required once; later logins use email + password only.
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

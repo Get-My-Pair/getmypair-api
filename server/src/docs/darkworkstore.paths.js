@@ -74,7 +74,8 @@ void 0;
  * @swagger
  * /api/darkworkstore/auth/login:
  *   post:
- *     summary: Start Dark Work Store login (password + email OTP)
+ *     summary: Dark Work Store login (password; email OTP once)
+ *     description: First login sends an email OTP. After that, email and password are enough.
  *     tags: [Darkworkstore Auth]
  *     requestBody:
  *       required: true
@@ -88,7 +89,7 @@ void 0;
  *               password: { type: string, example: "Admin@123" }
  *     responses:
  *       200:
- *         description: OTP sent — complete with /auth/verify-otp
+ *         description: Login successful, or OTP sent on first login — complete with /auth/verify-otp
  *       401:
  *         description: Invalid email or password
  */
@@ -98,7 +99,7 @@ void 0;
  * @swagger
  * /api/darkworkstore/auth/verify-otp:
  *   post:
- *     summary: Verify email OTP and issue Dark Work Store JWT
+ *     summary: Verify one-time email OTP and issue Dark Work Store JWT
  *     tags: [Darkworkstore Auth]
  *     requestBody:
  *       required: true
