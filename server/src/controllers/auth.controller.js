@@ -20,6 +20,7 @@ const { success, error: errorResponse } = require('../utils/response');
 const logger = require('../utils/logger');
 const User = require('../models/user.model');
 const { getRoleFromAppSource } = require('../config/roles');
+const { getAppSourceHeader } = require('../middleware/appSource.middleware');
 
 /**
  * Send OTP to mobile number
@@ -30,7 +31,7 @@ const sendOTP = async (req, res) => {
     const { mobile } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
-    const rawAppSource = req.get('X-App-Source') || 'USER_APP';
+    const rawAppSource = getAppSourceHeader(req) || 'USER_APP';
     const appSource = String(rawAppSource).trim().toUpperCase();
 
     // Normalize mobile (match auth.service sendOTP logic)

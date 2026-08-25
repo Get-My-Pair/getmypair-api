@@ -68,31 +68,6 @@
 
 /**
  * @swagger
- * /api/payment/mock-checkout:
- *   get:
- *     summary: Mock checkout (development)
- *     description: |
- *       Simulates a successful Zoho payment when `ZOHO_PAYMENTS_MOCK=true`. Open the URL returned from
- *       `POST /api/payment/link` in a browser. No authentication required.
- *     tags: [Payment]
- *     parameters:
- *       - in: query
- *         name: orderId
- *         required: true
- *         schema:
- *           type: string
- *         example: "GMP-c9d99-1730000000000"
- *     responses:
- *       200:
- *         description: HTML page confirming mock payment success
- *       400:
- *         description: Missing orderId
- *       404:
- *         description: Payment not found
- */
-
-/**
- * @swagger
  * /api/payment/callback:
  *   get:
  *     summary: Zoho payment return URL
@@ -204,7 +179,7 @@
  *                     paymentLink:
  *                       type: object
  *                       properties:
- *                         url: { type: string, format: uri, example: "http://localhost:3000/api/payment/mock-checkout?orderId=GMP-..." }
+ *                         url: { type: string, format: uri, example: "https://payments.zoho.in/..." }
  *                         payment_link_id: { type: string }
  *                         expires_at: { type: string, format: date-time }
  *       400:
