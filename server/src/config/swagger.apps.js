@@ -86,6 +86,7 @@ const APP_ALLOWLISTS = {
     ['get', '/api/payment/status/{orderId}'],
     ['get', '/api/payment/by-service-request/{serviceRequestId}'],
     ['get', '/api/payment/{paymentId}'],
+    ['get', '/api/payment/admin/commission-preview'],
     // Cobbler discovery
     ['get', '/api/cobbler/profile/nearby'],
     // Geocoding + Health
@@ -105,7 +106,8 @@ const APP_ALLOWLISTS = {
     ['delete', '/api/auth/sessions/{sessionId}'],
     ['get', '/api/auth/languages'],
     ['put', '/api/auth/language'],
-    // Cobbler Profile (exclude nearby)
+    // Cobbler Profile
+    ['get', '/api/cobbler/profile/nearby'],
     ['get', '/api/cobbler/profile/me'],
     ['get', '/api/cobbler/profile/verification'],
     ['put', '/api/cobbler/profile'],
@@ -136,6 +138,7 @@ const APP_ALLOWLISTS = {
     ['get', '/api/payment/cobbler/earnings'],
     ['get', '/api/payment/admin/commission-preview'],
     ['get', '/api/payment/darkstore/{darkStoreId}/revenue'],
+    ['get', '/api/geocode/reverse'],
     // Health
     ['get', '/health'],
     ['get', '/api/version'],
@@ -167,6 +170,8 @@ const APP_ALLOWLISTS = {
     ['get', '/api/delivery/jobs'],
     ['get', '/api/delivery/jobs/{id}'],
     ['post', '/api/delivery/jobs/{id}/status'],
+    ['get', '/api/cobbler/profile/nearby'],
+    ['get', '/api/geocode/reverse'],
     ['get', '/health'],
     ['get', '/api/version'],
   ],
@@ -205,6 +210,8 @@ const APP_ALLOWLISTS = {
     ['get', '/api/darkworkstore/cobblers'],
     ['post', '/api/darkworkstore/cobblers'],
     ['delete', '/api/darkworkstore/cobblers/{id}'],
+    ['get', '/health'],
+    ['get', '/api/version'],
   ],
   retailer: [
     // OTP auth + canonical retailer mount + legacy /api/admin/profile
@@ -216,6 +223,8 @@ const APP_ALLOWLISTS = {
     ['get', '/api/auth/me'],
     ['get', '/api/auth/sessions'],
     ['delete', '/api/auth/sessions/{sessionId}'],
+    ['get', '/api/auth/languages'],
+    ['put', '/api/auth/language'],
     ['get', '/health'],
     ['get', '/api/version'],
     ['get', '/api/retailer/profile/users'],
@@ -234,6 +243,16 @@ const APP_ALLOWLISTS = {
     ['get', '/api/payment/admin/commission-preview'],
     ['post', '/api/payment/settlement/process'],
     ['post', '/api/payment/refund'],
+    ['get', '/api/payment/{paymentId}'],
+    ['get', '/api/payment/darkstore/{darkStoreId}/revenue'],
+    ['get', '/api/service/{requestId}'],
+    ['post', '/api/service/assign-delivery'],
+    ['post', '/api/service/assign-darkstore'],
+    ['post', '/api/service/update-status'],
+    ['put', '/api/service/cancel/{requestId}'],
+    ['post', '/api/service/upload-media'],
+    ['get', '/api/cobbler/profile/nearby'],
+    ['get', '/api/geocode/reverse'],
   ],
   masteradmin: [
     ['post', '/api/masteradmin/auth/login'],
@@ -286,6 +305,8 @@ const APP_ALLOWLISTS = {
     ['post', '/api/masteradmin/db/clear/collection'],
     ['post', '/api/masteradmin/db/clear/group'],
     ['post', '/api/masteradmin/db/clear/all'],
+    ['get', '/health'],
+    ['get', '/api/version'],
   ],
 };
 
@@ -332,6 +353,7 @@ const APP_META = {
       { name: 'Service Requests', description: 'Service request lifecycle APIs (Module 4)' },
       { name: 'Payment', description: 'Zoho payments, cost approval, settlements, refunds (Module 5)' },
       { name: 'Health', description: 'Health check endpoints' },
+      { name: 'Geocoding', description: 'Reverse geocoding (lat/lng to address)' },
     ],
     hubModules: [
       {
@@ -341,7 +363,7 @@ const APP_META = {
       },
       {
         title: 'Cobbler Profile',
-        description: 'Profile, booth, services, tools, bank, KYC',
+        description: 'Profile, booth, services, tools, bank, KYC, nearby',
         match: (method, p) => p.startsWith('/api/cobbler/profile'),
       },
       {
@@ -364,6 +386,11 @@ const APP_META = {
         description: 'Health and API version',
         match: (method, p) => p === '/health' || p === '/api/version',
       },
+      {
+        title: 'Geocoding',
+        description: 'Reverse geocoding',
+        match: (method, p) => p.startsWith('/api/geocode'),
+      },
     ],
     securitySchemes: {
       bearerAuth: fullSpec.components.securitySchemes.bearerAuth,
@@ -385,6 +412,8 @@ const APP_META = {
       { name: 'Service Requests', description: 'Service request lifecycle APIs (Module 4)' },
       { name: 'Delivery Auth', description: 'Delivery member portal login (dashboard JWT)' },
       { name: 'Delivery Jobs', description: 'Pickup and return jobs for the logged-in member' },
+      { name: 'Cobbler Profile', description: 'Nearby cobbler discovery' },
+      { name: 'Geocoding', description: 'Reverse geocoding (lat/lng to address)' },
       { name: 'Health', description: 'Health check endpoints' },
     ],
     hubModules: [
@@ -412,6 +441,16 @@ const APP_META = {
         title: 'Health',
         description: 'Health check',
         match: (method, p) => p === '/health' || p === '/api/version',
+      },
+      {
+        title: 'Cobbler discovery',
+        description: 'Nearby cobblers',
+        match: (method, p) => p.startsWith('/api/cobbler/profile'),
+      },
+      {
+        title: 'Geocoding',
+        description: 'Reverse geocoding',
+        match: (method, p) => p.startsWith('/api/geocode'),
       },
     ],
     securitySchemes: {
@@ -450,6 +489,7 @@ const APP_META = {
         name: 'Darkworkstore Payments',
         description: 'Payment workflow — cost approval through settlements and reports',
       },
+      { name: 'Health', description: 'Health check endpoints' },
     ],
     hubModules: [
       {
@@ -482,6 +522,11 @@ const APP_META = {
         description: 'Payment workflow — cost approval through settlements and reports',
         match: (method, p) => p.startsWith('/api/darkworkstore/payments'),
       },
+      {
+        title: 'Health',
+        description: 'Health and API version',
+        match: (method, p) => p === '/health' || p === '/api/version',
+      },
     ],
     securitySchemes: {
       adminBearerAuth: swaggerAdminSpec.components?.securitySchemes?.adminBearerAuth || {
@@ -512,7 +557,10 @@ const APP_META = {
         name: 'Admin Profile',
         description: 'Legacy mobile ADMIN profile APIs under /api/admin/profile',
       },
+      { name: 'Service Requests', description: 'Service request APIs available to ADMIN' },
       { name: 'Payment', description: 'Admin payment report, settlements, refunds' },
+      { name: 'Cobbler Profile', description: 'Nearby cobbler discovery' },
+      { name: 'Geocoding', description: 'Reverse geocoding (lat/lng to address)' },
       { name: 'Health', description: 'Health check endpoints' },
     ],
     securitySchemes: {
@@ -534,6 +582,7 @@ const APP_META = {
       { name: 'Master Admin Dashboard', description: 'Operations overview and platform statistics' },
       { name: 'Master Admin Payments', description: 'Payment workflow — cost approval through settlements and reports' },
       { name: 'Master Admin Database', description: 'MongoDB overview and clear collection/group/all' },
+      { name: 'Health', description: 'Health check endpoints' },
     ],
     hubModules: [
       {
@@ -600,6 +649,11 @@ const APP_META = {
         title: 'DB maintenance',
         description: 'MongoDB overview and clear collection/group/all',
         match: (method, p) => p.startsWith('/api/masteradmin/db'),
+      },
+      {
+        title: 'Health',
+        description: 'Health and API version',
+        match: (method, p) => p === '/health' || p === '/api/version',
       },
     ],
     securitySchemes: {
