@@ -20,6 +20,8 @@ Delivery profile APIs remain at `/api/delivery/profile` (`/api-docs/delivery`) f
 | **2** | Profiles & geocode | [MODULE_2_DOCUMENTATION.md](MODULE_2_DOCUMENTATION.md) |
 | **3** | Articles (Digital Shoe Passport) | [MODULE_3_DOCUMENTATION.md](MODULE_3_DOCUMENTATION.md) |
 | **4** | Service requests | [MODULE_4_DOCUMENTATION.md](MODULE_4_DOCUMENTATION.md) |
+| **5** | Payments (Zoho) | [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md) |
+| **AI** | WhatsApp GetMyPair AI (`+91 63741 29515`) | [GETMYPAIR_AI_WHATSAPP.md](GETMYPAIR_AI_WHATSAPP.md) |
 
 ## Quick reference
 
