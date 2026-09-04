@@ -51,6 +51,8 @@ const options = {
     path.join(__dirname, '../docs/retailer.paths.js'),
     path.join(__dirname, '../docs/adminDashboard.paths.js'),
     path.join(__dirname, '../docs/darkworkstore.paths.js'),
+    path.join(__dirname, '../docs/delivery.paths.js'),
+    path.join(__dirname, '../docs/health.paths.js'),
   ],
 };
 

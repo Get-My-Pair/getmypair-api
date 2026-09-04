@@ -729,3 +729,164 @@ void 0;
  */
 void 0;
 
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/pickup:
+ *   get:
+ *     summary: List pickup-ready jobs
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Pickup-ready jobs
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/return:
+ *   get:
+ *     summary: List return-delivery jobs
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Return-delivery jobs
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/workflow:
+ *   get:
+ *     summary: List in-store workflow jobs
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tab
+ *         schema: { type: string, enum: [received, in_progress, done, out], example: received }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Workflow jobs
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/assign-delivery:
+ *   post:
+ *     summary: Assign a delivery member for pickup or return
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [deliveryMemberId]
+ *             properties:
+ *               deliveryMemberId: { type: string }
+ *               assignmentType: { type: string, enum: [pickup, return], example: pickup }
+ *     responses:
+ *       200:
+ *         description: Delivery member assigned
+ *       400:
+ *         description: Job not ready for this assignment type
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/receive:
+ *   post:
+ *     summary: Mark footwear received at the store
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Marked received at Darkworkstore
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/jobs/{id}/progress:
+ *   post:
+ *     summary: Update in-store work progress
+ *     description: action must be inspection, in_progress, work_done, qc_pass, or qc_fail.
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action]
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [inspection, in_progress, work_done, qc_pass, qc_fail]
+ *     responses:
+ *       200:
+ *         description: Progress updated
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/darkworkstore/delivery-members:
+ *   get:
+ *     summary: List verified delivery members (for assignment)
+ *     tags: [Darkworkstore Jobs]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Delivery members list
+ */
+void 0;
+

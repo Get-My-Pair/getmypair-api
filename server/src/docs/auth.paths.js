@@ -20,8 +20,15 @@
  * /api/auth/send-otp:
  *   post:
  *     summary: Send OTP to mobile number
- *     description: Generate and send a one-time password (OTP) to the user's mobile number for authentication.
+ *     description: |
+ *       Generate and send a one-time password (OTP) to the user's mobile number.
+ *       Send **X-App-Source** or **X-App** so the API knows which app is requesting OTP
+ *       (`USER_APP`, `COBBER_APP`, `DELIVERY_APP`, `ADMIN_APP`). Defaults to USER_APP if omitted.
  *     tags: [Authentication]
+ *     parameters:
+ *       - $ref: '#/components/parameters/XAppSource'
+ *       - $ref: '#/components/parameters/XApp'
+ *       - $ref: '#/components/parameters/XAppVersion'
  *     requestBody:
  *       required: true
  *       content:
@@ -57,6 +64,10 @@
  *                     expiresIn:
  *                       type: number
  *                       example: 600
+ *                     otp:
+ *                       type: string
+ *                       example: "123456"
+ *                       description: Returned in development, when RETURN_OTP_IN_RESPONSE=true, or when X-App is COBBER_APP
  *       400:
  *         description: Bad request - Validation error or invalid mobile number
  *       429:
@@ -69,8 +80,20 @@ void 0;
  * /api/auth/verify-otp:
  *   post:
  *     summary: Verify OTP and check if user exists
- *     description: Verify the OTP code sent to user's mobile. If user exists, returns JWT tokens. If new user, returns flag for profile completion.
+ *     description: |
+ *       Verify the OTP code sent to user's mobile. If user exists, returns JWT tokens.
+ *       If new user, returns flag for profile completion.
+ *       Send **X-App-Source** or **X-App** (`USER_APP`, `COBBER_APP`, `DELIVERY_APP`, `ADMIN_APP`).
  *     tags: [Authentication]
+ *     parameters:
+ *       - $ref: '#/components/parameters/XAppSource'
+ *       - $ref: '#/components/parameters/XApp'
+ *       - $ref: '#/components/parameters/XAppVersion'
+ *       - in: header
+ *         name: device-info
+ *         required: false
+ *         schema: { type: string, example: mobile }
+ *         description: Optional device label stored on the session
  *     requestBody:
  *       required: true
  *       content:
@@ -152,10 +175,11 @@ void 0;
  *     summary: Complete profile for new user
  *     description: |
  *       Create user account and **app-specific profile** in one step.
- *       Send **X-App-Source** (or **X-App**) header to determine role and which profile is created:
+ *       Send **X-App-Source** (canonical) or **X-App** (QA alias) to determine role and which profile is created:
  *       - **USER_APP** → User + UserProfile
  *       - **COBBER_APP** → User + CobblerProfile
  *       - **DELIVERY_APP** → User + DeliveryProfile
+ *       - **ADMIN_APP** → User + Admin/Retailer profile
  *       Header is required. Invalid or missing values are rejected.
  *       No separate profile create endpoint is needed; use profile **PUT** endpoints to update.
  *       Returns JWT tokens upon successful registration.
@@ -167,7 +191,17 @@ void 0;
  *         schema:
  *           type: string
  *           enum: [USER_APP, COBBER_APP, DELIVERY_APP, ADMIN_APP]
- *         description: App identifier — determines user role and which profile collection is created. Alias header **X-App** is also accepted.
+ *           example: USER_APP
+ *         description: Canonical app identifier. Alias **X-App** is also accepted (same values).
+ *       - in: header
+ *         name: X-App
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [USER_APP, COBBER_APP, DELIVERY_APP, ADMIN_APP]
+ *           example: USER_APP
+ *         description: QA/Postman alias for X-App-Source. Use this if the tester asked for X-App.
+ *       - $ref: '#/components/parameters/XAppVersion'
  *     requestBody:
  *       required: true
  *       content:
@@ -182,7 +216,7 @@ void 0;
  *             properties:
  *               mobile:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "9876543210"
  *               name:
  *                 type: string
  *                 example: "John Doe"
@@ -195,6 +229,10 @@ void 0;
  *                 type: string
  *                 enum: [male, female, other]
  *                 example: "male"
+ *               householdType:
+ *                 type: string
+ *                 enum: [just_me, with_partner, with_children, with_elder]
+ *                 description: Optional. Used for USER_APP household setup.
  *               location:
  *                 type: object
  *                 description: Optional location (lat, lng, address)
@@ -206,7 +244,7 @@ void 0;
  *                   address:
  *                     type: string
  *           example:
- *             mobile: "+1234567890"
+ *             mobile: "9876543210"
  *             name: "John Doe"
  *             dateOfBirth: "1990-01-01"
  *             gender: "male"
@@ -310,13 +348,27 @@ void 0;
  * /api/auth/me:
  *   get:
  *     summary: Get current authenticated user
- *     description: Retrieve the profile information of the currently authenticated user. Requires authentication.
+ *     description: |
+ *       Retrieve the currently authenticated user, including `preferredLanguage` (`en` | `kn`).
+ *       Requires Bearer JWT.
  *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *       404:
@@ -392,8 +444,10 @@ void 0;
  * @swagger
  * /api/auth/languages:
  *   get:
- *     summary: Get supported Cobbler app languages
- *     description: Returns language codes supported by the Cobbler app (English and Kannada).
+ *     summary: Get supported languages
+ *     description: |
+ *       Public list of language codes the Cobbler app currently supports (`en`, `kn`).
+ *       Other apps may still call this endpoint; extra codes are not accepted by PUT /api/auth/language yet.
  *     tags: [Authentication]
  *     responses:
  *       200:

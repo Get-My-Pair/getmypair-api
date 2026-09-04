@@ -1041,3 +1041,191 @@ void 0;
  */
 void 0;
 
+/**
+ * @swagger
+ * /api/masteradmin/delivery-members:
+ *   get:
+ *     summary: List delivery member portal accounts
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Delivery members list
+ *   post:
+ *     summary: Create a delivery member account
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, phone]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               aadhaarNumber: { type: string, example: "123412341234" }
+ *               notes: { type: string }
+ *               photoUrl: { type: string }
+ *     responses:
+ *       201:
+ *         description: Delivery member created
+ *       409:
+ *         description: Email already exists
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/delivery-members/{id}:
+ *   get:
+ *     summary: Get a delivery member
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Delivery member
+ *       404:
+ *         description: Not found
+ *   patch:
+ *     summary: Update a delivery member
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               phone: { type: string }
+ *               aadhaarNumber: { type: string }
+ *               notes: { type: string }
+ *               photoUrl: { type: string }
+ *               isActive: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *   delete:
+ *     summary: Delete a delivery member
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/delivery-members/{id}/send-email:
+ *   patch:
+ *     summary: Email delivery member login credentials
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Credentials emailed
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/delivery-jobs/pickup:
+ *   get:
+ *     summary: List pickup-ready jobs (all stores)
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Pickup-ready jobs
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/delivery-jobs/return:
+ *   get:
+ *     summary: List return-delivery jobs (all stores)
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 50 }
+ *     responses:
+ *       200:
+ *         description: Return-delivery jobs
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/delivery-jobs/{id}/assign:
+ *   post:
+ *     summary: Assign a delivery member for pickup or return
+ *     tags: [Master Admin Dashboard]
+ *     security:
+ *       - adminBearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [deliveryMemberId]
+ *             properties:
+ *               deliveryMemberId: { type: string }
+ *               assignmentType: { type: string, enum: [pickup, return], example: pickup }
+ *     responses:
+ *       200:
+ *         description: Delivery member assigned
+ */
+void 0;
+

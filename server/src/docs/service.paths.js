@@ -62,6 +62,18 @@ void 0;
  *                 enum: [home_pickup, cobbler_nearby]
  *                 default: home_pickup
  *                 example: "home_pickup"
+ *               problemDescription:
+ *                 type: string
+ *                 maxLength: 2000
+ *               requestedPickupAt:
+ *                 type: string
+ *                 format: date-time
+ *               maintenancePlanId:
+ *                 type: string
+ *                 maxLength: 32
+ *               maintenancePlanLabel:
+ *                 type: string
+ *                 maxLength: 120
  *     responses:
  *       201:
  *         description: Service request created successfully

@@ -22,8 +22,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swagger');
-const { appSpecs, uiCss, buildHubHtml } = require('./config/swagger.apps');
+const { appSpecs, fullCatalogSpec, uiCss, buildHubHtml } = require('./config/swagger.apps');
 const { globalRateLimiter } = require('./middleware/rateLimit');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
@@ -149,6 +148,11 @@ app.use(globalRateLimiter);
 const swaggerUiOpts = (title) => ({
   customCss: uiCss,
   customSiteTitle: title,
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+  },
 });
 
 [
@@ -159,7 +163,7 @@ const swaggerUiOpts = (title) => ({
   { route: '/api-docs/retailer', spec: appSpecs.retailer, title: 'GetMyPair Retailer App APIs' },
   // Existing delivery APIs (not one of the five primary apps — kept for current mobile usage)
   { route: '/api-docs/delivery', spec: appSpecs.delivery, title: 'GetMyPair Delivery App APIs' },
-  { route: '/api-docs/all', spec: swaggerSpec, title: 'GetMyPair API – Full Catalog' },
+  { route: '/api-docs/all', spec: fullCatalogSpec, title: 'GetMyPair API – Full Catalog' },
 ].forEach(({ route, spec, title }) => {
   app.use(route, swaggerUi.serveFiles(spec), swaggerUi.setup(spec, swaggerUiOpts(title)));
 });

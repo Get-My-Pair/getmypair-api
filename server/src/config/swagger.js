@@ -25,8 +25,23 @@ const options = {
     info: {
       title: 'GetMyPair API',
       version: '1.0.0',
-      description:
-        'GetMyPair – A comprehensive API for shoe repair marketplace. Modules: Authentication (1), Profiles (2), Articles (3), Service Requests (4), Payments / Zoho (5). Also includes geocoding, user notifications, and cobbler home dashboard.',
+      description: `
+GetMyPair API — full catalog for every app (User, Cobbler, Delivery, Retailer, Darkworkstore, Masteradmin).
+
+### X-App / X-App-Source (mobile & retailer)
+
+Send **X-App-Source** (canonical) or **X-App** (QA/Postman alias). Same allowed values. Required on \`POST /api/auth/complete-profile\`. Send it on \`send-otp\` / \`verify-otp\` too so the correct role is used.
+
+| App | Header value | Role |
+|-----|----------------|------|
+| User (customer) | \`USER_APP\` | USER |
+| Cobbler | \`COBBER_APP\` | COBBER |
+| Delivery (mobile) | \`DELIVERY_APP\` | DELIVERY |
+
+Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on complete-profile are rejected.
+
+**Darkworkstore** and **Masteradmin** dashboards do **not** use X-App — authorize with dashboard JWT (\`adminBearerAuth\`).
+`,
       contact: {
         name: 'API Support',
       },
@@ -47,7 +62,45 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Enter your JWT access token',
+          description: 'Mobile/web JWT access token (OTP complete-profile / login)',
+        },
+        adminBearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Dashboard JWT (Masteradmin, Darkworkstore, Delivery portal)',
+        },
+      },
+      parameters: {
+        XAppSource: {
+          in: 'header',
+          name: 'X-App-Source',
+          required: false,
+          schema: {
+            type: 'string',
+            enum: ['USER_APP', 'COBBER_APP', 'DELIVERY_APP', 'ADMIN_APP'],
+            example: 'USER_APP',
+          },
+          description:
+            'Canonical app identifier. USER_APP→USER, COBBER_APP→COBBER, DELIVERY_APP→DELIVERY, ADMIN_APP→ADMIN. Alias header **X-App** is also accepted. Required on complete-profile.',
+        },
+        XApp: {
+          in: 'header',
+          name: 'X-App',
+          required: false,
+          schema: {
+            type: 'string',
+            enum: ['USER_APP', 'COBBER_APP', 'DELIVERY_APP', 'ADMIN_APP'],
+            example: 'USER_APP',
+          },
+          description: 'QA/Postman alias for **X-App-Source**. Same allowed values.',
+        },
+        XAppVersion: {
+          in: 'header',
+          name: 'X-App-Version',
+          required: false,
+          schema: { type: 'string', example: '1.0.0' },
+          description: 'Client app version string',
         },
       },
       schemas: {
@@ -65,6 +118,21 @@ const options = {
             isActive: { type: 'boolean', description: 'Account active status', example: true },
             role: { type: 'object', description: 'User role' },
             lastLogin: { type: 'string', format: 'date-time', description: 'Last login timestamp' },
+            preferredLanguage: {
+              type: 'string',
+              enum: ['en', 'kn'],
+              example: 'en',
+              description: 'Preferred UI language (Cobbler app currently: English / Kannada)',
+            },
+            location: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                lat: { type: 'number', example: 12.9716 },
+                lng: { type: 'number', example: 77.5946 },
+                address: { type: 'string', example: 'MG Road, Bengaluru' },
+              },
+            },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
           },
@@ -174,12 +242,28 @@ const options = {
             name: { type: 'string', example: 'Raju Cobbler' },
             phone: { type: 'string', example: '9876543210' },
             profileImage: { type: 'string', example: 'https://res.cloudinary.com/xxx/image/upload/v1/getmypair/profiles/cobbler-xxx.jpg' },
+            darkStoreId: {
+              type: 'string',
+              nullable: true,
+              description: 'Darkworkstore AdminMaster id if this cobbler is a store employee; null = independent',
+              example: null,
+            },
             shopName: { type: 'string', description: 'Booth name with number', example: 'Booth 12, Stall 5' },
             shopAddress: { type: 'string', description: 'Booth address', example: '123 Main Street, Delhi' },
             serviceAreas: { type: 'array', items: { type: 'string' }, example: ['Connaught Place', 'Karol Bagh'] },
             servicesOffered: { type: 'array', items: { type: 'string', enum: ['Repair', 'Maintenance', 'Wash', 'Donate', 'Dispose'] }, example: ['Repair', 'Maintenance', 'Wash'] },
             toolsOwned: { type: 'array', items: { type: 'string' }, example: ['hammer', 'needle', 'thread'] },
             toolsNeeded: { type: 'array', items: { type: 'string' }, example: ['shoe stretcher', 'edge trimmer'] },
+            bankDetails: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                accountHolderName: { type: 'string', example: 'Raju Cobbler' },
+                accountNumber: { type: 'string', example: '123456789012' },
+                ifscCode: { type: 'string', example: 'HDFC0001234' },
+                bankName: { type: 'string', example: 'HDFC Bank' },
+              },
+            },
             kycDocs: { type: 'array', items: { $ref: '#/components/schemas/KycDocument' } },
             verificationStatus: { type: 'string', enum: ['pending', 'verified', 'rejected'], example: 'pending' },
             isOnline: { type: 'boolean', example: true },
@@ -499,7 +583,7 @@ const options = {
     },
     tags: [
       { name: 'Health', description: 'Health check endpoints' },
-      { name: 'Authentication', description: 'OTP-based authentication endpoints' },
+      { name: 'Authentication', description: 'OTP-based authentication — send X-App / X-App-Source' },
       { name: 'User Profile', description: 'User profile management — Profile created by auth; Role: USER' },
       { name: 'User Notifications', description: 'In-app notifications for customer users — Role: USER' },
       { name: 'Geocoding', description: 'Reverse geocoding (lat/lng to address)' },
@@ -508,8 +592,19 @@ const options = {
       { name: 'Payment', description: 'Zoho payments, cost approval, settlements, refunds (Module 5)' },
       { name: 'Cobbler Profile', description: 'Cobbler profile management — Profile created by auth; Role: COBBER' },
       { name: 'Cobbler Home', description: 'Cobbler home dashboard summary — Role: COBBER' },
-      { name: 'Delivery Profile', description: 'Delivery partner profile management — Profile created by auth; Role: DELIVERY' },
-      { name: 'Admin Profile', description: 'Admin management APIs for all profiles (6 APIs) — Role: ADMIN' },
+      { name: 'Delivery Profile', description: 'Delivery partner profile (mobile) — X-App: DELIVERY_APP' },
+      { name: 'Delivery Auth', description: 'Delivery member portal login (dashboard JWT)' },
+      { name: 'Delivery Jobs', description: 'Delivery member portal pickup/return jobs' },
+      { name: 'Retailer Profile', description: 'Retailer / mobile ADMIN profile APIs' },
+      { name: 'Admin Profile', description: 'Legacy /api/admin/profile — Role: ADMIN' },
+      { name: 'Darkworkstore Auth', description: 'Darkworkstore dashboard login (no X-App)' },
+      { name: 'Darkworkstore Dashboard', description: 'Store overview stats' },
+      { name: 'Darkworkstore Jobs', description: 'Inbox, pickup/return, workflow, assign cobbler/delivery' },
+      { name: 'Darkworkstore Cobblers', description: 'Internal cobbler employees' },
+      { name: 'Darkworkstore Payments', description: 'Store payment workflow' },
+      { name: 'Master Admin Dashboard', description: 'Masteradmin ops, users, articles, cobblers, delivery' },
+      { name: 'Master Admin Payments', description: 'Platform payment workflow' },
+      { name: 'Master Admin Database', description: 'MongoDB overview and clear collection/group/all' },
     ],
   },
   apis: [path.join(__dirname, '../docs/*.paths.js')],
