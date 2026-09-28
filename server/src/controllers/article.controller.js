@@ -12,7 +12,7 @@ const { success, error: errorResponse, notFound } = require('../utils/response')
 const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
 const {
-  resolveActiveProfileId,
+  resolveActiveProfileIdForRequest,
   contentQueryForProfile,
   stampProfileId,
 } = require('../utils/activeProfile.helper');
@@ -27,7 +27,7 @@ const createArticle = async (req, res) => {
     const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
 
     const profile = await UserProfile.findOne({ userId: ownerId }).select('activeProfileId familyMembers').lean();
-    const activeProfileId = stampProfileId(resolveActiveProfileId(profile));
+    const activeProfileId = stampProfileId(resolveActiveProfileIdForRequest(req, profile));
 
     const articleData = {
       ownerId,
@@ -80,7 +80,7 @@ const getMyArticles = async (req, res) => {
   try {
     const ownerId = req.user._id;
     const profile = await UserProfile.findOne({ userId: ownerId }).select('activeProfileId familyMembers').lean();
-    const activeProfileId = resolveActiveProfileId(profile);
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
     const articles = await Article.find(contentQueryForProfile('ownerId', ownerId, activeProfileId))
       .sort({ createdAt: -1 })
       .lean();

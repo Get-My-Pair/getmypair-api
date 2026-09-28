@@ -23,8 +23,9 @@ const {
     SELF_PROFILE_ID,
     normalizeActiveProfileId,
     isSelfProfileId,
-    resolveActiveProfileId,
+    findFamilyMember,
     relationToHouseholdType,
+    toPublicProfile,
 } = require('../utils/activeProfile.helper');
 
 /**
@@ -40,8 +41,9 @@ const getProfile = async (req, res) => {
             return notFound(res, 'User profile not found');
         }
 
-        profile.activeProfileId = resolveActiveProfileId(profile);
-        return success(res, 'User profile retrieved successfully', { profile });
+        return success(res, 'User profile retrieved successfully', {
+            profile: toPublicProfile(profile),
+        });
     } catch (err) {
         logger.error(`Get user profile error: ${err.message}`);
         return errorResponse(res, err.message, 500);
@@ -120,7 +122,9 @@ const updateProfile = async (req, res) => {
         await profile.save();
 
         logger.info(`User profile updated for userId: ${userId}`);
-        return success(res, 'User profile updated successfully', { profile });
+        return success(res, 'User profile updated successfully', {
+            profile: toPublicProfile(profile),
+        });
     } catch (err) {
         logger.error(`Update user profile error: ${err.message}`);
         return errorResponse(res, err.message, 500);
@@ -313,7 +317,7 @@ const addFamilyMember = async (req, res) => {
         return success(res, 'Family member added successfully', {
             member,
             totalMembers: profile.familyMembers.length,
-            profile,
+            profile: toPublicProfile(profile),
         }, 201);
     } catch (err) {
         logger.error(`Add family member error: ${err.message}`);
@@ -335,7 +339,7 @@ const updateFamilyMember = async (req, res) => {
             return notFound(res, 'User profile not found');
         }
 
-        const member = profile.familyMembers.id(memberId);
+        const member = findFamilyMember(profile, memberId) || profile.familyMembers.id(memberId);
         if (!member) {
             return notFound(res, 'Family member not found');
         }
@@ -359,7 +363,10 @@ const updateFamilyMember = async (req, res) => {
 
         await profile.save();
         logger.info(`Family member updated for userId: ${userId}, memberId: ${memberId}`);
-        return success(res, 'Family member updated successfully', { member, profile });
+        return success(res, 'Family member updated successfully', {
+            member,
+            profile: toPublicProfile(profile),
+        });
     } catch (err) {
         logger.error(`Update family member error: ${err.message}`);
         return errorResponse(res, err.message, 500);
@@ -380,7 +387,8 @@ const deleteFamilyMember = async (req, res) => {
             return notFound(res, 'User profile not found');
         }
 
-        const member = profile.familyMembers.id(memberId);
+        const member =
+            findFamilyMember(profile, memberId) || profile.familyMembers.id(memberId);
         if (!member) {
             return notFound(res, 'Family member not found');
         }
@@ -405,7 +413,7 @@ const deleteFamilyMember = async (req, res) => {
         logger.info(`Family member deleted for userId: ${userId}, memberId: ${memberId}`);
         return success(res, 'Family member deleted successfully', {
             totalMembers: profile.familyMembers.length,
-            profile,
+            profile: toPublicProfile(profile),
         });
     } catch (err) {
         logger.error(`Delete family member error: ${err.message}`);
@@ -420,7 +428,9 @@ const deleteFamilyMember = async (req, res) => {
 const switchActiveProfile = async (req, res) => {
     try {
         const userId = req.user._id;
-        const requested = normalizeActiveProfileId(req.body?.profileId);
+        const requested = normalizeActiveProfileId(
+            req.body?.profileId || req.body?.memberId
+        );
 
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
@@ -428,7 +438,9 @@ const switchActiveProfile = async (req, res) => {
         }
 
         if (!isSelfProfileId(requested)) {
-            const member = profile.familyMembers.id(requested);
+            const member =
+                findFamilyMember(profile, requested) ||
+                profile.familyMembers.id(requested);
             if (!member) {
                 return notFound(res, 'Family member not found');
             }
@@ -439,7 +451,9 @@ const switchActiveProfile = async (req, res) => {
 
         await profile.save();
         logger.info(`Active profile switched for userId: ${userId} -> ${profile.activeProfileId}`);
-        return success(res, 'Active profile switched successfully', { profile });
+        return success(res, 'Active profile switched successfully', {
+            profile: toPublicProfile(profile),
+        });
     } catch (err) {
         logger.error(`Switch active profile error: ${err.message}`);
         return errorResponse(res, err.message, 500);
@@ -453,7 +467,9 @@ const switchActiveProfile = async (req, res) => {
 const uploadFamilyMemberImage = async (req, res) => {
     try {
         const userId = req.user._id;
-        const memberId = String(req.body?.memberId || '').trim();
+        const memberId = String(
+            req.body?.memberId || req.body?.profileId || ''
+        ).trim();
 
         if (!req.file) {
             return errorResponse(res, 'No file uploaded', 400);
@@ -467,7 +483,8 @@ const uploadFamilyMemberImage = async (req, res) => {
             return notFound(res, 'User profile not found. Create profile first.');
         }
 
-        const member = profile.familyMembers.id(memberId);
+        const member =
+            findFamilyMember(profile, memberId) || profile.familyMembers.id(memberId);
         if (!member) {
             return notFound(res, 'Family member not found');
         }
@@ -493,7 +510,7 @@ const uploadFamilyMemberImage = async (req, res) => {
         return success(res, 'Family member image uploaded successfully', {
             profileImage: result.secure_url,
             member,
-            profile,
+            profile: toPublicProfile(profile),
         });
     } catch (err) {
         logger.error(`Upload family member image error: ${err.message}`);
