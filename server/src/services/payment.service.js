@@ -643,17 +643,17 @@ async function getPaymentStatus({ orderId, userId, refresh = false }, req) {
   };
 }
 
-async function listPaymentHistory(userId, { page = 1, limit = 20 }) {
+async function listPaymentHistory(userId, { page = 1, limit = 20, req } = {}) {
   const skip = (page - 1) * limit;
   const UserProfile = require('../models/userProfile.model');
   const {
-    resolveActiveProfileId,
+    resolveActiveProfileIdForRequest,
     contentQueryForProfile,
   } = require('../utils/activeProfile.helper');
   const profile = await UserProfile.findOne({ userId })
     .select('activeProfileId familyMembers')
     .lean();
-  const activeProfileId = resolveActiveProfileId(profile);
+  const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
   const scopedRequests = await ServiceRequest.find(
     contentQueryForProfile('userId', userId, activeProfileId)
   )

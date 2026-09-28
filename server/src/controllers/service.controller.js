@@ -21,7 +21,7 @@ const { uploadToCloudinary } = require('../config/cloudinary');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const {
-  resolveActiveProfileId,
+  resolveActiveProfileIdForRequest,
   contentQueryForProfile,
   stampProfileId,
   articleMatchesActiveProfile,
@@ -93,7 +93,7 @@ const createServiceRequest = async (req, res) => {
       return errorResponse(res, 'Address not found for this user', 400);
     }
 
-    const activeProfileId = resolveActiveProfileId(profile);
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
     if (!articleMatchesActiveProfile(article, activeProfileId)) {
       return errorResponse(res, 'This pair belongs to another family profile', 400);
     }
@@ -226,7 +226,7 @@ const getMyServiceRequests = async (req, res) => {
   try {
     const userId = req.user._id;
     const profile = await UserProfile.findOne({ userId }).select('activeProfileId familyMembers').lean();
-    const activeProfileId = resolveActiveProfileId(profile);
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
     const requests = await ServiceRequest.find(contentQueryForProfile('userId', userId, activeProfileId))
       .sort({ createdAt: -1 })
       .populate('articleId', 'brand model category color images shoeSize')
