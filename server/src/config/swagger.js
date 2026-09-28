@@ -156,6 +156,9 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
             _id: { type: 'string', example: '664a1b2c3d4e5f6a7b8c9d12' },
             name: { type: 'string', example: 'Jane Doe' },
             relation: { type: 'string', enum: ['partner', 'child', 'elder'], example: 'partner' },
+            gender: { type: 'string', enum: ['male', 'female', 'other'], example: 'female' },
+            dateOfBirth: { type: 'string', format: 'date', example: '1994-02-18' },
+            profileImage: { type: 'string', nullable: true },
           },
         },
 
@@ -182,6 +185,11 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
             familyMembers: {
               type: 'array',
               items: { $ref: '#/components/schemas/FamilyMember' },
+            },
+            activeProfileId: {
+              type: 'string',
+              example: 'self',
+              description: '"self" for the account holder, otherwise a family member id',
             },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },

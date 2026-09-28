@@ -645,9 +645,25 @@ async function getPaymentStatus({ orderId, userId, refresh = false }, req) {
 
 async function listPaymentHistory(userId, { page = 1, limit = 20 }) {
   const skip = (page - 1) * limit;
+  const UserProfile = require('../models/userProfile.model');
+  const {
+    resolveActiveProfileId,
+    contentQueryForProfile,
+  } = require('../utils/activeProfile.helper');
+  const profile = await UserProfile.findOne({ userId })
+    .select('activeProfileId familyMembers')
+    .lean();
+  const activeProfileId = resolveActiveProfileId(profile);
+  const scopedRequests = await ServiceRequest.find(
+    contentQueryForProfile('userId', userId, activeProfileId)
+  )
+    .select('_id')
+    .lean();
+  const requestIds = scopedRequests.map((r) => r._id);
+  const filter = { userId, serviceRequestId: { $in: requestIds } };
   const [items, total] = await Promise.all([
-    Payment.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Payment.countDocuments({ userId }),
+    Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Payment.countDocuments(filter),
   ]);
   return { items, total, page, limit };
 }

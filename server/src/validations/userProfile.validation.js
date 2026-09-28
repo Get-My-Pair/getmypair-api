@@ -174,6 +174,25 @@ const addFamilyMemberValidation = [
         .withMessage('relation is required')
         .isIn(['partner', 'child', 'elder'])
         .withMessage('relation must be one of: partner, child, elder'),
+    body('gender')
+        .trim()
+        .notEmpty()
+        .withMessage('gender is required')
+        .isIn(['male', 'female', 'other'])
+        .withMessage('gender must be one of: male, female, other'),
+    body('dateOfBirth')
+        .notEmpty()
+        .withMessage('dateOfBirth is required')
+        .custom((value) => {
+            const dob = new Date(value);
+            if (Number.isNaN(dob.getTime())) {
+                throw new Error('Please provide a valid date of birth');
+            }
+            if (dob > new Date()) {
+                throw new Error('Date of birth cannot be in the future');
+            }
+            return true;
+        }),
     handleValidationErrors,
 ];
 
@@ -185,7 +204,9 @@ const updateFamilyMemberValidation = [
         const b = req.body || {};
         const hasName = Object.prototype.hasOwnProperty.call(b, 'name') && hasNonEmptyString(b.name);
         const hasRelation = Object.prototype.hasOwnProperty.call(b, 'relation') && hasNonEmptyString(b.relation);
-        if (!hasName && !hasRelation) {
+        const hasGender = Object.prototype.hasOwnProperty.call(b, 'gender') && hasNonEmptyString(b.gender);
+        const hasDob = Object.prototype.hasOwnProperty.call(b, 'dateOfBirth') && hasNonEmptyString(b.dateOfBirth);
+        if (!hasName && !hasRelation && !hasGender && !hasDob) {
             throw new Error('Please provide at least one field to update');
         }
         return true;
@@ -206,6 +227,32 @@ const updateFamilyMemberValidation = [
         .trim()
         .isIn(['partner', 'child', 'elder'])
         .withMessage('relation must be one of: partner, child, elder'),
+    body('gender')
+        .optional()
+        .trim()
+        .isIn(['male', 'female', 'other'])
+        .withMessage('gender must be one of: male, female, other'),
+    body('dateOfBirth')
+        .optional()
+        .custom((value) => {
+            if (value === undefined || value === null || String(value).trim() === '') return true;
+            const dob = new Date(value);
+            if (Number.isNaN(dob.getTime())) {
+                throw new Error('Please provide a valid date of birth');
+            }
+            if (dob > new Date()) {
+                throw new Error('Date of birth cannot be in the future');
+            }
+            return true;
+        }),
+    handleValidationErrors,
+];
+
+const switchActiveProfileValidation = [
+    body('profileId')
+        .trim()
+        .notEmpty()
+        .withMessage('profileId is required'),
     handleValidationErrors,
 ];
 
@@ -215,4 +262,5 @@ module.exports = {
     updateAddressValidation,
     addFamilyMemberValidation,
     updateFamilyMemberValidation,
+    switchActiveProfileValidation,
 };

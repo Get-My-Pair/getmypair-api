@@ -19,6 +19,13 @@ const UserProfile = require('../models/userProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
+const {
+    SELF_PROFILE_ID,
+    normalizeActiveProfileId,
+    isSelfProfileId,
+    resolveActiveProfileId,
+    relationToHouseholdType,
+} = require('../utils/activeProfile.helper');
 
 /**
  * Get User Profile (own)
@@ -33,6 +40,7 @@ const getProfile = async (req, res) => {
             return notFound(res, 'User profile not found');
         }
 
+        profile.activeProfileId = resolveActiveProfileId(profile);
         return success(res, 'User profile retrieved successfully', { profile });
     } catch (err) {
         logger.error(`Get user profile error: ${err.message}`);
@@ -274,17 +282,30 @@ const deleteAddress = async (req, res) => {
 const addFamilyMember = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { name, relation } = req.body;
+        const { name, relation, gender, dateOfBirth } = req.body;
 
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
             return notFound(res, 'User profile not found. Create profile first.');
         }
 
+        const dob = new Date(dateOfBirth);
+        if (Number.isNaN(dob.getTime())) {
+            return errorResponse(res, 'Please provide a valid date of birth', 400);
+        }
+
         profile.familyMembers.push({
             name: String(name).trim(),
             relation: String(relation).trim(),
+            gender: String(gender).trim().toLowerCase(),
+            dateOfBirth: dob,
         });
+
+        const household = relationToHouseholdType(String(relation).trim());
+        if (profile.householdType === 'just_me' || !profile.householdType) {
+            profile.householdType = household;
+        }
+
         await profile.save();
 
         const member = profile.familyMembers[profile.familyMembers.length - 1];
@@ -307,7 +328,7 @@ const addFamilyMember = async (req, res) => {
 const updateFamilyMember = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { memberId, name, relation } = req.body;
+        const { memberId, name, relation, gender, dateOfBirth } = req.body;
 
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
@@ -324,6 +345,16 @@ const updateFamilyMember = async (req, res) => {
         }
         if (relation !== undefined && String(relation).trim() !== '') {
             member.relation = String(relation).trim();
+        }
+        if (gender !== undefined && String(gender).trim() !== '') {
+            member.gender = String(gender).trim().toLowerCase();
+        }
+        if (dateOfBirth !== undefined && String(dateOfBirth).trim() !== '') {
+            const dob = new Date(dateOfBirth);
+            if (Number.isNaN(dob.getTime())) {
+                return errorResponse(res, 'Please provide a valid date of birth', 400);
+            }
+            member.dateOfBirth = dob;
         }
 
         await profile.save();
@@ -354,7 +385,22 @@ const deleteFamilyMember = async (req, res) => {
             return notFound(res, 'Family member not found');
         }
 
+        if (member.profileImage) {
+            const oldPublicId = getPublicIdFromUrl(member.profileImage);
+            if (oldPublicId) {
+                await deleteFromCloudinary(oldPublicId).catch(() => { });
+            }
+        }
+
+        if (String(profile.activeProfileId) === String(memberId)) {
+            profile.activeProfileId = SELF_PROFILE_ID;
+        }
+
         member.deleteOne();
+        if (!profile.familyMembers.length) {
+            profile.householdType = 'just_me';
+            profile.activeProfileId = SELF_PROFILE_ID;
+        }
         await profile.save();
         logger.info(`Family member deleted for userId: ${userId}, memberId: ${memberId}`);
         return success(res, 'Family member deleted successfully', {
@@ -363,6 +409,94 @@ const deleteFamilyMember = async (req, res) => {
         });
     } catch (err) {
         logger.error(`Delete family member error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Switch active profile (self or family member)
+ * PUT /api/user/profile/switch
+ */
+const switchActiveProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const requested = normalizeActiveProfileId(req.body?.profileId);
+
+        const profile = await UserProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'User profile not found');
+        }
+
+        if (!isSelfProfileId(requested)) {
+            const member = profile.familyMembers.id(requested);
+            if (!member) {
+                return notFound(res, 'Family member not found');
+            }
+            profile.activeProfileId = String(member._id);
+        } else {
+            profile.activeProfileId = SELF_PROFILE_ID;
+        }
+
+        await profile.save();
+        logger.info(`Active profile switched for userId: ${userId} -> ${profile.activeProfileId}`);
+        return success(res, 'Active profile switched successfully', { profile });
+    } catch (err) {
+        logger.error(`Switch active profile error: ${err.message}`);
+        return errorResponse(res, err.message, 500);
+    }
+};
+
+/**
+ * Upload family member profile image
+ * POST /api/user/profile/family-members/upload-image
+ */
+const uploadFamilyMemberImage = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const memberId = String(req.body?.memberId || '').trim();
+
+        if (!req.file) {
+            return errorResponse(res, 'No file uploaded', 400);
+        }
+        if (!memberId) {
+            return errorResponse(res, 'memberId is required', 400);
+        }
+
+        const profile = await UserProfile.findOne({ userId });
+        if (!profile) {
+            return notFound(res, 'User profile not found. Create profile first.');
+        }
+
+        const member = profile.familyMembers.id(memberId);
+        if (!member) {
+            return notFound(res, 'Family member not found');
+        }
+
+        if (member.profileImage) {
+            const oldPublicId = getPublicIdFromUrl(member.profileImage);
+            if (oldPublicId) {
+                await deleteFromCloudinary(oldPublicId).catch(() => { });
+            }
+        }
+
+        const result = await uploadToCloudinary(req.file.buffer, {
+            folder: 'getmypair/profiles',
+            public_id: `user-${userId}-family-${memberId}-${Date.now()}`,
+            resource_type: 'image',
+            transformation: [{ width: 500, height: 500, crop: 'limit', quality: 'auto' }],
+        });
+
+        member.profileImage = result.secure_url;
+        await profile.save();
+
+        logger.info(`Family member image uploaded for userId: ${userId}, memberId: ${memberId}`);
+        return success(res, 'Family member image uploaded successfully', {
+            profileImage: result.secure_url,
+            member,
+            profile,
+        });
+    } catch (err) {
+        logger.error(`Upload family member image error: ${err.message}`);
         return errorResponse(res, err.message, 500);
     }
 };
@@ -378,4 +512,6 @@ module.exports = {
     addFamilyMember,
     updateFamilyMember,
     deleteFamilyMember,
+    switchActiveProfile,
+    uploadFamilyMemberImage,
 };

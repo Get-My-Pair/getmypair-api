@@ -80,6 +80,13 @@ const serviceRequestSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** "self" = account holder; otherwise family member id */
+    profileId: {
+      type: String,
+      default: 'self',
+      trim: true,
+      index: true,
+    },
     articleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Article',
@@ -302,6 +309,7 @@ const serviceRequestSchema = new mongoose.Schema(
 );
 
 serviceRequestSchema.index({ userId: 1, createdAt: -1 });
+serviceRequestSchema.index({ userId: 1, profileId: 1, createdAt: -1 });
 serviceRequestSchema.index({ articleId: 1, createdAt: -1 });
 serviceRequestSchema.index({ status: 1, deliveryPartnerId: 1, createdAt: -1 });
 serviceRequestSchema.index({ darkStoreId: 1, status: 1, createdAt: -1 });

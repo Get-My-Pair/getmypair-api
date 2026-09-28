@@ -64,6 +64,14 @@ const familyMemberSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        gender: {
+            type: String,
+            enum: ['male', 'female', 'other'],
+            lowercase: true,
+        },
+        dateOfBirth: {
+            type: Date,
+        },
     },
     { _id: true }
 );
@@ -110,6 +118,12 @@ const userProfileSchema = new mongoose.Schema(
         familyMembers: {
             type: [familyMemberSchema],
             default: [],
+        },
+        /** "self" = account holder; otherwise a familyMembers._id */
+        activeProfileId: {
+            type: String,
+            default: 'self',
+            trim: true,
         },
     },
     {

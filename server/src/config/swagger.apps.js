@@ -54,6 +54,8 @@ const APP_ALLOWLISTS = {
     ['post', '/api/user/profile/family-members/add'],
     ['put', '/api/user/profile/family-members/update'],
     ['delete', '/api/user/profile/family-members/delete/{memberId}'],
+    ['post', '/api/user/profile/family-members/upload-image'],
+    ['put', '/api/user/profile/switch'],
     // Notifications
     ['get', '/api/user/notifications'],
     ['patch', '/api/user/notifications/{id}/read'],
