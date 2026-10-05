@@ -7,6 +7,7 @@ const config = require('../config/env');
 const logger = require('../utils/logger');
 const {
   buildOtpContent,
+  buildPasswordResetOtpContent,
   buildRegistrationReceivedContent,
   buildCredentialsContent,
   buildDeliveryMemberCredentials,
@@ -131,23 +132,32 @@ async function sendAdminLoginOtp({ to, otp, portalLabel }) {
 }
 
 /**
- * Acknowledge a public Darkworkstore registration.
+ * Send a portal password-reset OTP email.
  */
-async function sendDarkworkstoreRegistrationReceived({ to, name, storeName }) {
+async function sendPasswordResetOtp({ to, otp, portalLabel }) {
+  const minutes = config.OTP_EXPIRE_MINUTES || 5;
+  const { subject, text, html } = buildPasswordResetOtpContent({ otp, portalLabel, minutes });
+  return deliverEmail({ to, subject, text, html, logLabel: `Password reset OTP (${portalLabel})` });
+}
+
+/**
+ * Acknowledge a public Repairshops registration.
+ */
+async function sendRepairshopsRegistrationReceived({ to, name, storeName }) {
   const { subject, text, html } = buildRegistrationReceivedContent({ name, storeName });
   return deliverEmail({
     to,
     subject,
     text,
     html,
-    logLabel: 'Darkworkstore registration received',
+    logLabel: 'Repairshops registration received',
   });
 }
 
 /**
- * Send verified Darkworkstore login credentials + dashboard link.
+ * Send verified Repairshops login credentials + dashboard link.
  */
-async function sendDarkworkstoreCredentials({ to, name, storeName, email, password, loginUrl }) {
+async function sendRepairshopsCredentials({ to, name, storeName, email, password, loginUrl }) {
   const { subject, text, html } = buildCredentialsContent({
     name,
     storeName,
@@ -160,7 +170,7 @@ async function sendDarkworkstoreCredentials({ to, name, storeName, email, passwo
     subject,
     text,
     html,
-    logLabel: 'Darkworkstore credentials',
+    logLabel: 'Repairshops credentials',
   });
 }
 
@@ -184,8 +194,9 @@ module.exports = {
   resendConfigured,
   smtpConfigured,
   sendAdminLoginOtp,
-  sendDarkworkstoreRegistrationReceived,
-  sendDarkworkstoreCredentials,
+  sendPasswordResetOtp,
+  sendRepairshopsRegistrationReceived,
+  sendRepairshopsCredentials,
   sendDeliveryMemberCredentials,
   listEmailTemplates,
 };

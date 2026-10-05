@@ -17,7 +17,7 @@ const options = {
       title: 'GetMyPair – Admin APIs',
       version: '1.0.0',
       description:
-        'Admin APIs: Retailer (/api/retailer, legacy /api/admin/profile), Masteradmin (/api/masteradmin), Darkworkstore (/api/darkworkstore).',
+        'Admin APIs: Retailer (/api/retailer, legacy /api/admin/profile), Masteradmin (/api/masteradmin), Repairshops (/api/repairshops).',
     },
     servers: [
       {
@@ -50,7 +50,7 @@ const options = {
     path.join(__dirname, '../docs/adminProfile.paths.js'),
     path.join(__dirname, '../docs/retailer.paths.js'),
     path.join(__dirname, '../docs/adminDashboard.paths.js'),
-    path.join(__dirname, '../docs/darkworkstore.paths.js'),
+    path.join(__dirname, '../docs/repairshops.paths.js'),
     path.join(__dirname, '../docs/delivery.paths.js'),
     path.join(__dirname, '../docs/health.paths.js'),
   ],

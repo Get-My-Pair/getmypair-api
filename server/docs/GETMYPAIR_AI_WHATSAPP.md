@@ -3,7 +3,7 @@
 **Channel number:** `+91 63741 29515` (`6374129515`)  
 **Product name:** GetMyPair AI  
 **Status:** Planned (not built yet)  
-**Owner surfaces:** `getmypair-api` (new), Darkworkstore / Masteradmin web (`client`), customer app (`getmypair-mobile`) stays in sync
+**Owner surfaces:** `getmypair-api` (new), Repairshops / Masteradmin web (`client`), customer app (`getmypair-mobile`) stays in sync
 
 This document is the development spec. It maps the WhatsApp journey onto APIs and dashboards that already exist, and lists what still has to be built.
 
@@ -11,7 +11,7 @@ This document is the development spec. It maps the WhatsApp journey onto APIs an
 
 ## 1. Goal
 
-A customer messages **GetMyPair AI** on WhatsApp. They pick **Tamil** or **English**, log in with **OTP**, choose a service, send a **photo + issue description + address**, then Darkworkstore sets the **amount**. The customer **accepts or rejects**. If they accept, they get a **payment link**. After payment, every **job progress** step is sent on the same WhatsApp chat.
+A customer messages **GetMyPair AI** on WhatsApp. They pick **Tamil** or **English**, log in with **OTP**, choose a service, send a **photo + issue description + address**, then Repairshops sets the **amount**. The customer **accepts or rejects**. If they accept, they get a **payment link**. After payment, every **job progress** step is sent on the same WhatsApp chat.
 
 Same `User`, `ServiceRequest`, cost approval, and Zoho payment records as the mobile app. One order — three channels (app, WhatsApp, dashboards).
 
@@ -27,7 +27,7 @@ Hi
  → Login (mobile or email) → OTP → verify
  → Select service
  → Photo(s) → issue description → follow-up questions → address
- → Request created (Darkworkstore sees it)
+ → Request created (Repairshops sees it)
  → Store sets actual amount
  → Customer Accept / Reject on WhatsApp
  → If Accept → Zoho payment link
@@ -55,7 +55,7 @@ Reject cancels the request (same as the app today).
 | Questions       | App has free text only (maintenance plan picker for maintain)                                                                                 | Structured Q&A per service in chat, stored on the request                                  |
 | Address         | `POST /api/user/profile/address/add`                                                                                                          | Collect line, city, pincode in chat                                                        |
 | Create request  | `POST /api/service/create` needs `articleId` + `addressId`                                                                                    | Auto-create a shoe article from the photo, then create the request. Tag `source: whatsapp` |
-| Store amount    | Darkworkstore **Cost approval** → `PATCH /api/darkworkstore/payments/cost/:id`                                                                | No new store UI required. Push WhatsApp when cost is set                                   |
+| Store amount    | Repairshops **Cost approval** → `PATCH /api/repairshops/payments/cost/:id`                                                                | No new store UI required. Push WhatsApp when cost is set                                   |
 | Accept / reject | `POST /api/service/respond-actual-cost`                                                                                                       | Interactive Accept / Reject buttons on WhatsApp                                            |
 | Payment         | `POST /api/payment/link` (Zoho). App opens URL. Link is **not** messaged today                                                                | Send the Zoho URL on WhatsApp                                                              |
 | Progress        | `trackingState` on the request; **in-app** notifications only (`COST_APPROVAL_PENDING`, `PAYMENT_SUCCESS`, `PAYMENT_FAILED`). **No WhatsApp** | Hook every tracking change → WhatsApp template                                             |
@@ -164,13 +164,13 @@ Phase 1 if they tap Resale/Rent:
   > Address: …  
   > Reply **YES** to submit.
    Then create article (from first photo) + `POST /api/service/create`.
-  > Request **#ABC12XYZ** received. Darkworkstore will inspect and send the amount here.
+  > Request **#ABC12XYZ** received. Repairshops will inspect and send the amount here.
 
 
 
 ### 4.5 Amount — accept or reject
 
-When Darkworkstore saves actual cost (existing Cost approval screen):
+When Repairshops saves actual cost (existing Cost approval screen):
 
 > Amount for order **#ABC12XYZ**: **₹1,250**.  
 > Reply **ACCEPT** to pay, or **REJECT** to cancel.
@@ -203,7 +203,7 @@ Send one message per `trackingState` change. Use **utility templates** (Meta app
 | --------------------- | ------------------------------------------------------- | --------------------------------- |
 | `pickup_scheduled`    | Pickup is scheduled. Our partner will collect the pair. | பிக்அப் திட்டமிடப்பட்டது.         |
 | `item_picked`         | Pair collected from you.                                | ஜோடி எடுக்கப்பட்டது.              |
-| `dark_store_received` | Pair reached the Darkworkstore.                         | டார்க்வொர்க்ஸ்டோருக்கு சேர்ந்தது. |
+| `dark_store_received` | Pair reached the Repairshops.                         | டார்க்வொர்க்ஸ்டோருக்கு சேர்ந்தது. |
 | `inspection_started`  | Inspection started.                                     | பரிசோதனை தொடங்கியது.              |
 | `repair_in_progress`  | Work is in progress.                                    | பணி நடைபெறுகிறது.                 |
 | `repair_completed`    | Work completed. Quality check next.                     | பணி முடிந்தது.                    |
@@ -229,7 +229,7 @@ Customer WhatsApp  →  Meta Cloud API  →  POST /api/whatsapp/webhook
                          ┌────────────────────┼────────────────────┐
                          ▼                    ▼                    ▼
                    Auth / OTP           Service + Article      Payment (Zoho)
-                   User / Profile       Darkworkstore jobs     Cost accept
+                   User / Profile       Repairshops jobs     Cost accept
                          │                    │                    │
                          └────────────────────┴────────────────────┘
                                               │
@@ -241,7 +241,7 @@ Customer WhatsApp  →  Meta Cloud API  →  POST /api/whatsapp/webhook
 | Piece                                                  | Repo                                   | Role                                               |
 | ------------------------------------------------------ | -------------------------------------- | -------------------------------------------------- |
 | Webhook, session, templates, OTP-on-WA, progress hooks | **getmypair-api**                      | Source of truth                                    |
-| Cost update, jobs, delivery (unchanged flow)           | **client** Darkworkstore / Masteradmin | Show WhatsApp-origin jobs                          |
+| Cost update, jobs, delivery (unchanged flow)           | **client** Repairshops / Masteradmin | Show WhatsApp-origin jobs                          |
 | Same user sees the order                               | **getmypair-mobile**                   | No duplicate create; optional “opened on WhatsApp” |
 
 
@@ -313,13 +313,13 @@ Reuse existing: `OTP_*`, Cloudinary, `ZOHO_*`, `RESEND_*` / SMTP.
 
 
 
-### 6.4 Darkworkstore / Masteradmin (`client`)
+### 6.4 Repairshops / Masteradmin (`client`)
 
 - Keep Cost approval and Jobs as they are.
 - Show source **WhatsApp** on the job if `source === 'whatsapp'`.
 - Customer mobile on the job is the WhatsApp number — staff can still call.
 
-No install-app prompt on the public landing (already restricted to Masteradmin, Darkworkstore, Delivery).
+No install-app prompt on the public landing (already restricted to Masteradmin, Repairshops, Delivery).
 
 ### 6.5 Mobile app (`getmypair-mobile`)
 
@@ -342,7 +342,7 @@ No install-app prompt on the public landing (already restricted to Masteradmin, 
 | Upload photo             | `POST /api/service/upload-proof/image`                                  |
 | Create article           | `POST /api/articles/create`                                             |
 | Create request           | `POST /api/service/create`                                              |
-| Store sets cost          | `PATCH /api/darkworkstore/payments/cost/:serviceRequestId`              |
+| Store sets cost          | `PATCH /api/repairshops/payments/cost/:serviceRequestId`              |
 | Accept / reject amount   | `POST /api/service/respond-actual-cost`                                 |
 | Payment link             | `POST /api/payment/link`                                                |
 | Payment webhook          | `POST /api/payment/webhook/zoho`                                        |
@@ -408,7 +408,7 @@ Timeout: reset draft after 24 hours of silence; language can be kept.
 | Rent             | `rent`        | App: coming soon — **Phase 2**                      |
 
 
-Phase 2 needs schema + validation + Darkworkstore handling before WhatsApp offers them.
+Phase 2 needs schema + validation + Repairshops handling before WhatsApp offers them.
 
 ---
 
@@ -429,7 +429,7 @@ Phase 2 needs schema + validation + Darkworkstore handling before WhatsApp offer
 
 - Language, WhatsApp OTP login, service (4 live types), photo, description, questions, address, confirm.
 - Auto article + `POST /api/service/create` with `source: whatsapp`.
-- Job visible in Darkworkstore **GMP Orders**.
+- Job visible in Repairshops **GMP Orders**.
 
 **Done when:** a tester can complete a Repair request from WhatsApp and staff see it.
 
@@ -457,7 +457,7 @@ Phase 2 needs schema + validation + Darkworkstore handling before WhatsApp offer
 2. OTP on WhatsApp; wrong OTP rejected; lockout matches existing OTP rules.
 3. Photo required before create; Cloudinary URL on the request.
 4. Address saved on `UserProfile` and linked as `addressId`.
-5. Darkworkstore can set cost; customer gets amount message even if 24h window closed (template).
+5. Repairshops can set cost; customer gets amount message even if 24h window closed (template).
 6. REJECT cancels; ACCEPT then payment URL; unpaid stays `PAYMENT_PENDING`.
 7. After pay, each store/delivery status change sends **one** WhatsApp (no duplicates).
 8. Same user opening the **mobile app** sees the same request.

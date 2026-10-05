@@ -89,7 +89,7 @@ Commit-Task "feat(payment): Payment Details API" @() "- [x] Payment Details API"
 Commit-Task "feat(payment): Cost Approval API" @() "- [x] Cost Approval API" -AllowEmpty
 Commit-Task "feat(payment): Cost Reject API" @() "- [x] Cost Reject API" -AllowEmpty
 Commit-Task "feat(payment): Cobbler Earnings API" @() "- [x] Cobbler Earnings API" -AllowEmpty
-Commit-Task "feat(payment): Darkworkstore Revenue API" @() "- [x] Darkworkstore Revenue API" -AllowEmpty
+Commit-Task "feat(payment): Repairshops Revenue API" @() "- [x] Repairshops Revenue API" -AllowEmpty
 Commit-Task "feat(payment): Settlement API" @() "- [x] Settlement API" -AllowEmpty
 Commit-Task "feat(payment): Refund API" @() "- [x] Refund API" -AllowEmpty
 Commit-Task "feat(payment): Payment Report API" @() "- [x] Payment Report API" -AllowEmpty

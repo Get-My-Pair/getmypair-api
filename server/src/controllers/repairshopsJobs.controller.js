@@ -1,5 +1,5 @@
 /**
- * Darkworkstore job inbox — accept / reject user-app service requests, then assign a store cobbler.
+ * Repairshops job inbox — accept / reject user-app service requests, then assign a store cobbler.
  */
 
 const mongoose = require('mongoose');
@@ -18,7 +18,7 @@ function storeId(req) {
 }
 
 function storeName(req) {
-  return String(req.adminMaster.storeName || req.adminMaster.name || 'Darkworkstore').trim();
+  return String(req.adminMaster.storeName || req.adminMaster.name || 'Repairshops').trim();
 }
 
 function pushLifecycle(request, req, note) {
@@ -103,7 +103,7 @@ const overviewStats = async (req, res) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
-    logger.error(`Darkworkstore overview stats error: ${err.message}`);
+    logger.error(`Repairshops overview stats error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -141,7 +141,7 @@ const listJobs = async (req, res) => {
       counts: { inbox: inboxCount, accepted: acceptedCount },
     });
   } catch (err) {
-    logger.error(`Darkworkstore list jobs error: ${err.message}`);
+    logger.error(`Repairshops list jobs error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -177,13 +177,13 @@ const acceptJob = async (req, res) => {
     request.routingType = 'dark_store';
     request.acceptedProviderType = 'dark_store';
     request.workflowStatus = 'COBBLER_PENDING';
-    pushLifecycle(request, req, 'Darkworkstore accepted the request');
+    pushLifecycle(request, req, 'Repairshops accepted the request');
     await request.save();
 
     const [enriched] = await enrichJobs([request.toObject()]);
     return success(res, 'Job accepted', { request: enriched });
   } catch (err) {
-    logger.error(`Darkworkstore accept job error: ${err.message}`);
+    logger.error(`Repairshops accept job error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -230,14 +230,14 @@ const rejectJob = async (req, res) => {
     pushLifecycle(
       request,
       req,
-      reason ? `Darkworkstore declined: ${reason}` : 'Darkworkstore declined the request'
+      reason ? `Repairshops declined: ${reason}` : 'Repairshops declined the request'
     );
     await request.save();
 
     const [enriched] = await enrichJobs([request.toObject()]);
     return success(res, 'Job rejected', { request: enriched });
   } catch (err) {
-    logger.error(`Darkworkstore reject job error: ${err.message}`);
+    logger.error(`Repairshops reject job error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -288,7 +288,7 @@ const assignCobbler = async (req, res) => {
     const [enriched] = await enrichJobs([request.toObject()]);
     return success(res, 'Cobbler assigned', { request: enriched });
   } catch (err) {
-    logger.error(`Darkworkstore assign cobbler error: ${err.message}`);
+    logger.error(`Repairshops assign cobbler error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -461,11 +461,11 @@ const receiveAtStore = async (req, res) => {
     workflow.pushLifecycle(request, {
       actorType: 'dark_store',
       actorId: sid,
-      note: 'Footwear received at Darkworkstore',
+      note: 'Footwear received at Repairshops',
     });
     await request.save();
     const [job] = await workflow.enrichDeliveryJobs([request.toObject()]);
-    return success(res, 'Marked received at Darkworkstore', { job });
+    return success(res, 'Marked received at Repairshops', { job });
   } catch (err) {
     logger.error(`Receive at store error: ${err.message}`);
     return errorResponse(res, err.message, 500);

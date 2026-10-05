@@ -1,8 +1,8 @@
 /**
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
- * File       : darkworkstore.routes.js
- * Description: Darkworkstore Dashboard APIs (/api/darkworkstore)
+ * File       : repairshops.routes.js
+ * Description: Repairshops Dashboard APIs (/api/repairshops)
  *              Auth + payment operations. Future store APIs: empty stubs below.
  * ----------------------------------------------------------------------------
  */
@@ -16,6 +16,8 @@ const {
   adminLoginValidation,
   adminVerifyOtpValidation,
   adminResendOtpValidation,
+  adminForgotPasswordValidation,
+  adminResetPasswordValidation,
   darkstoreUpdateCostValidation,
   darkstorePaymentQueryValidation,
   darkstoreOrderParamValidation,
@@ -23,26 +25,26 @@ const {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
-  darkworkstoreRegisterValidation,
-  darkworkstoreJobQueryValidation,
-  darkworkstoreJobIdValidation,
-  darkworkstoreAssignCobblerValidation,
-  darkworkstoreCreateCobblerValidation,
-  darkworkstoreCobblerIdValidation,
+  repairshopsRegisterValidation,
+  repairshopsJobQueryValidation,
+  repairshopsJobIdValidation,
+  repairshopsAssignCobblerValidation,
+  repairshopsCreateCobblerValidation,
+  repairshopsCobblerIdValidation,
   assignDeliveryValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
-const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
-const darkworkstoreJobsController = require('../controllers/darkworkstoreJobs.controller');
-const darkworkstoreCobblerController = require('../controllers/darkworkstoreCobbler.controller');
+const repairshopsUserController = require('../controllers/repairshopsUser.controller');
+const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
+const repairshopsCobblerController = require('../controllers/repairshopsCobbler.controller');
 const deliveryMemberController = require('../controllers/deliveryMember.controller');
 
 // Public store registration (no JWT). Login is allowed only after Masteradmin verifies.
 router.post(
   '/auth/register',
   adminLoginRateLimiter,
-  darkworkstoreRegisterValidation,
-  darkworkstoreUserController.register
+  repairshopsRegisterValidation,
+  repairshopsUserController.register
 );
 
 // Auth — first login: password + one-time email OTP; later: email + password only
@@ -64,9 +66,33 @@ router.post(
   adminResendOtpValidation,
   adminDashboardController.resendLoginOtp
 );
+router.post(
+  '/auth/forgot-password',
+  adminLoginRateLimiter,
+  adminForgotPasswordValidation,
+  adminDashboardController.forgotPassword
+);
+router.post(
+  '/auth/forgot-password/resend-otp',
+  adminLoginRateLimiter,
+  adminResendOtpValidation,
+  adminDashboardController.resendForgotPasswordOtp
+);
+router.post(
+  '/auth/forgot-password/verify-otp',
+  adminLoginRateLimiter,
+  adminVerifyOtpValidation,
+  adminDashboardController.verifyForgotPasswordOtp
+);
+router.post(
+  '/auth/reset-password',
+  adminLoginRateLimiter,
+  adminResetPasswordValidation,
+  adminDashboardController.resetPassword
+);
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
-router.get('/dashboard/stats', adminMasterAuth, darkworkstoreJobsController.overviewStats);
+router.get('/dashboard/stats', adminMasterAuth, repairshopsJobsController.overviewStats);
 
 // Payments
 router.get(
@@ -155,62 +181,62 @@ router.get(
 );
 
 // Jobs — user-app service requests for this store
-router.get('/jobs', adminMasterAuth, darkworkstoreJobQueryValidation, darkworkstoreJobsController.listJobs);
-router.get('/jobs/pickup', adminMasterAuth, darkworkstoreJobsController.listPickupJobs);
-router.get('/jobs/return', adminMasterAuth, darkworkstoreJobsController.listReturnJobs);
-router.get('/jobs/workflow', adminMasterAuth, darkworkstoreJobsController.listWorkflowJobs);
+router.get('/jobs', adminMasterAuth, repairshopsJobQueryValidation, repairshopsJobsController.listJobs);
+router.get('/jobs/pickup', adminMasterAuth, repairshopsJobsController.listPickupJobs);
+router.get('/jobs/return', adminMasterAuth, repairshopsJobsController.listReturnJobs);
+router.get('/jobs/workflow', adminMasterAuth, repairshopsJobsController.listWorkflowJobs);
 router.post(
   '/jobs/:id/accept',
   adminMasterAuth,
-  darkworkstoreJobIdValidation,
-  darkworkstoreJobsController.acceptJob
+  repairshopsJobIdValidation,
+  repairshopsJobsController.acceptJob
 );
 router.post(
   '/jobs/:id/reject',
   adminMasterAuth,
-  darkworkstoreJobIdValidation,
-  darkworkstoreJobsController.rejectJob
+  repairshopsJobIdValidation,
+  repairshopsJobsController.rejectJob
 );
 router.post(
   '/jobs/:id/assign-cobbler',
   adminMasterAuth,
-  darkworkstoreAssignCobblerValidation,
-  darkworkstoreJobsController.assignCobbler
+  repairshopsAssignCobblerValidation,
+  repairshopsJobsController.assignCobbler
 );
 router.post(
   '/jobs/:id/assign-delivery',
   adminMasterAuth,
   assignDeliveryValidation,
-  darkworkstoreJobsController.assignDelivery
+  repairshopsJobsController.assignDelivery
 );
 router.post(
   '/jobs/:id/receive',
   adminMasterAuth,
-  darkworkstoreJobIdValidation,
-  darkworkstoreJobsController.receiveAtStore
+  repairshopsJobIdValidation,
+  repairshopsJobsController.receiveAtStore
 );
 router.post(
   '/jobs/:id/progress',
   adminMasterAuth,
-  darkworkstoreJobIdValidation,
-  darkworkstoreJobsController.updateProgress
+  repairshopsJobIdValidation,
+  repairshopsJobsController.updateProgress
 );
 
 router.get('/delivery-members', adminMasterAuth, deliveryMemberController.list);
 
 // Internal cobblers / employees
-router.get('/cobblers', adminMasterAuth, darkworkstoreCobblerController.listCobblers);
+router.get('/cobblers', adminMasterAuth, repairshopsCobblerController.listCobblers);
 router.post(
   '/cobblers',
   adminMasterAuth,
-  darkworkstoreCreateCobblerValidation,
-  darkworkstoreCobblerController.createCobbler
+  repairshopsCreateCobblerValidation,
+  repairshopsCobblerController.createCobbler
 );
 router.delete(
   '/cobblers/:id',
   adminMasterAuth,
-  darkworkstoreCobblerIdValidation,
-  darkworkstoreCobblerController.deleteCobbler
+  repairshopsCobblerIdValidation,
+  repairshopsCobblerController.deleteCobbler
 );
 
 module.exports = router;

@@ -1,5 +1,5 @@
 /**
- * Darkworkstore master admin — MongoDB maintenance APIs
+ * Repairshops master admin — MongoDB maintenance APIs
  */
 
 const dbMaintenance = require('../services/dbMaintenance.service');

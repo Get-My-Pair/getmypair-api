@@ -18,10 +18,22 @@ const SALT_ROUNDS = 12;
  * Default (override with MASTER_ADMIN_EMAIL / MASTER_ADMIN_PASSWORD in .env):
  *   ranjith.kumar@getmypair.com / 123455678
  *
- * Darkworkstore portal accounts are not removed.
+ * Repair Shop portal accounts are not removed.
  */
+const migrateDarkworkstorePortals = async () => {
+  const result = await AdminMaster.updateMany(
+    { portal: 'darkworkstore' },
+    { $set: { portal: 'repairshops' } }
+  );
+  if (result.modifiedCount) {
+    logger.info(`Migrated ${result.modifiedCount} portal account(s) from darkworkstore → repairshops`);
+  }
+};
+
 const ensureMasterAdmin = async () => {
   try {
+    await migrateDarkworkstorePortals();
+
     const email = (config.MASTER_ADMIN_EMAIL || 'ranjith.kumar@getmypair.com').toLowerCase().trim();
     const plainPassword = config.MASTER_ADMIN_PASSWORD || '123455678';
     const passwordHash = await bcrypt.hash(plainPassword, SALT_ROUNDS);

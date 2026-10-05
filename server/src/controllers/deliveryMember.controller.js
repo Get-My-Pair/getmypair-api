@@ -111,7 +111,7 @@ async function sendCredentials(user) {
 
 /**
  * GET /api/masteradmin/delivery-members
- * GET /api/darkworkstore/delivery-members
+ * GET /api/repairshops/delivery-members
  */
 const list = async (req, res) => {
   try {

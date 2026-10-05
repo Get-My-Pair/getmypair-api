@@ -76,7 +76,7 @@ connectDB()
       console.log('------------------------------------------------------------');
       console.log('  Backend URL:  ' + backendUrl);
       console.log('  API docs:     ' + apiDocsUrl + '  (hub)');
-      console.log('    user / cobbler / darkworkstore / masteradmin / retailer');
+      console.log('    user / cobbler / repairshops / masteradmin / retailer');
       console.log('    (+ delivery / all)');
       console.log('============================================================');
       console.log('\n');

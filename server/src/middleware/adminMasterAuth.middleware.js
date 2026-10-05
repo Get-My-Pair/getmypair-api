@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminMasterAuth.middleware.js
- * Description: JWT auth for master admin / Darkworkstore dashboards
+ * Description: JWT auth for master admin / Repairshops dashboards
  * ----------------------------------------------------------------------------
  */
 
@@ -13,11 +13,14 @@ const { unauthorized } = require('../utils/response');
 
 const resolveRequiredPortal = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
-  if (path.includes('darkworkstore')) return 'darkworkstore';
+  if (path.includes('repairshops') || path.includes('darkworkstore')) return 'repairshops';
   if (path.includes('/api/delivery')) return 'delivery';
   if (path.includes('masteradmin') || path.includes('sys-admin')) return 'masteradmin';
   return null;
 };
+
+const normalizePortal = (portal) =>
+  portal === 'darkworkstore' ? 'repairshops' : portal || 'masteradmin';
 
 const adminMasterAuth = async (req, res, next) => {
   try {
@@ -36,7 +39,7 @@ const adminMasterAuth = async (req, res, next) => {
     }
 
     const requiredPortal = resolveRequiredPortal(req);
-    const tokenPortal = decoded.portal || 'masteradmin';
+    const tokenPortal = normalizePortal(decoded.portal);
     if (requiredPortal && tokenPortal !== requiredPortal) {
       return unauthorized(res, 'Invalid admin token');
     }
@@ -47,14 +50,14 @@ const adminMasterAuth = async (req, res, next) => {
       return unauthorized(res, 'Admin not found or inactive');
     }
 
-    const accountPortal = admin.portal || 'masteradmin';
+    const accountPortal = normalizePortal(admin.portal);
     if (requiredPortal === 'masteradmin' && accountPortal !== 'masteradmin') {
       return unauthorized(res, 'Invalid admin token');
     }
-    if (requiredPortal === 'darkworkstore') {
-      if (accountPortal === 'darkworkstore') {
+    if (requiredPortal === 'repairshops') {
+      if (accountPortal === 'repairshops') {
         if (!admin.isVerified || admin.status !== 'verified') {
-          return unauthorized(res, 'Darkworkstore account is not verified');
+          return unauthorized(res, 'Repair Shop account is not verified');
         }
       } else if (accountPortal !== 'masteradmin') {
         return unauthorized(res, 'Invalid admin token');

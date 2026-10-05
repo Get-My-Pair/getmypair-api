@@ -1,6 +1,6 @@
 /**
- * MongoDB maintenance for Darkworkstore master admin.
- * Never deletes adminmasters (Darkworkstore login credentials).
+ * MongoDB maintenance for Repairshops master admin.
+ * Never deletes adminmasters (Repairshops login credentials).
  */
 
 const AdminMaster = require('../models/adminMaster.model');
@@ -78,7 +78,7 @@ const COLLECTION_GROUPS = {
   },
   mobileAdmin: {
     label: 'Mobile admin profiles',
-    description: 'Admin profiles linked to mobile app users (not Darkworkstore login)',
+    description: 'Admin profiles linked to mobile app users (not Repairshops login)',
     collections: ['adminprofiles'],
   },
   roles: {
@@ -89,7 +89,7 @@ const COLLECTION_GROUPS = {
 };
 
 const MODEL_REGISTRY = [
-  { collection: 'adminmasters', model: AdminMaster, label: 'Portal logins (Masteradmin + Darkworkstore)', group: null, protected: true },
+  { collection: 'adminmasters', model: AdminMaster, label: 'Portal logins (Masteradmin + Repairshops)', group: null, protected: true },
   { collection: 'users', model: User, label: 'Users', group: 'auth' },
   { collection: 'userprofiles', model: UserProfile, label: 'User profiles', group: 'auth' },
   { collection: 'sessions', model: Session, label: 'Sessions', group: 'auth' },

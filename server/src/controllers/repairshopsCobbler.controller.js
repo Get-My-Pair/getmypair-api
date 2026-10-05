@@ -1,5 +1,5 @@
 /**
- * Darkworkstore internal cobblers (employees).
+ * Repairshops internal cobblers (employees).
  * Creates a cobbler-app User + CobblerProfile scoped to the logged-in store.
  */
 
@@ -61,7 +61,7 @@ const listCobblers = async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
     });
   } catch (err) {
-    logger.error(`Darkworkstore list cobblers error: ${err.message}`);
+    logger.error(`Repairshops list cobblers error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -133,7 +133,7 @@ const createCobbler = async (req, res) => {
       throw profileErr;
     }
   } catch (err) {
-    logger.error(`Darkworkstore create cobbler error: ${err.message}`);
+    logger.error(`Repairshops create cobbler error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -163,7 +163,7 @@ const deleteCobbler = async (req, res) => {
 
     return success(res, 'Cobbler removed', { id: String(profile._id) });
   } catch (err) {
-    logger.error(`Darkworkstore delete cobbler error: ${err.message}`);
+    logger.error(`Repairshops delete cobbler error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };

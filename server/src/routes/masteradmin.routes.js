@@ -16,6 +16,8 @@ const {
   adminLoginValidation,
   adminVerifyOtpValidation,
   adminResendOtpValidation,
+  adminForgotPasswordValidation,
+  adminResetPasswordValidation,
   darkstoreUpdateCostValidation,
   darkstorePaymentQueryValidation,
   darkstoreOrderParamValidation,
@@ -23,9 +25,9 @@ const {
   darkstoreServiceRequestParamValidation,
   darkstoreSettlementParamValidation,
   darkstoreReportQueryValidation,
-  darkworkstoreRegisterValidation,
-  darkworkstoreUserIdValidation,
-  darkworkstoreUserUpdateValidation,
+  repairshopsRegisterValidation,
+  repairshopsUserIdValidation,
+  repairshopsUserUpdateValidation,
   dbMaintenanceConfirmValidation,
   dbMaintenanceCollectionValidation,
   dbMaintenanceGroupValidation,
@@ -35,9 +37,9 @@ const {
   assignDeliveryValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
-const darkworkstoreUserController = require('../controllers/darkworkstoreUser.controller');
+const repairshopsUserController = require('../controllers/repairshopsUser.controller');
 const deliveryMemberController = require('../controllers/deliveryMember.controller');
-const darkworkstoreJobsController = require('../controllers/darkworkstoreJobs.controller');
+const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -57,6 +59,30 @@ router.post(
   adminLoginRateLimiter,
   adminResendOtpValidation,
   adminDashboardController.resendLoginOtp
+);
+router.post(
+  '/auth/forgot-password',
+  adminLoginRateLimiter,
+  adminForgotPasswordValidation,
+  adminDashboardController.forgotPassword
+);
+router.post(
+  '/auth/forgot-password/resend-otp',
+  adminLoginRateLimiter,
+  adminResendOtpValidation,
+  adminDashboardController.resendForgotPasswordOtp
+);
+router.post(
+  '/auth/forgot-password/verify-otp',
+  adminLoginRateLimiter,
+  adminVerifyOtpValidation,
+  adminDashboardController.verifyForgotPasswordOtp
+);
+router.post(
+  '/auth/reset-password',
+  adminLoginRateLimiter,
+  adminResetPasswordValidation,
+  adminDashboardController.resetPassword
 );
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
@@ -122,49 +148,82 @@ router.patch(
   deliveryMemberIdValidation,
   deliveryMemberController.sendEmail
 );
-router.get('/delivery-jobs/pickup', adminMasterAuth, darkworkstoreJobsController.listPickupJobs);
-router.get('/delivery-jobs/return', adminMasterAuth, darkworkstoreJobsController.listReturnJobs);
+router.get('/delivery-jobs/pickup', adminMasterAuth, repairshopsJobsController.listPickupJobs);
+router.get('/delivery-jobs/return', adminMasterAuth, repairshopsJobsController.listReturnJobs);
 router.post(
   '/delivery-jobs/:id/assign',
   adminMasterAuth,
   assignDeliveryValidation,
-  darkworkstoreJobsController.assignDelivery
+  repairshopsJobsController.assignDelivery
 );
 
-// Darkworkstore portal users (create / view / update / delete / verify)
-router.get('/darkworkstore-users', adminMasterAuth, darkworkstoreUserController.list);
+// Repairshops portal users (create / view / update / delete / verify)
+router.get('/repairshops-users', adminMasterAuth, repairshopsUserController.list);
+router.post(
+  '/repairshops-users',
+  adminMasterAuth,
+  repairshopsRegisterValidation,
+  repairshopsUserController.create
+);
+router.get(
+  '/repairshops-users/:id',
+  adminMasterAuth,
+  repairshopsUserIdValidation,
+  repairshopsUserController.getById
+);
+router.patch(
+  '/repairshops-users/:id',
+  adminMasterAuth,
+  repairshopsUserUpdateValidation,
+  repairshopsUserController.update
+);
+router.delete(
+  '/repairshops-users/:id',
+  adminMasterAuth,
+  repairshopsUserIdValidation,
+  repairshopsUserController.remove
+);
+router.patch(
+  '/repairshops-users/:id/verify',
+  adminMasterAuth,
+  repairshopsUserIdValidation,
+  repairshopsUserController.verify
+);
+
+// Legacy aliases (prefer /repairshops-users)
+router.get('/darkworkstore-users', adminMasterAuth, repairshopsUserController.list);
 router.post(
   '/darkworkstore-users',
   adminMasterAuth,
-  darkworkstoreRegisterValidation,
-  darkworkstoreUserController.create
+  repairshopsRegisterValidation,
+  repairshopsUserController.create
 );
 router.get(
   '/darkworkstore-users/:id',
   adminMasterAuth,
-  darkworkstoreUserIdValidation,
-  darkworkstoreUserController.getById
+  repairshopsUserIdValidation,
+  repairshopsUserController.getById
 );
 router.patch(
   '/darkworkstore-users/:id',
   adminMasterAuth,
-  darkworkstoreUserUpdateValidation,
-  darkworkstoreUserController.update
+  repairshopsUserUpdateValidation,
+  repairshopsUserController.update
 );
 router.delete(
   '/darkworkstore-users/:id',
   adminMasterAuth,
-  darkworkstoreUserIdValidation,
-  darkworkstoreUserController.remove
+  repairshopsUserIdValidation,
+  repairshopsUserController.remove
 );
 router.patch(
   '/darkworkstore-users/:id/verify',
   adminMasterAuth,
-  darkworkstoreUserIdValidation,
-  darkworkstoreUserController.verify
+  repairshopsUserIdValidation,
+  repairshopsUserController.verify
 );
 
-// Payments (same handlers as Darkworkstore — Masteradmin also manages payments)
+// Payments (same handlers as Repairshops — Masteradmin also manages payments)
 router.get(
   '/payments/cost-approval',
   adminMasterAuth,

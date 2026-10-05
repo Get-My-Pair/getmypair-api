@@ -6,7 +6,7 @@
  */
 
 const { body, param, query } = require('express-validator');
-const { handleValidationErrors } = require('../utils/validators');
+const { handleValidationErrors, assertPortalPassword } = require('../utils/validators');
 
 const adminLoginValidation = [
   body('email').trim().notEmpty().withMessage('email is required').isEmail().withMessage('Invalid email'),
@@ -27,6 +27,29 @@ const adminVerifyOtpValidation = [
 
 const adminResendOtpValidation = [
   body('challengeToken').trim().notEmpty().withMessage('challengeToken is required'),
+  handleValidationErrors,
+];
+
+const adminForgotPasswordValidation = [
+  body('email').trim().notEmpty().withMessage('email is required').isEmail().withMessage('Invalid email'),
+  handleValidationErrors,
+];
+
+const adminResetPasswordValidation = [
+  body('resetToken').trim().notEmpty().withMessage('resetToken is required'),
+  body('password')
+    .notEmpty()
+    .withMessage('password is required')
+    .custom(assertPortalPassword),
+  body('confirmPassword')
+    .notEmpty()
+    .withMessage('confirmPassword is required')
+    .custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error('Passwords do not match');
+      }
+      return true;
+    }),
   handleValidationErrors,
 ];
 
@@ -91,7 +114,7 @@ const dbMaintenanceGroupValidation = [
   handleValidationErrors,
 ];
 
-const darkworkstoreRegisterValidation = [
+const repairshopsRegisterValidation = [
   body('name').trim().notEmpty().withMessage('name is required'),
   body('email').trim().notEmpty().withMessage('email is required').isEmail().withMessage('Invalid email'),
   body('phone').trim().notEmpty().withMessage('phone is required'),
@@ -104,13 +127,13 @@ const darkworkstoreRegisterValidation = [
   handleValidationErrors,
 ];
 
-const darkworkstoreUserIdValidation = [
-  param('id').notEmpty().isMongoId().withMessage('Valid Darkworkstore user id required'),
+const repairshopsUserIdValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid Repairshops user id required'),
   handleValidationErrors,
 ];
 
-const darkworkstoreUserUpdateValidation = [
-  param('id').notEmpty().isMongoId().withMessage('Valid Darkworkstore user id required'),
+const repairshopsUserUpdateValidation = [
+  param('id').notEmpty().isMongoId().withMessage('Valid Repairshops user id required'),
   body('name').optional().trim().notEmpty().withMessage('name cannot be empty'),
   body('email').optional().trim().isEmail().withMessage('Invalid email'),
   body('phone').optional().trim(),
@@ -124,25 +147,25 @@ const darkworkstoreUserUpdateValidation = [
   handleValidationErrors,
 ];
 
-const darkworkstoreJobQueryValidation = [
+const repairshopsJobQueryValidation = [
   query('status').optional().isIn(['inbox', 'accepted', 'all']).withMessage('status must be inbox, accepted, or all'),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   handleValidationErrors,
 ];
 
-const darkworkstoreJobIdValidation = [
+const repairshopsJobIdValidation = [
   param('id').notEmpty().isMongoId().withMessage('Valid job id required'),
   handleValidationErrors,
 ];
 
-const darkworkstoreAssignCobblerValidation = [
+const repairshopsAssignCobblerValidation = [
   param('id').notEmpty().isMongoId().withMessage('Valid job id required'),
   body('cobblerId').trim().notEmpty().withMessage('cobblerId is required').isMongoId().withMessage('Valid cobblerId required'),
   handleValidationErrors,
 ];
 
-const darkworkstoreCreateCobblerValidation = [
+const repairshopsCreateCobblerValidation = [
   body('name').trim().notEmpty().withMessage('name is required'),
   body('phone').trim().notEmpty().withMessage('phone is required'),
   body('shopName').optional({ nullable: true }).trim(),
@@ -152,7 +175,7 @@ const darkworkstoreCreateCobblerValidation = [
   handleValidationErrors,
 ];
 
-const darkworkstoreCobblerIdValidation = [
+const repairshopsCobblerIdValidation = [
   param('id').notEmpty().isMongoId().withMessage('Valid cobbler id required'),
   handleValidationErrors,
 ];
@@ -207,6 +230,8 @@ module.exports = {
   adminLoginValidation,
   adminVerifyOtpValidation,
   adminResendOtpValidation,
+  adminForgotPasswordValidation,
+  adminResetPasswordValidation,
   darkstoreUpdateCostValidation,
   darkstorePaymentQueryValidation,
   darkstoreOrderParamValidation,
@@ -217,14 +242,14 @@ module.exports = {
   dbMaintenanceConfirmValidation,
   dbMaintenanceCollectionValidation,
   dbMaintenanceGroupValidation,
-  darkworkstoreRegisterValidation,
-  darkworkstoreUserIdValidation,
-  darkworkstoreUserUpdateValidation,
-  darkworkstoreJobQueryValidation,
-  darkworkstoreJobIdValidation,
-  darkworkstoreAssignCobblerValidation,
-  darkworkstoreCreateCobblerValidation,
-  darkworkstoreCobblerIdValidation,
+  repairshopsRegisterValidation,
+  repairshopsUserIdValidation,
+  repairshopsUserUpdateValidation,
+  repairshopsJobQueryValidation,
+  repairshopsJobIdValidation,
+  repairshopsAssignCobblerValidation,
+  repairshopsCreateCobblerValidation,
+  repairshopsCobblerIdValidation,
   deliveryMemberCreateValidation,
   deliveryMemberIdValidation,
   deliveryMemberUpdateValidation,

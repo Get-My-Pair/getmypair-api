@@ -9,6 +9,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const config = require('../config/env');
+const { isValidPortalPassword } = require('../utils/validators');
 const AdminMaster = require('../models/adminMaster.model');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
@@ -32,13 +33,23 @@ const otpService = require('../services/otp.service');
 const emailService = require('../services/email.service');
 
 const ADMIN_OTP_CHALLENGE_TYPE = 'admin_otp_challenge';
+const ADMIN_RESET_CHALLENGE_TYPE = 'admin_password_reset_challenge';
+const ADMIN_RESET_TOKEN_TYPE = 'admin_password_reset';
 const ADMIN_OTP_CHALLENGE_EXPIRE = process.env.ADMIN_OTP_CHALLENGE_EXPIRE || '10m';
+const ADMIN_RESET_TOKEN_EXPIRE = process.env.ADMIN_RESET_TOKEN_EXPIRE || '10m';
+const PASSWORD_SALT_ROUNDS = 12;
+const DUMMY_ADMIN_ID = '000000000000000000000000';
+const FORGOT_PASSWORD_MESSAGE =
+  'If an account exists for this email, we sent a verification code.';
 
-const accountPortal = (admin) => admin?.portal || 'masteradmin';
+const accountPortal = (admin) => {
+  const portal = admin?.portal || 'masteradmin';
+  return portal === 'darkworkstore' ? 'repairshops' : portal;
+};
 
 const resolvePortalKey = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
-  if (path.includes('darkworkstore')) return 'darkworkstore';
+  if (path.includes('repairshops') || path.includes('darkworkstore')) return 'repairshops';
   if (path.includes('/api/delivery')) return 'delivery';
   return 'masteradmin';
 };
@@ -78,15 +89,15 @@ const maskEmail = (email) => {
 
 const resolvePortalLabel = (req) => {
   const path = String(req.baseUrl || req.originalUrl || '');
-  if (path.includes('darkworkstore')) return 'Dark Work Store';
+  if (path.includes('repairshops') || path.includes('darkworkstore')) return 'Repair Shops';
   if (path.includes('/api/delivery')) return 'Delivery member';
   return 'Master Console';
 };
 
-const verifyChallengeToken = (token) => {
+const verifyTypedToken = (token, type) => {
   try {
     const decoded = jwt.verify(String(token || ''), config.JWT_SECRET);
-    if (decoded?.type !== ADMIN_OTP_CHALLENGE_TYPE || !decoded.adminMasterId || !decoded.email) {
+    if (decoded?.type !== type || !decoded.adminMasterId || !decoded.email) {
       return null;
     }
     return decoded;
@@ -95,20 +106,48 @@ const verifyChallengeToken = (token) => {
   }
 };
 
-const isDarkworkstoreAccount = (admin) => accountPortal(admin) === 'darkworkstore';
+const verifyChallengeToken = (token) => verifyTypedToken(token, ADMIN_OTP_CHALLENGE_TYPE);
+const verifyResetChallengeToken = (token) => verifyTypedToken(token, ADMIN_RESET_CHALLENGE_TYPE);
+const verifyResetToken = (token) => verifyTypedToken(token, ADMIN_RESET_TOKEN_TYPE);
+
+const buildResetChallengeToken = (admin, portal = 'masteradmin') =>
+  jwt.sign(
+    {
+      type: ADMIN_RESET_CHALLENGE_TYPE,
+      adminMasterId: String(admin._id),
+      email: admin.email,
+      portal,
+    },
+    config.JWT_SECRET,
+    { expiresIn: ADMIN_OTP_CHALLENGE_EXPIRE }
+  );
+
+const buildResetToken = (admin, portal = 'masteradmin') =>
+  jwt.sign(
+    {
+      type: ADMIN_RESET_TOKEN_TYPE,
+      adminMasterId: String(admin._id),
+      email: admin.email,
+      portal,
+    },
+    config.JWT_SECRET,
+    { expiresIn: ADMIN_RESET_TOKEN_EXPIRE }
+  );
+
+const isRepairshopsAccount = (admin) => accountPortal(admin) === 'repairshops';
 const isDeliveryAccount = (admin) => accountPortal(admin) === 'delivery';
-const isOtpOnceAccount = (admin) => isDarkworkstoreAccount(admin) || isDeliveryAccount(admin);
+const isOtpOnceAccount = (admin) => isRepairshopsAccount(admin) || isDeliveryAccount(admin);
 
 const pendingPortalMessage = (portalKey) =>
   portalKey === 'delivery'
     ? 'Your delivery member account is pending. Wait for the login email from Masteradmin.'
-    : 'Your Darkworkstore account is pending verification. Our team will contact you shortly.';
+    : 'Your Repair Shop account is pending verification. Our team will contact you shortly.';
 
 function canUsePortal(admin, portalKey) {
   const account = accountPortal(admin);
   if (portalKey === 'masteradmin') return account === 'masteradmin';
-  if (portalKey === 'darkworkstore') {
-    if (account === 'darkworkstore') return Boolean(admin.isVerified && admin.status === 'verified');
+  if (portalKey === 'repairshops') {
+    if (account === 'repairshops') return Boolean(admin.isVerified && admin.status === 'verified');
     return account === 'masteradmin';
   }
   if (portalKey === 'delivery') {
@@ -117,9 +156,9 @@ function canUsePortal(admin, portalKey) {
   return false;
 }
 
-/** Darkworkstore / delivery portals: OTP once per account, then email + password only. */
+/** Repairshops / delivery portals: OTP once per account, then email + password only. */
 const shouldSkipPortalOtp = (admin, portalKey) => {
-  if (portalKey !== 'darkworkstore' && portalKey !== 'delivery') return false;
+  if (portalKey !== 'repairshops' && portalKey !== 'delivery') return false;
   if (admin?.emailVerifiedAt) return true;
   // Legacy store/delivery rows that already logged in before emailVerifiedAt existed
   return accountPortal(admin) === portalKey && Boolean(admin?.lastLoginAt);
@@ -129,7 +168,7 @@ const completePortalLogin = async (admin, portalKey, { fromOtp } = {}) => {
   admin.lastLoginAt = new Date();
   if (
     fromOtp &&
-    (portalKey === 'darkworkstore' || portalKey === 'delivery') &&
+    (portalKey === 'repairshops' || portalKey === 'delivery') &&
     !admin.emailVerifiedAt
   ) {
     admin.emailVerifiedAt = admin.lastLoginAt;
@@ -146,7 +185,10 @@ const completePortalLogin = async (admin, portalKey, { fromOtp } = {}) => {
   };
 };
 
-async function issueAndSendPortalOtp(admin, portalLabel) {
+async function issueAndSendPortalOtp(admin, portalLabel, options = {}) {
+  const purpose = options.purpose || 'login';
+  const sendOtp = options.sendOtp || emailService.sendAdminLoginOtp;
+
   const rateLimited = await otpService.checkRateLimit(admin.email, null, 'email');
   if (rateLimited) {
     const err = new Error('Too many OTP requests. Please try again later.');
@@ -158,10 +200,10 @@ async function issueAndSendPortalOtp(admin, portalLabel) {
     admin.email,
     null,
     'email',
-    'login'
+    purpose
   );
 
-  const delivery = await emailService.sendAdminLoginOtp({
+  const delivery = await sendOtp({
     to: admin.email,
     otp,
     portalLabel,
@@ -178,7 +220,7 @@ async function issueAndSendPortalOtp(admin, portalLabel) {
 /**
  * POST /api/{portal}/auth/login
  * Masteradmin: password then email OTP every time.
- * Darkworkstore / delivery: email OTP once (any account on that portal); later logins issue JWT after password.
+ * Repairshops / delivery: email OTP once (any account on that portal); later logins issue JWT after password.
  */
 const login = async (req, res) => {
   try {
@@ -192,10 +234,10 @@ const login = async (req, res) => {
       return unauthorized(res, 'Invalid email or password');
     }
 
-    if (portalKey === 'darkworkstore') {
-      if (isDarkworkstoreAccount(admin)) {
+    if (portalKey === 'repairshops') {
+      if (isRepairshopsAccount(admin)) {
         if (!admin.isVerified || admin.status !== 'verified') {
-          return unauthorized(res, pendingPortalMessage('darkworkstore'));
+          return unauthorized(res, pendingPortalMessage('repairshops'));
         }
       } else if (accountPortal(admin) !== 'masteradmin') {
         return unauthorized(res, 'Invalid email or password');
@@ -362,6 +404,206 @@ const resendLoginOtp = async (req, res) => {
     });
   } catch (err) {
     logger.error(`Admin resend OTP error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+function isEligibleResetAccount(admin, portalKey) {
+  return Boolean(admin && admin.isActive && canUsePortal(admin, portalKey));
+}
+
+/**
+ * POST /api/{portal}/auth/forgot-password
+ * Send a password-reset OTP. Always returns the same message so emails are not leaked.
+ */
+const forgotPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').toLowerCase().trim();
+    const portalKey = resolvePortalKey(req);
+    const portalLabel = resolvePortalLabel(req);
+
+    const admin = await AdminMaster.findOne({ email });
+    if (!isEligibleResetAccount(admin, portalKey)) {
+      return success(res, FORGOT_PASSWORD_MESSAGE, {
+        challengeToken: buildResetChallengeToken({ _id: DUMMY_ADMIN_ID, email }, portalKey),
+        emailMasked: maskEmail(email),
+        expiresIn: (config.OTP_EXPIRE_MINUTES || 5) * 60,
+      });
+    }
+
+    let otpResult;
+    try {
+      otpResult = await issueAndSendPortalOtp(admin, portalLabel, {
+        purpose: 'password_reset',
+        sendOtp: emailService.sendPasswordResetOtp,
+      });
+    } catch (err) {
+      const code = err.statusCode || 500;
+      return errorResponse(res, err.message, code);
+    }
+
+    if (!otpResult.delivery.delivered) {
+      return errorResponse(
+        res,
+        otpResult.delivery.error ||
+          'Could not send OTP email. Verify your domain on Resend or use the Resend account owner email.',
+        503
+      );
+    }
+
+    logger.info(`${portalKey} password reset OTP issued: ${email}`);
+    return success(res, FORGOT_PASSWORD_MESSAGE, {
+      challengeToken: buildResetChallengeToken(admin, portalKey),
+      emailMasked: maskEmail(admin.email),
+      expiresIn: otpResult.expiresIn,
+      deliveryMode: otpResult.delivery.mode,
+    });
+  } catch (err) {
+    logger.error(`Admin forgot password error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/{portal}/auth/forgot-password/resend-otp
+ */
+const resendForgotPasswordOtp = async (req, res) => {
+  try {
+    const challengeToken = req.body.challengeToken;
+    const decoded = verifyResetChallengeToken(challengeToken);
+    if (!decoded) {
+      return unauthorized(res, 'Reset session expired. Please try again.');
+    }
+
+    const portalKey = resolvePortalKey(req);
+    if ((decoded.portal || 'masteradmin') !== portalKey) {
+      return unauthorized(res, 'Invalid reset session');
+    }
+
+    const admin = await AdminMaster.findById(decoded.adminMasterId);
+    if (!isEligibleResetAccount(admin, portalKey) || admin.email !== decoded.email) {
+      return success(res, FORGOT_PASSWORD_MESSAGE, {
+        challengeToken,
+        emailMasked: maskEmail(decoded.email),
+        expiresIn: (config.OTP_EXPIRE_MINUTES || 5) * 60,
+      });
+    }
+
+    const portalLabel = resolvePortalLabel(req);
+    let otpResult;
+    try {
+      otpResult = await issueAndSendPortalOtp(admin, portalLabel, {
+        purpose: 'password_reset',
+        sendOtp: emailService.sendPasswordResetOtp,
+      });
+    } catch (err) {
+      const code = err.statusCode || 500;
+      return errorResponse(res, err.message, code);
+    }
+
+    if (!otpResult.delivery.delivered) {
+      return errorResponse(
+        res,
+        otpResult.delivery.error ||
+          'Could not send OTP email. Verify your domain on Resend or use the Resend account owner email.',
+        503
+      );
+    }
+
+    logger.info(`${portalKey} password reset OTP resent: ${admin.email}`);
+    return success(res, FORGOT_PASSWORD_MESSAGE, {
+      challengeToken,
+      emailMasked: maskEmail(admin.email),
+      expiresIn: otpResult.expiresIn,
+      deliveryMode: otpResult.delivery.mode,
+    });
+  } catch (err) {
+    logger.error(`Admin resend forgot password OTP error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/{portal}/auth/forgot-password/verify-otp
+ */
+const verifyForgotPasswordOtp = async (req, res) => {
+  try {
+    const challengeToken = req.body.challengeToken;
+    const otpCode = String(req.body.otp || '').trim();
+    const decoded = verifyResetChallengeToken(challengeToken);
+    if (!decoded) {
+      return unauthorized(res, 'Reset session expired. Please try again.');
+    }
+    if (!otpCode) {
+      return errorResponse(res, 'OTP is required', 400);
+    }
+
+    const portalKey = resolvePortalKey(req);
+    if ((decoded.portal || 'masteradmin') !== portalKey) {
+      return unauthorized(res, 'Invalid reset session');
+    }
+
+    const admin = await AdminMaster.findById(decoded.adminMasterId);
+    if (!isEligibleResetAccount(admin, portalKey) || admin.email !== decoded.email) {
+      return unauthorized(res, 'Invalid or expired OTP');
+    }
+
+    const verified = await otpService.verifyOTP(admin.email, null, otpCode, 'email');
+    if (!verified.valid) {
+      return unauthorized(res, verified.message || 'Invalid OTP');
+    }
+
+    logger.info(`${portalKey} password reset OTP verified: ${admin.email}`);
+    return success(res, 'OTP verified. Set a new password.', {
+      resetToken: buildResetToken(admin, portalKey),
+      emailMasked: maskEmail(admin.email),
+    });
+  } catch (err) {
+    logger.error(`Admin verify forgot password OTP error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/{portal}/auth/reset-password
+ */
+const resetPassword = async (req, res) => {
+  try {
+    const decoded = verifyResetToken(req.body.resetToken);
+    if (!decoded) {
+      return unauthorized(res, 'Reset session expired. Please try again.');
+    }
+
+    const portalKey = resolvePortalKey(req);
+    if ((decoded.portal || 'masteradmin') !== portalKey) {
+      return unauthorized(res, 'Invalid reset session');
+    }
+
+    const password = String(req.body.password || '');
+    const confirmPassword = String(req.body.confirmPassword || '');
+    if (!isValidPortalPassword(password)) {
+      return errorResponse(
+        res,
+        'Password must be 8–72 characters and include a letter and a number',
+        400
+      );
+    }
+    if (password !== confirmPassword) {
+      return errorResponse(res, 'Passwords do not match', 400);
+    }
+
+    const admin = await AdminMaster.findById(decoded.adminMasterId).select('+passwordHash');
+    if (!isEligibleResetAccount(admin, portalKey) || admin.email !== decoded.email) {
+      return unauthorized(res, 'Invalid reset session');
+    }
+
+    admin.passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+    await admin.save();
+
+    logger.info(`${portalKey} password reset completed: ${admin.email}`);
+    return success(res, 'Password updated. Sign in with your new password.');
+  } catch (err) {
+    logger.error(`Admin reset password error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
@@ -1315,6 +1557,10 @@ module.exports = {
   login,
   verifyLoginOtp,
   resendLoginOtp,
+  forgotPassword,
+  resendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetPassword,
   me,
   dashboardStats,
   listUsers,

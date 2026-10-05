@@ -191,6 +191,33 @@ function muted(text) {
   return `<p style="margin:16px 0 0;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.55;color:${BRAND.muted}">${text}</p>`;
 }
 
+function buildPasswordResetOtpContent({ otp, portalLabel, minutes }) {
+  const portal = portalLabel || 'portal';
+  const mins = minutes || 5;
+  const subject = `GetMyPair ${portal} password reset code`;
+  const text = [
+    `Your GetMyPair ${portal} password reset code is: ${otp}`,
+    '',
+    `This code expires in ${mins} minute(s).`,
+    'If you did not request a password reset, ignore this email. Your password will stay the same.',
+    '',
+    '— GetMyPair',
+  ].join('\n');
+  const html = renderEmail({
+    preheader: `Your ${portal} password reset code is ${otp}. Expires in ${mins} minutes.`,
+    kicker: `${portal} security`,
+    title: 'Reset your password',
+    bodyHtml: [
+      p(`Use this code to set a new password for <strong>${escapeHtml(portal)}</strong>.`),
+      otpBox(otp),
+      muted(
+        `Expires in ${escapeHtml(mins)} minute(s). If you did not request this, you can ignore this email.`
+      ),
+    ].join(''),
+  });
+  return { subject, text, html };
+}
+
 function buildOtpContent({ otp, portalLabel, minutes }) {
   const portal = portalLabel || 'portal';
   const mins = minutes || 5;
@@ -218,8 +245,8 @@ function buildOtpContent({ otp, portalLabel, minutes }) {
 
 function buildRegistrationReceivedContent({ name, storeName }) {
   const displayName = name || 'there';
-  const store = storeName || 'your Dark Work Store';
-  const subject = 'Thank you for registering with GetMyPair Dark Work Store';
+  const store = storeName || 'your Repair Shop';
+  const subject = 'Thank you for registering with GetMyPair Repair Shops';
   const text = [
     `Hi ${displayName},`,
     '',
@@ -227,11 +254,11 @@ function buildRegistrationReceivedContent({ name, storeName }) {
     'Our team will review your details and verify your account shortly.',
     'We will email you login access once your store is approved. You cannot sign in until verification is complete.',
     '',
-    '— GetMyPair Dark Work Store team',
+    '— GetMyPair Repair Shops team',
   ].join('\n');
   const html = renderEmail({
     preheader: `Thanks for registering ${store}. We will verify your account shortly.`,
-    kicker: 'Dark Work Store',
+    kicker: 'Repair Shops',
     title: 'Thank you for registering',
     bodyHtml: [
       p(`Hi ${escapeHtml(displayName)},`),
@@ -256,8 +283,8 @@ function buildCredentialsContent({
   email,
   password,
   loginUrl,
-  portalLabel = 'Dark Work Store',
-  ctaLabel = 'Sign in to Dark Work Store',
+  portalLabel = 'Repair Shops',
+  ctaLabel = 'Sign in to Repair Shops',
   title = 'Your store is ready to sign in',
   intro,
 }) {
@@ -320,7 +347,7 @@ function buildDeliveryMemberCredentials({ name, email, password, loginUrl }) {
 }
 
 function listEmailTemplates() {
-  const loginUrl = `${siteUrl()}/darkworkstore/login`;
+  const loginUrl = `${siteUrl()}/repairshops/login`;
   const minutes = config.OTP_EXPIRE_MINUTES || 5;
   return [
     {
@@ -331,26 +358,47 @@ function listEmailTemplates() {
       ...buildOtpContent({ otp: '482917', portalLabel: 'Master Console', minutes }),
     },
     {
-      id: 'portal-otp-darkworkstore',
-      name: 'Dark Work Store login OTP',
-      trigger: 'Dark Work Store password login — step 2',
-      audience: 'Dark Work Store',
-      ...buildOtpContent({ otp: '482917', portalLabel: 'Dark Work Store', minutes }),
+      id: 'portal-otp-repairshops',
+      name: 'Repair Shops login OTP',
+      trigger: 'Repair Shops password login — step 2',
+      audience: 'Repair Shops',
+      ...buildOtpContent({ otp: '482917', portalLabel: 'Repair Shops', minutes }),
     },
     {
-      id: 'darkworkstore-registration',
+      id: 'portal-password-reset-masteradmin',
+      name: 'Master Console password reset OTP',
+      trigger: 'Masteradmin forgot password',
+      audience: 'Masteradmin',
+      ...buildPasswordResetOtpContent({ otp: '482917', portalLabel: 'Master Console', minutes }),
+    },
+    {
+      id: 'portal-password-reset-repairshops',
+      name: 'Repair Shops password reset OTP',
+      trigger: 'Repair Shops forgot password',
+      audience: 'Repair Shops',
+      ...buildPasswordResetOtpContent({ otp: '482917', portalLabel: 'Repair Shops', minutes }),
+    },
+    {
+      id: 'portal-password-reset-delivery',
+      name: 'Delivery member password reset OTP',
+      trigger: 'Delivery member forgot password',
+      audience: 'Delivery member',
+      ...buildPasswordResetOtpContent({ otp: '482917', portalLabel: 'Delivery member', minutes }),
+    },
+    {
+      id: 'repairshops-registration',
       name: 'Store registration received',
-      trigger: 'Public Dark Work Store signup',
-      audience: 'Dark Work Store applicant',
+      trigger: 'Public Repair Shops signup',
+      audience: 'Repair Shops applicant',
       ...buildRegistrationReceivedContent({
         name: 'Priya Sharma',
         storeName: 'Vanagaram Workshop',
       }),
     },
     {
-      id: 'darkworkstore-credentials',
+      id: 'repairshops-credentials',
       name: 'Store verified — login details',
-      trigger: 'Masteradmin verifies a Dark Work Store account',
+      trigger: 'Masteradmin verifies a Repair Shops account',
       audience: 'Verified store owner',
       ...buildCredentialsContent({
         name: 'Priya Sharma',
@@ -377,6 +425,7 @@ function listEmailTemplates() {
 
 module.exports = {
   buildOtpContent,
+  buildPasswordResetOtpContent,
   buildRegistrationReceivedContent,
   buildCredentialsContent,
   buildDeliveryMemberCredentials,

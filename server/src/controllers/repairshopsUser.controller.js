@@ -1,8 +1,8 @@
 /**
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
- * File       : darkworkstoreUser.controller.js
- * Description: Public Darkworkstore registration + Masteradmin CRUD / verify
+ * File       : repairshopsUser.controller.js
+ * Description: Public Repairshops registration + Masteradmin CRUD / verify
  * ----------------------------------------------------------------------------
  */
 
@@ -18,7 +18,7 @@ const emailService = require('../services/email.service');
 const SALT_ROUNDS = 12;
 const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
 
-const STORE_FILTER = { portal: 'darkworkstore' };
+const STORE_FILTER = { portal: { $in: ['repairshops', 'darkworkstore'] } };
 
 function generateStorePassword(length = 12) {
   const bytes = crypto.randomBytes(length);
@@ -34,7 +34,7 @@ async function unusablePasswordHash() {
 }
 
 function loginUrl() {
-  return `${config.CLIENT_WEB_URL}/darkworkstore/login`;
+  return `${config.CLIENT_WEB_URL}/repairshops/login`;
 }
 
 function pickStoreFields(body = {}) {
@@ -89,7 +89,7 @@ async function applyVerification(user, verifierId) {
   }
   await user.save();
 
-  const delivery = await emailService.sendDarkworkstoreCredentials({
+  const delivery = await emailService.sendRepairshopsCredentials({
     to: user.email,
     name: user.name,
     storeName: user.storeName,
@@ -102,7 +102,7 @@ async function applyVerification(user, verifierId) {
 }
 
 /**
- * POST /api/darkworkstore/auth/register
+ * POST /api/repairshops/auth/register
  * Public store signup. Account stays pending until Masteradmin verifies.
  */
 const register = async (req, res) => {
@@ -123,7 +123,7 @@ const register = async (req, res) => {
 
     const existing = await AdminMaster.findOne({ email: fields.email });
     if (existing) {
-      if (existing.portal === 'darkworkstore' && existing.status === 'pending') {
+      if (existing.portal === 'repairshops' && existing.status === 'pending') {
         return errorResponse(
           res,
           'This email is already registered and waiting for verification.',
@@ -135,7 +135,7 @@ const register = async (req, res) => {
 
     const user = await AdminMaster.create({
       ...fields,
-      portal: 'darkworkstore',
+      portal: 'repairshops',
       isActive: true,
       isVerified: false,
       status: 'pending',
@@ -143,13 +143,13 @@ const register = async (req, res) => {
       passwordHash: await unusablePasswordHash(),
     });
 
-    const delivery = await emailService.sendDarkworkstoreRegistrationReceived({
+    const delivery = await emailService.sendRepairshopsRegistrationReceived({
       to: user.email,
       name: user.name,
       storeName: user.storeName,
     });
 
-    logger.info(`Darkworkstore registration received: ${user.email}`);
+    logger.info(`Repairshops registration received: ${user.email}`);
 
     return success(
       res,
@@ -164,13 +164,13 @@ const register = async (req, res) => {
     if (err.code === 11000) {
       return errorResponse(res, 'An account with this email already exists', 409);
     }
-    logger.error(`Darkworkstore register error: ${err.message}`);
+    logger.error(`Repairshops register error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * GET /api/masteradmin/darkworkstore-users
+ * GET /api/masteradmin/repairshops-users
  */
 const list = async (req, res) => {
   try {
@@ -188,7 +188,7 @@ const list = async (req, res) => {
       AdminMaster.countDocuments(filter),
     ]);
 
-    return success(res, 'Darkworkstore users', {
+    return success(res, 'Repairshops users', {
       items: items.map(mapStoreUser),
       page,
       limit,
@@ -196,35 +196,35 @@ const list = async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
     });
   } catch (err) {
-    logger.error(`List Darkworkstore users error: ${err.message}`);
+    logger.error(`List Repairshops users error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * GET /api/masteradmin/darkworkstore-users/:id
+ * GET /api/masteradmin/repairshops-users/:id
  */
 const getById = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(res, 'Invalid Darkworkstore user id', 400);
+      return errorResponse(res, 'Invalid Repairshops user id', 400);
     }
 
     const user = await AdminMaster.findOne({ _id: id, ...STORE_FILTER }).lean();
     if (!user) {
-      return errorResponse(res, 'Darkworkstore user not found', 404);
+      return errorResponse(res, 'Repairshops user not found', 404);
     }
 
-    return success(res, 'Darkworkstore user', { user: mapStoreUser(user) });
+    return success(res, 'Repairshops user', { user: mapStoreUser(user) });
   } catch (err) {
-    logger.error(`Get Darkworkstore user error: ${err.message}`);
+    logger.error(`Get Repairshops user error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * POST /api/masteradmin/darkworkstore-users
+ * POST /api/masteradmin/repairshops-users
  */
 const create = async (req, res) => {
   try {
@@ -249,7 +249,7 @@ const create = async (req, res) => {
 
     const user = await AdminMaster.create({
       ...fields,
-      portal: 'darkworkstore',
+      portal: 'repairshops',
       isActive: true,
       isVerified: false,
       status: 'pending',
@@ -257,31 +257,31 @@ const create = async (req, res) => {
       passwordHash: await unusablePasswordHash(),
     });
 
-    logger.info(`Masteradmin created Darkworkstore user: ${user.email}`);
+    logger.info(`Masteradmin created Repairshops user: ${user.email}`);
 
-    return success(res, 'Darkworkstore user created', { user: mapStoreUser(user) }, 201);
+    return success(res, 'Repairshops user created', { user: mapStoreUser(user) }, 201);
   } catch (err) {
     if (err.code === 11000) {
       return errorResponse(res, 'An account with this email already exists', 409);
     }
-    logger.error(`Create Darkworkstore user error: ${err.message}`);
+    logger.error(`Create Repairshops user error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * PATCH /api/masteradmin/darkworkstore-users/:id
+ * PATCH /api/masteradmin/repairshops-users/:id
  */
 const update = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(res, 'Invalid Darkworkstore user id', 400);
+      return errorResponse(res, 'Invalid Repairshops user id', 400);
     }
 
     const user = await AdminMaster.findOne({ _id: id, ...STORE_FILTER });
     if (!user) {
-      return errorResponse(res, 'Darkworkstore user not found', 404);
+      return errorResponse(res, 'Repairshops user not found', 404);
     }
 
     const fields = pickStoreFields(req.body);
@@ -308,38 +308,38 @@ const update = async (req, res) => {
     }
 
     await user.save();
-    return success(res, 'Darkworkstore user updated', { user: mapStoreUser(user) });
+    return success(res, 'Repairshops user updated', { user: mapStoreUser(user) });
   } catch (err) {
-    logger.error(`Update Darkworkstore user error: ${err.message}`);
+    logger.error(`Update Repairshops user error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * DELETE /api/masteradmin/darkworkstore-users/:id
+ * DELETE /api/masteradmin/repairshops-users/:id
  */
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(res, 'Invalid Darkworkstore user id', 400);
+      return errorResponse(res, 'Invalid Repairshops user id', 400);
     }
 
     const deleted = await AdminMaster.findOneAndDelete({ _id: id, ...STORE_FILTER });
     if (!deleted) {
-      return errorResponse(res, 'Darkworkstore user not found', 404);
+      return errorResponse(res, 'Repairshops user not found', 404);
     }
 
-    logger.info(`Masteradmin deleted Darkworkstore user: ${deleted.email}`);
-    return success(res, 'Darkworkstore user deleted', { id });
+    logger.info(`Masteradmin deleted Repairshops user: ${deleted.email}`);
+    return success(res, 'Repairshops user deleted', { id });
   } catch (err) {
-    logger.error(`Delete Darkworkstore user error: ${err.message}`);
+    logger.error(`Delete Repairshops user error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };
 
 /**
- * PATCH /api/masteradmin/darkworkstore-users/:id/verify
+ * PATCH /api/masteradmin/repairshops-users/:id/verify
  * Verify a pending store and email a random password + login link.
  * If already verified, regenerates credentials and resends the email.
  */
@@ -347,12 +347,12 @@ const verify = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(res, 'Invalid Darkworkstore user id', 400);
+      return errorResponse(res, 'Invalid Repairshops user id', 400);
     }
 
     const user = await AdminMaster.findOne({ _id: id, ...STORE_FILTER }).select('+passwordHash');
     if (!user) {
-      return errorResponse(res, 'Darkworkstore user not found', 404);
+      return errorResponse(res, 'Repairshops user not found', 404);
     }
 
     const wasVerified = Boolean(user.isVerified && user.status === 'verified');
@@ -371,21 +371,21 @@ const verify = async (req, res) => {
     }
 
     logger.info(
-      `Darkworkstore user ${wasVerified ? 'credentials resent' : 'verified'}: ${user.email}`
+      `Repairshops user ${wasVerified ? 'credentials resent' : 'verified'}: ${user.email}`
     );
 
     return success(
       res,
       wasVerified
-        ? 'Login details resent to the Darkworkstore user'
-        : 'Darkworkstore user verified. Login details sent by email.',
+        ? 'Login details resent to the Repairshops user'
+        : 'Repairshops user verified. Login details sent by email.',
       {
         user: mapStoreUser(user),
         deliveryMode: delivery.mode,
       }
     );
   } catch (err) {
-    logger.error(`Verify Darkworkstore user error: ${err.message}`);
+    logger.error(`Verify Repairshops user error: ${err.message}`);
     return errorResponse(res, err.message, 500);
   }
 };

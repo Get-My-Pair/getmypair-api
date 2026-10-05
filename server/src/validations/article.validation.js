@@ -9,7 +9,31 @@
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../utils/validators');
 
-const categoryEnum = ['sports_shoe', 'casual', 'formal', 'sandal', 'boot', 'slipper', 'other'];
+const categoryEnum = [
+  'sports_shoe',
+  'sneaker',
+  'running',
+  'trainer',
+  'basketball',
+  'football',
+  'casual',
+  'formal',
+  'loafer',
+  'oxford',
+  'heel',
+  'sandal',
+  'flip_flop',
+  'slide',
+  'boot',
+  'ankle_boot',
+  'slipper',
+  'school',
+  'kids',
+  'safety',
+  'ethnic',
+  'canvas',
+  'other',
+];
 const conditionEnum = ['excellent', 'good', 'fair', 'worn', ''];
 
 const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize'];

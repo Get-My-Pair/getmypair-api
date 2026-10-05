@@ -11,7 +11,9 @@ const {
   adminLoginValidation,
   adminVerifyOtpValidation,
   adminResendOtpValidation,
-  darkworkstoreJobIdValidation,
+  adminForgotPasswordValidation,
+  adminResetPasswordValidation,
+  repairshopsJobIdValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 
@@ -33,14 +35,38 @@ router.post(
   adminResendOtpValidation,
   adminDashboardController.resendLoginOtp
 );
+router.post(
+  '/auth/forgot-password',
+  adminLoginRateLimiter,
+  adminForgotPasswordValidation,
+  adminDashboardController.forgotPassword
+);
+router.post(
+  '/auth/forgot-password/resend-otp',
+  adminLoginRateLimiter,
+  adminResendOtpValidation,
+  adminDashboardController.resendForgotPasswordOtp
+);
+router.post(
+  '/auth/forgot-password/verify-otp',
+  adminLoginRateLimiter,
+  adminVerifyOtpValidation,
+  adminDashboardController.verifyForgotPasswordOtp
+);
+router.post(
+  '/auth/reset-password',
+  adminLoginRateLimiter,
+  adminResetPasswordValidation,
+  adminDashboardController.resetPassword
+);
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
 router.get('/jobs', adminMasterAuth, deliveryJobsController.listJobs);
-router.get('/jobs/:id', adminMasterAuth, darkworkstoreJobIdValidation, deliveryJobsController.getJob);
+router.get('/jobs/:id', adminMasterAuth, repairshopsJobIdValidation, deliveryJobsController.getJob);
 router.post(
   '/jobs/:id/status',
   adminMasterAuth,
-  darkworkstoreJobIdValidation,
+  repairshopsJobIdValidation,
   deliveryJobsController.updateStatus
 );
 

@@ -87,6 +87,99 @@ void 0;
 
 /**
  * @swagger
+ * /api/masteradmin/auth/forgot-password:
+ *   post:
+ *     summary: Start Master Console password reset (email OTP)
+ *     tags: [Master Admin Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, example: "ranjith.c96me@gmail.com" }
+ *     responses:
+ *       200:
+ *         description: If the account exists, a reset OTP was emailed
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/auth/forgot-password/resend-otp:
+ *   post:
+ *     summary: Resend Master Console password reset OTP
+ *     tags: [Master Admin Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken]
+ *             properties:
+ *               challengeToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: OTP resent if the account exists
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/auth/forgot-password/verify-otp:
+ *   post:
+ *     summary: Verify Master Console password reset OTP
+ *     tags: [Master Admin Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken, otp]
+ *             properties:
+ *               challengeToken: { type: string }
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: OTP verified — complete with /auth/reset-password
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/masteradmin/auth/reset-password:
+ *   post:
+ *     summary: Set a new Master Console password
+ *     tags: [Master Admin Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [resetToken, password, confirmPassword]
+ *             properties:
+ *               resetToken: { type: string }
+ *               password: { type: string, example: "NewPass@123" }
+ *               confirmPassword: { type: string, example: "NewPass@123" }
+ *     responses:
+ *       200:
+ *         description: Password updated
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/masteradmin/auth/me:
  *   get:
  *     summary: Get current master admin
@@ -400,7 +493,7 @@ void 0;
  * @swagger
  * tags:
  *   name: Master Admin Payments
- *   description: Darkworkstore master admin payment module (HTML dashboard)
+ *   description: Repairshops master admin payment module (HTML dashboard)
  */
 void 0;
 
@@ -888,9 +981,9 @@ void 0;
 
 /**
  * @swagger
- * /api/masteradmin/darkworkstore-users:
+ * /api/masteradmin/repairshops-users:
  *   get:
- *     summary: List Darkworkstore portal users
+ *     summary: List Repairshops portal users
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []
@@ -906,11 +999,11 @@ void 0;
  *         schema: { type: string, enum: [pending, verified, rejected] }
  *     responses:
  *       200:
- *         description: Darkworkstore users list
+ *         description: Repairshops users list
  *       401:
  *         description: Unauthorized
  *   post:
- *     summary: Create a Darkworkstore user
+ *     summary: Create a Repairshops user
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []
@@ -933,7 +1026,7 @@ void 0;
  *               notes: { type: string }
  *     responses:
  *       201:
- *         description: Darkworkstore user created (pending verification)
+ *         description: Repairshops user created (pending verification)
  *       409:
  *         description: Email already exists
  */
@@ -941,9 +1034,9 @@ void 0;
 
 /**
  * @swagger
- * /api/masteradmin/darkworkstore-users/{id}:
+ * /api/masteradmin/repairshops-users/{id}:
  *   get:
- *     summary: Get Darkworkstore user details
+ *     summary: Get Repairshops user details
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []
@@ -954,11 +1047,11 @@ void 0;
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Darkworkstore user
+ *         description: Repairshops user
  *       404:
  *         description: Not found
  *   patch:
- *     summary: Update a Darkworkstore user
+ *     summary: Update a Repairshops user
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []
@@ -987,7 +1080,7 @@ void 0;
  *       200:
  *         description: Updated
  *   delete:
- *     summary: Delete a Darkworkstore user
+ *     summary: Delete a Repairshops user
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []
@@ -1004,12 +1097,12 @@ void 0;
 
 /**
  * @swagger
- * /api/masteradmin/darkworkstore-users/{id}/verify:
+ * /api/masteradmin/repairshops-users/{id}/verify:
  *   patch:
- *     summary: Verify a Darkworkstore user and email login credentials
+ *     summary: Verify a Repairshops user and email login credentials
  *     description: |
  *       Sets the account to verified, generates a random password, and emails the
- *       Darkworkstore login link plus credentials via Resend. Login is allowed only after this step.
+ *       Repairshops login link plus credentials via Resend. Login is allowed only after this step.
  *     tags: [Master Admin Dashboard]
  *     security:
  *       - adminBearerAuth: []

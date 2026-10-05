@@ -26,7 +26,7 @@ const options = {
       title: 'GetMyPair API',
       version: '1.0.0',
       description: `
-GetMyPair API — full catalog for every app (User, Cobbler, Delivery, Retailer, Darkworkstore, Masteradmin).
+GetMyPair API — full catalog for every app (User, Cobbler, Delivery, Retailer, Repairshops, Masteradmin).
 
 ### X-App / X-App-Source (mobile & retailer)
 
@@ -40,7 +40,7 @@ Send **X-App-Source** (canonical) or **X-App** (QA/Postman alias). Same allowed 
 
 Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on complete-profile are rejected.
 
-**Darkworkstore** and **Masteradmin** dashboards do **not** use X-App — authorize with dashboard JWT (\`adminBearerAuth\`).
+**Repairshops** and **Masteradmin** dashboards do **not** use X-App — authorize with dashboard JWT (\`adminBearerAuth\`).
 `,
       contact: {
         name: 'API Support',
@@ -68,7 +68,7 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Dashboard JWT (Masteradmin, Darkworkstore, Delivery portal)',
+          description: 'Dashboard JWT (Masteradmin, Repairshops, Delivery portal)',
         },
       },
       parameters: {
@@ -253,7 +253,7 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
             darkStoreId: {
               type: 'string',
               nullable: true,
-              description: 'Darkworkstore AdminMaster id if this cobbler is a store employee; null = independent',
+              description: 'Repairshops AdminMaster id if this cobbler is a store employee; null = independent',
               example: null,
             },
             shopName: { type: 'string', description: 'Booth name with number', example: 'Booth 12, Stall 5' },
@@ -355,7 +355,7 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
             model: { type: 'string', example: 'Air Max 90' },
             category: {
               type: 'string',
-              enum: ['sports_shoe', 'casual', 'formal', 'sandal', 'boot', 'slipper', 'other'],
+              enum: ['sports_shoe', 'sneaker', 'running', 'trainer', 'basketball', 'football', 'casual', 'formal', 'loafer', 'oxford', 'heel', 'sandal', 'flip_flop', 'slide', 'boot', 'ankle_boot', 'slipper', 'school', 'kids', 'safety', 'ethnic', 'canvas', 'other'],
               example: 'sports_shoe',
             },
             color: { type: 'string', example: 'black', nullable: true },
@@ -605,11 +605,11 @@ Spelling is **COBBER_APP** (not COBBLER_APP). Invalid or missing values on compl
       { name: 'Delivery Jobs', description: 'Delivery member portal pickup/return jobs' },
       { name: 'Retailer Profile', description: 'Retailer / mobile ADMIN profile APIs' },
       { name: 'Admin Profile', description: 'Legacy /api/admin/profile — Role: ADMIN' },
-      { name: 'Darkworkstore Auth', description: 'Darkworkstore dashboard login (no X-App)' },
-      { name: 'Darkworkstore Dashboard', description: 'Store overview stats' },
-      { name: 'Darkworkstore Jobs', description: 'Inbox, pickup/return, workflow, assign cobbler/delivery' },
-      { name: 'Darkworkstore Cobblers', description: 'Internal cobbler employees' },
-      { name: 'Darkworkstore Payments', description: 'Store payment workflow' },
+      { name: 'Repairshops Auth', description: 'Repairshops dashboard login (no X-App)' },
+      { name: 'Repairshops Dashboard', description: 'Store overview stats' },
+      { name: 'Repairshops Jobs', description: 'Inbox, pickup/return, workflow, assign cobbler/delivery' },
+      { name: 'Repairshops Cobblers', description: 'Internal cobbler employees' },
+      { name: 'Repairshops Payments', description: 'Store payment workflow' },
       { name: 'Master Admin Dashboard', description: 'Masteradmin ops, users, articles, cobblers, delivery' },
       { name: 'Master Admin Payments', description: 'Platform payment workflow' },
       { name: 'Master Admin Database', description: 'MongoDB overview and clear collection/group/all' },

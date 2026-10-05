@@ -119,7 +119,7 @@ const listJobs = async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
       origin,
       nearbyHint:
-        'Jobs are ordered nearest-first. After several pickups, drop the batch at the Darkworkstore.',
+        'Jobs are ordered nearest-first. After several pickups, drop the batch at the Repairshops.',
     });
   } catch (err) {
     logger.error(`Delivery list jobs error: ${err.message}`);
@@ -164,14 +164,14 @@ const ACTIONS = {
     from: ['item_picked'],
     trackingState: 'dark_store_received',
     workflowStatus: 'IN_PROGRESS',
-    note: 'Dropped at Darkworkstore',
+    note: 'Dropped at Repairshops',
   },
   collect_from_store: {
     requireType: 'return',
     from: ['dispatch_ready'],
     trackingState: 'dispatch_ready',
     workflowStatus: 'DELIVERY_SCHEDULED',
-    note: 'Collected footwear from Darkworkstore',
+    note: 'Collected footwear from Repairshops',
   },
   out_for_delivery: {
     requireType: 'return',

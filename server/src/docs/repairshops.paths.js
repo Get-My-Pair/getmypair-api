@@ -1,23 +1,23 @@
 /**
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
- * File       : darkworkstore.paths.js
- * Description: Swagger path definitions – Darkworkstore Dashboard APIs
+ * File       : repairshops.paths.js
+ * Description: Swagger path definitions – Repairshops Dashboard APIs
  * ----------------------------------------------------------------------------
  */
 
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Auth
- *   description: Darkworkstore login (master-admin JWT)
+ *   name: Repairshops Auth
+ *   description: Repairshops login (master-admin JWT)
  */
 void 0;
 
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Payments
+ *   name: Repairshops Payments
  *   description: Payment workflow — cost approval through settlements and reports
  */
 void 0;
@@ -33,18 +33,18 @@ void 0;
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Auth
+ *   name: Repairshops Auth
  *   description: Masteradmin dashboard APIs (React client). Separate from Retailer / mobile ADMIN APIs.
  */
 void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/auth/register:
+ * /api/repairshops/auth/register:
  *   post:
- *     summary: Register a Darkworkstore account
+ *     summary: Register a Repairshops account
  *     description: Public signup. Sends a thank-you email. Login is blocked until Masteradmin verifies the store.
- *     tags: [Darkworkstore Auth]
+ *     tags: [Repairshops Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -72,11 +72,11 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/auth/login:
+ * /api/repairshops/auth/login:
  *   post:
- *     summary: Dark Work Store login (password; email OTP once)
+ *     summary: Repair Shops login (password; email OTP once)
  *     description: First login sends an email OTP. After that, email and password are enough — OTP is not sent again.
- *     tags: [Darkworkstore Auth]
+ *     tags: [Repairshops Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -97,10 +97,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/auth/verify-otp:
+ * /api/repairshops/auth/verify-otp:
  *   post:
- *     summary: Verify one-time email OTP and issue Dark Work Store JWT
- *     tags: [Darkworkstore Auth]
+ *     summary: Verify one-time email OTP and issue Repair Shops JWT
+ *     tags: [Repairshops Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -121,10 +121,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/auth/resend-otp:
+ * /api/repairshops/auth/resend-otp:
  *   post:
- *     summary: Resend Dark Work Store login OTP
- *     tags: [Darkworkstore Auth]
+ *     summary: Resend Repair Shops login OTP
+ *     tags: [Repairshops Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -144,10 +144,103 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/auth/me:
+ * /api/repairshops/auth/forgot-password:
+ *   post:
+ *     summary: Start Repair Shops password reset (email OTP)
+ *     tags: [Repairshops Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, example: "store@example.com" }
+ *     responses:
+ *       200:
+ *         description: If the account exists, a reset OTP was emailed
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/repairshops/auth/forgot-password/resend-otp:
+ *   post:
+ *     summary: Resend Repair Shops password reset OTP
+ *     tags: [Repairshops Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken]
+ *             properties:
+ *               challengeToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: OTP resent if the account exists
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/repairshops/auth/forgot-password/verify-otp:
+ *   post:
+ *     summary: Verify Repair Shops password reset OTP
+ *     tags: [Repairshops Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken, otp]
+ *             properties:
+ *               challengeToken: { type: string }
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: OTP verified — complete with /auth/reset-password
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/repairshops/auth/reset-password:
+ *   post:
+ *     summary: Set a new Repair Shops password
+ *     tags: [Repairshops Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [resetToken, password, confirmPassword]
+ *             properties:
+ *               resetToken: { type: string }
+ *               password: { type: string, example: "NewPass@123" }
+ *               confirmPassword: { type: string, example: "NewPass@123" }
+ *     responses:
+ *       200:
+ *         description: Password updated
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/repairshops/auth/me:
  *   get:
  *     summary: Get current master admin
- *     tags: [Darkworkstore Auth]
+ *     tags: [Repairshops Auth]
  *     security:
  *       - adminBearerAuth: []
  *     responses:
@@ -161,18 +254,18 @@ void 0;
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Dashboard
+ *   name: Repairshops Dashboard
  *   description: Store overview stats for the dashboard home
  */
 void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/dashboard/stats:
+ * /api/repairshops/dashboard/stats:
  *   get:
- *     summary: Darkworkstore overview stats
+ *     summary: Repairshops overview stats
  *     description: Job inbox/accepted counts, cobbler staff count, and revenue for this store.
- *     tags: [Darkworkstore Dashboard]
+ *     tags: [Repairshops Dashboard]
  *     security:
  *       - adminBearerAuth: []
  *     responses:
@@ -185,10 +278,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/cost-approval:
+ * /api/repairshops/payments/cost-approval:
  *   get:
  *     summary: List jobs awaiting cost approval
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -211,11 +304,11 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/cost/{serviceRequestId}:
+ * /api/repairshops/payments/cost/{serviceRequestId}:
  *   patch:
  *     summary: Set actual cost (admin)
  *     description: Updates `actualCost` on a service request and notifies the user for approval.
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -247,10 +340,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/status:
+ * /api/repairshops/payments/status:
  *   get:
  *     summary: List payment statuses
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -276,10 +369,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/status/{orderId}:
+ * /api/repairshops/payments/status/{orderId}:
  *   get:
  *     summary: Payment status by order id
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -300,10 +393,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/jobs/paid:
+ * /api/repairshops/payments/jobs/paid:
  *   get:
  *     summary: List paid jobs
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -326,10 +419,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/jobs/unpaid:
+ * /api/repairshops/payments/jobs/unpaid:
  *   get:
  *     summary: List unpaid jobs
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -352,10 +445,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/revenue:
+ * /api/repairshops/payments/revenue:
  *   get:
  *     summary: Revenue dashboard
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -378,10 +471,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/transactions:
+ * /api/repairshops/payments/transactions:
  *   get:
  *     summary: List payment transactions
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -404,10 +497,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/transactions/{paymentId}:
+ * /api/repairshops/payments/transactions/{paymentId}:
  *   get:
  *     summary: Transaction details
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -427,10 +520,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/history/{serviceRequestId}:
+ * /api/repairshops/payments/history/{serviceRequestId}:
  *   get:
  *     summary: Payment history for service request
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -448,10 +541,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/settlements:
+ * /api/repairshops/payments/settlements:
  *   get:
  *     summary: List settlements
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -474,10 +567,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/settlements/{settlementId}/process:
+ * /api/repairshops/payments/settlements/{settlementId}/process:
  *   post:
  *     summary: Process settlement payout
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -497,10 +590,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/reports/monthly:
+ * /api/repairshops/payments/reports/monthly:
  *   get:
  *     summary: Monthly payment report
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -523,10 +616,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/payments/notifications:
+ * /api/repairshops/payments/notifications:
  *   get:
  *     summary: Payment-related admin notifications
- *     tags: [Darkworkstore Payments]
+ *     tags: [Repairshops Payments]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -547,7 +640,7 @@ void 0;
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Jobs
+ *   name: Repairshops Jobs
  *   description: Inbox of user-app jobs — accept, reject, and assign a store cobbler
  */
 void 0;
@@ -555,18 +648,18 @@ void 0;
 /**
  * @swagger
  * tags:
- *   name: Darkworkstore Cobblers
+ *   name: Repairshops Cobblers
  *   description: Internal cobbler employees for this store
  */
 void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs:
+ * /api/repairshops/jobs:
  *   get:
- *     summary: List jobs for this Darkworkstore
+ *     summary: List jobs for this Repairshops
  *     description: inbox = unclaimed user-app jobs. accepted = jobs this store took. all = both.
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -589,10 +682,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/accept:
+ * /api/repairshops/jobs/{id}/accept:
  *   post:
  *     summary: Accept a user-app job
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -610,10 +703,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/reject:
+ * /api/repairshops/jobs/{id}/reject:
  *   post:
  *     summary: Reject a user-app job
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -638,10 +731,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/assign-cobbler:
+ * /api/repairshops/jobs/{id}/assign-cobbler:
  *   post:
  *     summary: Assign an internal cobbler to an accepted job
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -668,10 +761,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/cobblers:
+ * /api/repairshops/cobblers:
  *   get:
  *     summary: List this store's cobbler employees
- *     tags: [Darkworkstore Cobblers]
+ *     tags: [Repairshops Cobblers]
  *     security:
  *       - adminBearerAuth: []
  *     responses:
@@ -681,7 +774,7 @@ void 0;
  *         description: Unauthorized
  *   post:
  *     summary: Add an internal cobbler employee
- *     tags: [Darkworkstore Cobblers]
+ *     tags: [Repairshops Cobblers]
  *     security:
  *       - adminBearerAuth: []
  *     requestBody:
@@ -708,10 +801,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/cobblers/{id}:
+ * /api/repairshops/cobblers/{id}:
  *   delete:
  *     summary: Remove a cobbler employee
- *     tags: [Darkworkstore Cobblers]
+ *     tags: [Repairshops Cobblers]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -731,10 +824,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/pickup:
+ * /api/repairshops/jobs/pickup:
  *   get:
  *     summary: List pickup-ready jobs
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -752,10 +845,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/return:
+ * /api/repairshops/jobs/return:
  *   get:
  *     summary: List return-delivery jobs
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -773,10 +866,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/workflow:
+ * /api/repairshops/jobs/workflow:
  *   get:
  *     summary: List in-store workflow jobs
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -797,10 +890,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/assign-delivery:
+ * /api/repairshops/jobs/{id}/assign-delivery:
  *   post:
  *     summary: Assign a delivery member for pickup or return
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -828,10 +921,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/receive:
+ * /api/repairshops/jobs/{id}/receive:
  *   post:
  *     summary: Mark footwear received at the store
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -841,17 +934,17 @@ void 0;
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Marked received at Darkworkstore
+ *         description: Marked received at Repairshops
  */
 void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/jobs/{id}/progress:
+ * /api/repairshops/jobs/{id}/progress:
  *   post:
  *     summary: Update in-store work progress
  *     description: action must be inspection, in_progress, work_done, qc_pass, or qc_fail.
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
@@ -878,10 +971,10 @@ void 0;
 
 /**
  * @swagger
- * /api/darkworkstore/delivery-members:
+ * /api/repairshops/delivery-members:
  *   get:
  *     summary: List verified delivery members (for assignment)
- *     tags: [Darkworkstore Jobs]
+ *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     responses:

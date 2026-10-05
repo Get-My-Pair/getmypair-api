@@ -29,19 +29,19 @@ Track implementation commits for payment workflow (API + database).
 - [x] Cost Approval API
 - [x] Cost Reject API
 - [x] Cobbler Earnings API
-- [x] Darkworkstore Revenue API
+- [x] Repairshops Revenue API
 - [x] Settlement API
 - [x] Refund API
 - [x] Payment Report API
 - [x] Module 5 integration
 - [x] API documentation
-- [x] Darkworkstore Cost Approval Screen (admin UI + API)
-- [x] Darkworkstore Payment Status Monitor
-- [x] Darkworkstore Paid Jobs List
-- [x] Darkworkstore Unpaid Jobs List
-- [x] Darkworkstore Revenue Dashboard
-- [x] Darkworkstore Transaction Details
-- [x] Darkworkstore Service Payment History
-- [x] Darkworkstore Settlement Dashboard
-- [x] Darkworkstore Payment Reports (monthly)
-- [x] Darkworkstore Payment Notifications
+- [x] Repairshops Cost Approval Screen (admin UI + API)
+- [x] Repairshops Payment Status Monitor
+- [x] Repairshops Paid Jobs List
+- [x] Repairshops Unpaid Jobs List
+- [x] Repairshops Revenue Dashboard
+- [x] Repairshops Transaction Details
+- [x] Repairshops Service Payment History
+- [x] Repairshops Settlement Dashboard
+- [x] Repairshops Payment Reports (monthly)
+- [x] Repairshops Payment Notifications

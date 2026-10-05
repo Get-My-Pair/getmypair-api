@@ -1,5 +1,5 @@
 /**
- * Shared footwear service workflow for Darkworkstore + Delivery member portals.
+ * Shared footwear service workflow for Repairshops + Delivery member portals.
  */
 const mongoose = require('mongoose');
 const { ServiceRequest } = require('../models/serviceRequest.model');
@@ -26,7 +26,7 @@ const PROGRESS_ACTIONS = {
   inspection: {
     trackingState: 'inspection_started',
     workflowStatus: 'IN_PROGRESS',
-    note: 'Darkworkstore started inspection',
+    note: 'Repairshops started inspection',
   },
   in_progress: {
     trackingState: 'repair_in_progress',
@@ -236,7 +236,7 @@ async function enrichDeliveryJobs(requests, origin = null) {
             name: store.storeName || store.name,
             address: [store.address, store.city, store.state, store.pincode].filter(Boolean).join(', '),
           }
-        : { name: r.darkStoreName || 'Darkworkstore', address: '' },
+        : { name: r.darkStoreName || 'Repairshops', address: '' },
       distanceKm: distanceKm == null ? null : Math.round(distanceKm * 10) / 10,
     };
   });
