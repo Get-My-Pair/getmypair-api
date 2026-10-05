@@ -7,9 +7,15 @@
  */
 
 const Article = require('../models/article.model');
+const UserProfile = require('../models/userProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
+const {
+  resolveActiveProfileIdForRequest,
+  contentQueryForProfile,
+  stampProfileId,
+} = require('../utils/activeProfile.helper');
 
 /**
  * Create Article (register shoe)
@@ -20,8 +26,12 @@ const createArticle = async (req, res) => {
     const ownerId = req.user._id;
     const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
 
+    const profile = await UserProfile.findOne({ userId: ownerId }).select('activeProfileId familyMembers').lean();
+    const activeProfileId = stampProfileId(resolveActiveProfileIdForRequest(req, profile));
+
     const articleData = {
       ownerId,
+      profileId: activeProfileId,
       brand: (brand || '').trim(),
       model: (model || '').trim(),
       category: (category || 'other').trim(),
@@ -40,6 +50,7 @@ const createArticle = async (req, res) => {
 
     const duplicate = await Article.findOne({
       ownerId,
+      profileId: activeProfileId,
       brand: articleData.brand,
       model: articleData.model,
       category: articleData.category,
@@ -68,7 +79,11 @@ const createArticle = async (req, res) => {
 const getMyArticles = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const articles = await Article.find({ ownerId }).sort({ createdAt: -1 }).lean();
+    const profile = await UserProfile.findOne({ userId: ownerId }).select('activeProfileId familyMembers').lean();
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
+    const articles = await Article.find(contentQueryForProfile('ownerId', ownerId, activeProfileId))
+      .sort({ createdAt: -1 })
+      .lean();
     return success(res, 'Articles retrieved successfully', { articles });
   } catch (err) {
     logger.error(`Get my articles error: ${err.message}`);

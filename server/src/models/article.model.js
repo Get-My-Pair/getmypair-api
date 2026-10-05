@@ -26,6 +26,13 @@ const articleSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** "self" = account holder; otherwise family member id */
+    profileId: {
+      type: String,
+      default: 'self',
+      trim: true,
+      index: true,
+    },
     brand: {
       type: String,
       required: true,
@@ -111,6 +118,7 @@ const articleSchema = new mongoose.Schema(
 );
 
 articleSchema.index({ ownerId: 1, createdAt: -1 });
+articleSchema.index({ ownerId: 1, profileId: 1, createdAt: -1 });
 
 const Article = mongoose.model('Article', articleSchema);
 

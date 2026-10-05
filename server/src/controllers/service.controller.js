@@ -20,6 +20,12 @@ const CobblerProfile = require('../models/cobblerProfile.model');
 const { uploadToCloudinary } = require('../config/cloudinary');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
+const {
+  resolveActiveProfileIdForRequest,
+  contentQueryForProfile,
+  stampProfileId,
+  articleMatchesActiveProfile,
+} = require('../utils/activeProfile.helper');
 
 const trackingStateOrder = serviceTrackingStates.reduce((acc, state, idx) => {
   acc[state] = idx;
@@ -87,6 +93,11 @@ const createServiceRequest = async (req, res) => {
       return errorResponse(res, 'Address not found for this user', 400);
     }
 
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
+    if (!articleMatchesActiveProfile(article, activeProfileId)) {
+      return errorResponse(res, 'This pair belongs to another family profile', 400);
+    }
+
     // Auto-fill estimatedCost from service-type default if not provided
     const estimated =
       estimatedCost != null && Number(estimatedCost) >= 0
@@ -111,6 +122,7 @@ const createServiceRequest = async (req, res) => {
 
     const doc = await ServiceRequest.create({
       userId,
+      profileId: stampProfileId(activeProfileId),
       articleId: new mongoose.Types.ObjectId(articleId),
       serviceType,
       addressId: new mongoose.Types.ObjectId(addressId),
@@ -213,7 +225,9 @@ const getServiceRequestDetails = async (req, res) => {
 const getMyServiceRequests = async (req, res) => {
   try {
     const userId = req.user._id;
-    const requests = await ServiceRequest.find({ userId })
+    const profile = await UserProfile.findOne({ userId }).select('activeProfileId familyMembers').lean();
+    const activeProfileId = resolveActiveProfileIdForRequest(req, profile);
+    const requests = await ServiceRequest.find(contentQueryForProfile('userId', userId, activeProfileId))
       .sort({ createdAt: -1 })
       .populate('articleId', 'brand model category color images shoeSize')
       .lean();

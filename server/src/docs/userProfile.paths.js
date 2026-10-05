@@ -429,7 +429,7 @@ void 0;
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, relation]
+ *             required: [name, relation, gender, dateOfBirth]
  *             properties:
  *               name:
  *                 type: string
@@ -440,6 +440,14 @@ void 0;
  *                 type: string
  *                 enum: [partner, child, elder]
  *                 example: "partner"
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other]
+ *                 example: "female"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: "1994-02-18"
  *     responses:
  *       200:
  *         description: Family member added successfully
@@ -517,3 +525,57 @@ void 0;
  *         description: Profile or member not found
  */
 void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/family-members/upload-image:
+ *   post:
+ *     summary: Upload family member profile image
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [memberId, file]
+ *             properties:
+ *               memberId:
+ *                 type: string
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/user/profile/switch:
+ *   put:
+ *     summary: Switch active family profile
+ *     description: Sets the active profile to "self" or a family member id. Rack, services, and payments then return that profile's content only.
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [profileId]
+ *             properties:
+ *               profileId:
+ *                 type: string
+ *                 example: "self"
+ *     responses:
+ *       200:
+ *         description: Active profile switched
+ */
+void 0;
+

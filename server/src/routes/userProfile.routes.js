@@ -27,6 +27,7 @@ const {
     updateAddressValidation,
     addFamilyMemberValidation,
     updateFamilyMemberValidation,
+    switchActiveProfileValidation,
 } = require('../validations/userProfile.validation');
 
 // All routes require authentication + USER role
@@ -77,5 +78,11 @@ router.delete('/address/delete/:addressId', userProfileController.deleteAddress)
 router.post('/family-members/add', addFamilyMemberValidation, userProfileController.addFamilyMember);
 router.put('/family-members/update', updateFamilyMemberValidation, userProfileController.updateFamilyMember);
 router.delete('/family-members/delete/:memberId', userProfileController.deleteFamilyMember);
+router.post(
+    '/family-members/upload-image',
+    uploadProfileImage,
+    userProfileController.uploadFamilyMemberImage
+);
+router.put('/switch', switchActiveProfileValidation, userProfileController.switchActiveProfile);
 
 module.exports = router;

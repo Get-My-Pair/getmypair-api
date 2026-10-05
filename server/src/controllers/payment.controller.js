@@ -99,7 +99,11 @@ const paymentHistory = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
-    const data = await paymentService.listPaymentHistory(req.user._id, { page, limit });
+    const data = await paymentService.listPaymentHistory(req.user._id, {
+      page,
+      limit,
+      req,
+    });
     return success(res, 'Payment history retrieved', data);
   } catch (err) {
     return handleServiceError(res, err);
