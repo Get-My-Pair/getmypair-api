@@ -2,15 +2,17 @@
  * ----------------------------------------------------------------------------
  * Project    : GetMypair
  * File       : adminMaster.model.js
- * Description: Masteradmin + Darkworkstore + Delivery portal accounts (email + password)
+ * Description: Masteradmin + Repairshops + Delivery portal accounts (email + password)
  * ----------------------------------------------------------------------------
  */
 
 const mongoose = require('mongoose');
 
-const PORTALS = ['masteradmin', 'darkworkstore', 'delivery'];
-const STATUSES = ['pending', 'verified', 'rejected'];
-const REGISTERED_VIA = ['self', 'masteradmin'];
+const PORTALS = ['masteradmin', 'repairshops', 'delivery']
+// Keep legacy portal value readable until migrateDarkworkstorePortals runs
+const PORTAL_ENUM = [...PORTALS, 'darkworkstore']
+const STATUSES = ['pending', 'verified', 'rejected']
+const REGISTERED_VIA = ['self', 'masteradmin']
 
 const adminMasterSchema = new mongoose.Schema(
   {
@@ -30,11 +32,11 @@ const adminMasterSchema = new mongoose.Schema(
     name: {
       type: String,
       trim: true,
-      default: 'Darkworkstore',
+      default: 'Repair Shop',
     },
     portal: {
       type: String,
-      enum: PORTALS,
+      enum: PORTAL_ENUM,
       default: 'masteradmin',
       index: true,
     },
@@ -105,7 +107,7 @@ const adminMasterSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    // Darkworkstore: email OTP is required once; later logins use email + password only.
+    // Repairshops: email OTP is required once; later logins use email + password only.
     emailVerifiedAt: {
       type: Date,
       default: null,

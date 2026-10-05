@@ -37,7 +37,7 @@ async function notifyDarkstoreCostUpdated({ userId, serviceRequestId, actualCost
     userId,
     type: 'COST_APPROVAL_PENDING',
     title: 'Final service cost updated',
-    body: `Darkworkstore updated the final service cost to ₹${actualCost}. Please review and approve to continue.`,
+    body: `Repairshops updated the final service cost to ₹${actualCost}. Please review and approve to continue.`,
     data: { serviceRequestId: String(serviceRequestId), actualCost, source: 'darkstore' },
   });
 }

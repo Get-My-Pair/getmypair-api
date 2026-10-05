@@ -1,5 +1,5 @@
 /**
- * Darkworkstore admin — payment module APIs
+ * Repairshops admin — payment module APIs
  */
 const darkstorePayment = require('../services/darkstorePayment.service');
 const { success, error: errorResponse } = require('../utils/response');
@@ -13,7 +13,7 @@ const handleError = (res, err) => {
 
 /** Store accounts only see their own jobs. Masteradmin on this portal can still filter. */
 const scopedStoreId = (req) => {
-  if (req.adminMaster?.portal === 'darkworkstore') {
+  if (req.adminMaster?.portal === 'repairshops') {
     return String(req.adminMaster._id);
   }
   return req.query.darkStoreId;

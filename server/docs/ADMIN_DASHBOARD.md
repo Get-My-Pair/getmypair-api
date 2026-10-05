@@ -1,21 +1,21 @@
-# Masteradmin & Darkworkstore Dashboard APIs
+# Masteradmin & Repairshops Dashboard APIs
 
 The HTML admin UI previously served from `server/public/admin` has been **removed**.
 Dashboards now live in the React client (`client/client`) on GoDaddy:
 
 | Dashboard | Frontend URL | API base |
 |-----------|--------------|----------|
-| Darkworkstore | `https://www.getmypair.com/darkworkstore/login` | `/api/darkworkstore` |
+| Repairshops | `https://www.getmypair.com/repairshops/login` | `/api/repairshops` |
 | Masteradmin | `https://www.getmypair.com/masteradmin/login` | `/api/masteradmin` |
 
 ## Swagger
 
-- Darkworkstore: `/api-docs/darkworkstore`
+- Repairshops: `/api-docs/repairshops`
 - Masteradmin: `/api-docs/masteradmin` (legacy alias: `/api-docs/admin`)
 
 ## Portal login (email OTP)
 
-Darkworkstore and Masteradmin share the same `AdminMaster` account and require **password + email OTP**:
+Repairshops and Masteradmin share the same `AdminMaster` account and require **password + email OTP**:
 
 1. `POST /api/{portal}/auth/login` `{ email, password }` → sends OTP email, returns `challengeToken`
 2. `POST /api/{portal}/auth/verify-otp` `{ challengeToken, otp }` → returns `accessToken`
@@ -68,7 +68,7 @@ Auth, dashboard stats, users, articles, service requests, cobblers, delivery par
 
 Legacy alias (same router): `/api/sys-admin`.
 
-### Darkworkstore — `/api/darkworkstore`
+### Repairshops — `/api/repairshops`
 
 Auth + payments only. Future store APIs are reserved (empty stubs in the route file).
 

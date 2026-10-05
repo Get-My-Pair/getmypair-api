@@ -3,7 +3,7 @@
  * Project    : GetMypair
  * File       : adminDashboard.routes.js
  * Description: Legacy alias for /api/sys-admin → Masteradmin routes
- *              Prefer /api/masteradmin (and /api/darkworkstore for payments).
+ *              Prefer /api/masteradmin (and /api/repairshops for payments).
  * ----------------------------------------------------------------------------
  */
 

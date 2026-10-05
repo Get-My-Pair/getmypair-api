@@ -46,7 +46,7 @@ const cobblerProfileSchema = new mongoose.Schema(
             unique: true,
             index: true,
         },
-        /** Darkworkstore AdminMaster _id that employs this cobbler. Null = independent cobbler. */
+        /** Repairshops AdminMaster _id that employs this cobbler. Null = independent cobbler. */
         darkStoreId: {
             type: String,
             trim: true,

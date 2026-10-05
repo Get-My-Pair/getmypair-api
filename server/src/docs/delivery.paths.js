@@ -96,6 +96,99 @@ void 0;
 
 /**
  * @swagger
+ * /api/delivery/auth/forgot-password:
+ *   post:
+ *     summary: Start delivery member password reset (email OTP)
+ *     tags: [Delivery Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, example: "driver@example.com" }
+ *     responses:
+ *       200:
+ *         description: If the account exists, a reset OTP was emailed
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/delivery/auth/forgot-password/resend-otp:
+ *   post:
+ *     summary: Resend delivery member password reset OTP
+ *     tags: [Delivery Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken]
+ *             properties:
+ *               challengeToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: OTP resent if the account exists
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/delivery/auth/forgot-password/verify-otp:
+ *   post:
+ *     summary: Verify delivery member password reset OTP
+ *     tags: [Delivery Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [challengeToken, otp]
+ *             properties:
+ *               challengeToken: { type: string }
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: OTP verified — complete with /auth/reset-password
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+void 0;
+
+/**
+ * @swagger
+ * /api/delivery/auth/reset-password:
+ *   post:
+ *     summary: Set a new delivery member password
+ *     tags: [Delivery Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [resetToken, password, confirmPassword]
+ *             properties:
+ *               resetToken: { type: string }
+ *               password: { type: string, example: "NewPass@123" }
+ *               confirmPassword: { type: string, example: "NewPass@123" }
+ *     responses:
+ *       200:
+ *         description: Password updated
+ *       401:
+ *         description: Reset session expired
+ */
+void 0;
+
+/**
+ * @swagger
  * /api/delivery/auth/me:
  *   get:
  *     summary: Get current delivery member

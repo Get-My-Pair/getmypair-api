@@ -9,7 +9,7 @@ Module documentation for the **GetMyPair Node/Express API** (`getmypair-api/serv
 | **User** | `/api/auth`, `/api/user/*`, `/api/articles`, `/api/geocode`, `/api/service`, `/api/payment` | `/api-docs/user` |
 | **Cobbler** | `/api/auth`, `/api/cobbler/*`, `/api/service`, `/api/payment` | `/api-docs/cobbler` |
 | **Retailer** | `/api/retailer` (legacy `/api/admin/profile`) | `/api-docs/retailer` |
-| **Darkworkstore** | `/api/darkworkstore` | `/api-docs/darkworkstore` |
+| **Repairshops** | `/api/repairshops` | `/api-docs/repairshops` |
 | **Masteradmin** | `/api/masteradmin` (legacy `/api/sys-admin`) | `/api-docs/masteradmin` |
 
 Delivery profile APIs remain at `/api/delivery/profile` (`/api-docs/delivery`) for current mobile usage.

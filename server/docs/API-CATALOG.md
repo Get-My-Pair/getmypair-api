@@ -20,7 +20,7 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | — | `/api-docs/user` | `app.js` | — | User App Swagger |
 | — | `/api-docs/cobbler` | `app.js` | — | Cobbler App Swagger |
 | — | `/api-docs/delivery` | `app.js` | — | Delivery App Swagger |
-| — | `/api-docs/darkworkstore` | `app.js` | — | Darkworkstore Dashboard Swagger |
+| — | `/api-docs/repairshops` | `app.js` | — | Repairshops Dashboard Swagger |
 | — | `/api-docs/retailer` | `app.js` | — | Retailer App Swagger |
 | — | `/api-docs/all` | `app.js` | — | Full API catalog Swagger |
 | — | `/uploads/*` | `app.js` | — | Static uploads |
@@ -114,7 +114,7 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 **Base:** `/api/admin/profile` (legacy) · canonical: `/api/retailer/profile`  
 **Files:** `adminProfile.routes.js`, `retailer.routes.js`  
 **Auth:** JWT + role `ADMIN`  
-*(Separate from Masteradmin / Darkworkstore under `/api/masteradmin` and `/api/darkworkstore`.)*
+*(Separate from Masteradmin / Repairshops under `/api/masteradmin` and `/api/repairshops`.)*
 
 | Method | Full path | Line | Controller handler |
 |--------|-----------|------|----------------------|
@@ -242,10 +242,10 @@ Same handlers also mounted under `/api/retailer/profile/*`.
 | * | `/api/masteradmin/payments/*` | Darkstore payment controllers |
 | * | `/api/masteradmin/db/*` | DB maintenance |
 
-## Darkworkstore dashboard
+## Repairshops dashboard
 
-**Base:** `/api/darkworkstore`  
-**File:** `server/src/routes/darkworkstore.routes.js`  
+**Base:** `/api/repairshops`  
+**File:** `server/src/routes/repairshops.routes.js`  
 **Auth:** same masteradmin JWT; login is public.
 
 Includes `/auth/*` and `/payments/*` only. Future store APIs are reserved (empty stubs).
@@ -254,7 +254,7 @@ Includes `/auth/*` and `/payments/*` only. Future store APIs are reserved (empty
 
 ## OpenAPI (Swagger) sources
 
-Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagger UIs are served from `/api-docs/{user|cobbler|darkworkstore|masteradmin|retailer|delivery}`; hub at `/api-docs`; full catalog at `/api-docs/all`. Legacy `/api-docs/admin` → masteradmin.
+Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagger UIs are served from `/api-docs/{user|cobbler|repairshops|masteradmin|retailer|delivery}`; hub at `/api-docs`; full catalog at `/api-docs/all`. Legacy `/api-docs/admin` → masteradmin.
 
 ---
 

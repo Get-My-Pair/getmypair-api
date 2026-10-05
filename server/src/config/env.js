@@ -54,7 +54,7 @@ const config = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 
-  /** Public website origin used in Darkworkstore credential emails */
+  /** Public website origin used in Repairshops credential emails */
   CLIENT_WEB_URL: (
     process.env.CLIENT_WEB_URL ||
     process.env.PUBLIC_WEB_URL ||

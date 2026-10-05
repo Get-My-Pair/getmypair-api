@@ -38,7 +38,7 @@ const articleRoutes = require('./routes/article.routes');
 const serviceRoutes = require('./routes/service.routes');
 const paymentRoutes = require('./routes/payment.routes');
 const masteradminRoutes = require('./routes/masteradmin.routes');
-const darkworkstoreRoutes = require('./routes/darkworkstore.routes');
+const repairshopsRoutes = require('./routes/repairshops.routes');
 const deliveryPortalRoutes = require('./routes/delivery.routes');
 const { notFound } = require('./utils/response');
 const config = require('./config/env');
@@ -158,7 +158,7 @@ const swaggerUiOpts = (title) => ({
 [
   { route: '/api-docs/user', spec: appSpecs.user, title: 'GetMyPair User App APIs' },
   { route: '/api-docs/cobbler', spec: appSpecs.cobbler, title: 'GetMyPair Cobbler App APIs' },
-  { route: '/api-docs/darkworkstore', spec: appSpecs.darkworkstore, title: 'GetMyPair Darkworkstore APIs' },
+  { route: '/api-docs/repairshops', spec: appSpecs.repairshops, title: 'GetMyPair Repairshops APIs' },
   { route: '/api-docs/masteradmin', spec: appSpecs.masteradmin, title: 'GetMyPair Masteradmin APIs' },
   { route: '/api-docs/retailer', spec: appSpecs.retailer, title: 'GetMyPair Retailer App APIs' },
   // Existing delivery APIs (not one of the five primary apps — kept for current mobile usage)
@@ -204,7 +204,7 @@ app.get('/api/version', (req, res) => {
 //                      /api/service, /api/payment (role-filtered)
 //   2. Cobbler       — /api/auth, /api/cobbler/*, /api/service, /api/payment
 //   3. Retailer      — /api/retailer (+ legacy /api/admin/profile)
-//   4. Darkworkstore — /api/darkworkstore
+//   4. Repairshops — /api/repairshops
 //   5. Masteradmin   — /api/masteradmin
 // Delivery profile APIs remain mounted for current mobile usage.
 // ---------------------------------------------------------------------------
@@ -227,8 +227,10 @@ app.use('/api/cobbler/home', cobblerHomeRoutes);
 app.use('/api/retailer', retailerRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
 
-// Darkworkstore dashboard APIs
-app.use('/api/darkworkstore', darkworkstoreRoutes);
+// Repair Shops dashboard APIs
+app.use('/api/repairshops', repairshopsRoutes);
+// Legacy alias (prefer /api/repairshops)
+app.use('/api/darkworkstore', repairshopsRoutes);
 
 // Masteradmin dashboard APIs
 app.use('/api/masteradmin', masteradminRoutes);

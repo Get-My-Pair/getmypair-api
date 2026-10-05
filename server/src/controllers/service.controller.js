@@ -805,7 +805,7 @@ const cobblerAcceptRequest = async (req, res) => {
       return errorResponse(res, 'This request is already assigned to a cobbler', 400);
     }
     if (request.routingType === 'dark_store') {
-      return errorResponse(res, 'This request is routed to a Darkworkstore', 400);
+      return errorResponse(res, 'This request is routed to a Repairshops', 400);
     }
 
     request.cobblerId = cobblerId;

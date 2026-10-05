@@ -54,7 +54,7 @@ const globalRateLimiter = rateLimit({
     const p = req.path || '';
     return p.startsWith('/api/sys-admin')
       || p.startsWith('/api/masteradmin')
-      || p.startsWith('/api/darkworkstore');
+      || p.startsWith('/api/repairshops');
   },
 });
 
@@ -87,7 +87,7 @@ const otpVerifyRateLimiter = rateLimit({
   validate: false,
 });
 
-/** Masteradmin / Darkworkstore login — global limiter skips those prefixes, so login stays protected */
+/** Masteradmin / Repairshops login — global limiter skips those prefixes, so login stays protected */
 const adminLoginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isNonProduction ? 100000 : 10,

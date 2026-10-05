@@ -84,6 +84,27 @@ const isValidCityStateName = (value) => {
   return /^[a-zA-Z\s]+$/.test(trimmed);
 };
 
+const PORTAL_PASSWORD_MIN = 8;
+const PORTAL_PASSWORD_MAX = 72;
+
+/**
+ * Portal password: 8–72 characters with at least one letter and one number.
+ */
+const isValidPortalPassword = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  if (value.length < PORTAL_PASSWORD_MIN || value.length > PORTAL_PASSWORD_MAX) return false;
+  return /[A-Za-z]/.test(value) && /[0-9]/.test(value);
+};
+
+function assertPortalPassword(value) {
+  if (!isValidPortalPassword(value)) {
+    throw new Error(
+      `Password must be ${PORTAL_PASSWORD_MIN}–${PORTAL_PASSWORD_MAX} characters and include a letter and a number`
+    );
+  }
+  return true;
+}
+
 /**
  * Handle validation errors
  */
@@ -117,5 +138,9 @@ module.exports = {
   getLocalMobileDigits,
   isValidName,
   isValidCityStateName,
+  isValidPortalPassword,
+  assertPortalPassword,
+  PORTAL_PASSWORD_MIN,
+  PORTAL_PASSWORD_MAX,
   handleValidationErrors,
 };

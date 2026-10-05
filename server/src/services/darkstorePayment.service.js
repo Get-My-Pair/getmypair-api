@@ -1,5 +1,5 @@
 /**
- * Darkworkstore admin payment operations — cost approval, jobs, revenue, settlements, reports.
+ * Repairshops admin payment operations — cost approval, jobs, revenue, settlements, reports.
  */
 const mongoose = require('mongoose');
 const Payment = require('../models/payment.model');
@@ -65,7 +65,7 @@ async function listCostApprovalJobs({ darkStoreId, page, limit }) {
   return { items: await enrichServiceRequests(items), total, page: p, limit: l };
 }
 
-/** Update actual cost from darkworkstore (triggers user approval flow). */
+/** Update actual cost from repairshops (triggers user approval flow). */
 async function updateActualCost(serviceRequestId, actualCost, adminId, req) {
   if (!mongoose.Types.ObjectId.isValid(serviceRequestId)) {
     const err = new Error('Invalid service request id');
