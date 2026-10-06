@@ -45,6 +45,14 @@ const articleSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    /** luxury or everyday — drives Sell My Pair racks */
+    footwearType: {
+      type: String,
+      trim: true,
+      enum: ['luxury', 'everyday'],
+      default: 'everyday',
+      index: true,
+    },
     category: {
       type: String,
       required: true,

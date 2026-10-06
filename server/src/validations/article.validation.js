@@ -36,7 +36,9 @@ const categoryEnum = [
 ];
 const conditionEnum = ['excellent', 'good', 'fair', 'worn', ''];
 
-const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize'];
+const footwearTypeEnum = ['luxury', 'everyday'];
+
+const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize', 'footwearType'];
 
 const createArticleValidation = [
   body('purchaseYear')
@@ -62,6 +64,11 @@ const createArticleValidation = [
     .withMessage('Model is required')
     .isLength({ max: 120 })
     .withMessage('Model must be at most 120 characters'),
+  body('footwearType')
+    .optional()
+    .trim()
+    .isIn(footwearTypeEnum)
+    .withMessage('Type of footwear must be Luxury or Everyday'),
   body('category')
     .trim()
     .notEmpty()
@@ -125,6 +132,11 @@ const updateArticleValidation = [
     .withMessage('Model cannot be empty')
     .isLength({ max: 120 })
     .withMessage('Model must be at most 120 characters'),
+  body('footwearType')
+    .optional()
+    .trim()
+    .isIn(footwearTypeEnum)
+    .withMessage('Type of footwear must be Luxury or Everyday'),
   body('category')
     .optional()
     .trim()
@@ -188,4 +200,5 @@ module.exports = {
   updateArticleValidation,
   categoryEnum,
   conditionEnum,
+  footwearTypeEnum,
 };

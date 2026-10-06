@@ -40,6 +40,7 @@ const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 const repairshopsUserController = require('../controllers/repairshopsUser.controller');
 const deliveryMemberController = require('../controllers/deliveryMember.controller');
 const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
+const sellListingController = require('../controllers/sellListing.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -96,6 +97,9 @@ router.get(
   adminDashboardController.listArticleOwnersSummary
 );
 router.get('/articles', adminMasterAuth, adminDashboardController.listArticles);
+router.get('/sell-listings', adminMasterAuth, sellListingController.adminList);
+router.get('/sell-listings/:id', adminMasterAuth, sellListingController.adminGet);
+router.patch('/sell-listings/:id/review', adminMasterAuth, sellListingController.adminReview);
 router.get('/service-requests', adminMasterAuth, adminDashboardController.listServiceRequests);
 router.get(
   '/service-requests/:id',

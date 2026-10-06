@@ -35,6 +35,7 @@ const adminProfileRoutes = require('./routes/adminProfile.routes');
 const retailerRoutes = require('./routes/retailer.routes');
 const geocodeRoutes = require('./routes/geocode.routes');
 const articleRoutes = require('./routes/article.routes');
+const sellRoutes = require('./routes/sell.routes');
 const serviceRoutes = require('./routes/service.routes');
 const paymentRoutes = require('./routes/payment.routes');
 const masteradminRoutes = require('./routes/masteradmin.routes');
@@ -217,6 +218,7 @@ app.use('/api/user/profile', userProfileRoutes);
 app.use('/api/user/notifications', userNotificationRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/articles', articleRoutes);
+app.use('/api/sell', sellRoutes);
 app.use('/api/service', serviceRoutes);
 app.use('/api/payment', paymentRoutes);
 

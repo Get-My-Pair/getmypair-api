@@ -24,7 +24,7 @@ const {
 const createArticle = async (req, res) => {
   try {
     const ownerId = req.user._id;
-    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
+    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize, footwearType } = req.body;
 
     const profile = await UserProfile.findOne({ userId: ownerId }).select('activeProfileId familyMembers').lean();
     const activeProfileId = stampProfileId(resolveActiveProfileIdForRequest(req, profile));
@@ -32,6 +32,7 @@ const createArticle = async (req, res) => {
     const articleData = {
       ownerId,
       profileId: activeProfileId,
+      footwearType: footwearType === 'luxury' ? 'luxury' : 'everyday',
       brand: (brand || '').trim(),
       model: (model || '').trim(),
       category: (category || 'other').trim(),
@@ -51,6 +52,7 @@ const createArticle = async (req, res) => {
     const duplicate = await Article.findOne({
       ownerId,
       profileId: activeProfileId,
+      footwearType: articleData.footwearType,
       brand: articleData.brand,
       model: articleData.model,
       category: articleData.category,
@@ -119,13 +121,16 @@ const updateArticle = async (req, res) => {
   try {
     const { articleId } = req.params;
     const ownerId = req.user._id;
-    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize } = req.body;
+    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize, footwearType } = req.body;
 
     const article = await Article.findOne({ _id: articleId, ownerId });
     if (!article) {
       return notFound(res, 'Article not found');
     }
 
+    if (footwearType !== undefined) {
+      article.footwearType = footwearType === 'luxury' ? 'luxury' : 'everyday';
+    }
     if (brand !== undefined) article.brand = (brand || '').trim();
     if (model !== undefined) article.model = (model || '').trim();
     if (category !== undefined) article.category = (category || 'other').trim();

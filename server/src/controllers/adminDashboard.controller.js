@@ -14,6 +14,7 @@ const AdminMaster = require('../models/adminMaster.model');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
 const Article = require('../models/article.model');
+const sellListingController = require('./sellListing.controller');
 const {
   ServiceRequest,
   serviceTrackingStates,
@@ -635,6 +636,7 @@ const dashboardStats = async (req, res) => {
       serviceRequestsCount,
       cobblersCount,
       deliveryCount,
+      sellListingsPending,
     ] = await Promise.all([
       User.countDocuments(),
       Article.aggregate([
@@ -698,6 +700,7 @@ const dashboardStats = async (req, res) => {
         { $match: { 'profileUser.0': { $exists: true } } },
         { $count: 'count' },
       ]).then((rows) => (rows[0] ? rows[0].count : 0)),
+      sellListingController.countPending(),
     ]);
 
     return success(res, 'Dashboard stats', {
@@ -706,6 +709,7 @@ const dashboardStats = async (req, res) => {
       serviceRequestsCount,
       cobblersCount,
       deliveryCount,
+      sellListingsPending,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
