@@ -47,9 +47,9 @@ const config = {
   /** When true, some portal responses may include OTP for local testing. Phone login never returns the code. */
   RETURN_OTP_IN_RESPONSE: process.env.RETURN_OTP_IN_RESPONSE === 'true' || process.env.RETURN_OTP_IN_RESPONSE === '1',
   /** MSG91 auth key (Dashboard → API). Never return this to clients. */
-  MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '',
+  MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '579248A2Lz34OhFOf6ac5ef79P1',
   /** MSG91 OTP template id. Template must include the ##OTP## variable. */
-  MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID || '',
+  MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID || '6ac5f1bbbfdc2cd1a6051a62',
   MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 
