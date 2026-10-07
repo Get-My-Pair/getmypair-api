@@ -81,22 +81,10 @@ const sendOTP = async (req, res) => {
     }
 
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
-    const config = require('../config/env');
 
-    const responseData = {
+    return success(res, 'OTP sent successfully', {
       expiresIn: result.expiresIn,
-    };
-
-    // Include OTP so app can show popup when: dev mode, RETURN_OTP_IN_RESPONSE=true, or app sends X-App-Source: COBBER_APP
-    const allowOtpInResponse =
-      config.NODE_ENV === 'development' ||
-      config.RETURN_OTP_IN_RESPONSE ||
-      String(appSource).toUpperCase() === 'COBBER_APP';
-    if (allowOtpInResponse && result.otp) {
-      responseData.otp = String(result.otp);
-    }
-
-    return success(res, 'OTP sent successfully', responseData);
+    });
   } catch (err) {
     const AuditLog = require('../models/auditLog.model');
     // Log failed OTP send attempt

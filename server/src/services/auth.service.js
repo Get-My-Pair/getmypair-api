@@ -25,6 +25,7 @@ const { getRoleFromAppSource } = require('../config/roles');
 const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
+const msg91Service = require('./msg91.service');
 const logger = require('../utils/logger');
 
 /**
@@ -59,12 +60,11 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
       throw rateLimitError;
     }
 
-    // Create OTP with normalized mobile
+    // Create OTP with normalized mobile, then deliver it by SMS. The code is never returned to the app.
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // TODO: Send OTP via SMS service
-    // For now, log it (in production, use SMS service)
-    logger.info(`OTP for mobile ${mobile}: ${otp}`);
+    await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
+    logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
 
     // Log audit event
     await AuditLog.createLog({
@@ -77,7 +77,6 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     });
 
     return {
-      otp, // Return OTP for development mode
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {

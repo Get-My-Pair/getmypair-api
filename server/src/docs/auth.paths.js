@@ -64,10 +64,7 @@
  *                     expiresIn:
  *                       type: number
  *                       example: 600
- *                     otp:
- *                       type: string
- *                       example: "123456"
- *                       description: Returned in development, when RETURN_OTP_IN_RESPONSE=true, or when X-App is COBBER_APP
+ *                       description: Seconds until the SMS OTP expires. The code is sent via MSG91 and is not included in the response.
  *       400:
  *         description: Bad request - Validation error or invalid mobile number
  *       429:

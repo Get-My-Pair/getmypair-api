@@ -44,8 +44,12 @@ const config = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
-  /** When true, send-otp response includes OTP so the app can show it in a popup (for testing / no-SMS). */
+  /** When true, some portal responses may include OTP for local testing. Phone login never returns the code. */
   RETURN_OTP_IN_RESPONSE: process.env.RETURN_OTP_IN_RESPONSE === 'true' || process.env.RETURN_OTP_IN_RESPONSE === '1',
+  /** MSG91 auth key (Dashboard → API). Never return this to clients. */
+  MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '',
+  /** MSG91 OTP template id. Template must include the ##OTP## variable. */
+  MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID || '',
   MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 
