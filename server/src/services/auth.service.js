@@ -26,6 +26,7 @@ const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
 const msg91Service = require('./msg91.service');
+const config = require('../config/env');
 const logger = require('../utils/logger');
 
 /**
@@ -60,11 +61,18 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
       throw rateLimitError;
     }
 
-    // Create OTP with normalized mobile, then deliver it by SMS. The code is never returned to the app.
+    // Create OTP with normalized mobile.
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
-    logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
+    // MSG91 SMS (enable with USE_MSG91_SMS=true after DLT Template ID is configured).
+    // Until then, skip SMS and return the OTP so the app can show the development popup.
+    if (config.USE_MSG91_SMS) {
+      await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
+      logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
+    } else {
+      // Dummy / no-DLT mode — OTP is returned in the API response (not SMS).
+      logger.info(`Dummy OTP for mobile ${normalizedMobile}: ${otp} (USE_MSG91_SMS=false)`);
+    }
 
     // Log audit event
     await AuditLog.createLog({
@@ -73,10 +81,17 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
       status: 'success',
       ipAddress,
       userAgent,
-      details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
+      details: {
+        mobile: normalizedMobile,
+        type: 'phone',
+        purpose: 'login',
+        delivery: config.USE_MSG91_SMS ? 'msg91' : 'dummy',
+      },
     });
 
     return {
+      // Only included in dummy mode so the app can show the code.
+      otp: config.USE_MSG91_SMS ? undefined : otp,
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {

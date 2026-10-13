@@ -44,8 +44,15 @@ const config = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
-  /** When true, some portal responses may include OTP for local testing. Phone login never returns the code. */
+  /** When true, some portal responses may include OTP for local testing. */
   RETURN_OTP_IN_RESPONSE: process.env.RETURN_OTP_IN_RESPONSE === 'true' || process.env.RETURN_OTP_IN_RESPONSE === '1',
+  /**
+   * Phone login SMS via MSG91.
+   * false (default until DLT is ready): skip SMS and return OTP in send-otp for the app popup.
+   * true: send SMS via MSG91 and do not return the OTP in the API response.
+   * Flip to true once the MSG91 OTP template has a valid DLT Template ID.
+   */
+  USE_MSG91_SMS: process.env.USE_MSG91_SMS === 'true' || process.env.USE_MSG91_SMS === '1',
   /** MSG91 auth key (Dashboard → API). Never return this to clients. */
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '579248A2Lz34OhFOf6ac5ef79P1',
   /** MSG91 OTP template id. Template must include the ##OTP## variable. */

@@ -64,7 +64,11 @@
  *                     expiresIn:
  *                       type: number
  *                       example: 600
- *                       description: Seconds until the SMS OTP expires. The code is sent via MSG91 and is not included in the response.
+ *                       description: Seconds until the OTP expires
+ *                     otp:
+ *                       type: string
+ *                       example: "123456"
+ *                       description: Returned only when USE_MSG91_SMS=false (dummy / no-DLT mode). Omitted when SMS is sent via MSG91.
  *       400:
  *         description: Bad request - Validation error or invalid mobile number
  *       429:
