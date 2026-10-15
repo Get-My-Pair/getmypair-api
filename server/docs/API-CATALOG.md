@@ -3,7 +3,7 @@
 Reference: route mounts in `server/src/app.js` and definitions in `server/src/routes/*.routes.js`.  
 Line numbers point to the **route file** where `router.<method>(...)` is declared.
 
-**Narrative docs:** [README.md](README.md) · [Module 1](MODULE_1_DOCUMENTATION.md) · [Module 2](MODULE_2_DOCUMENTATION.md) · [Module 3](MODULE_3_DOCUMENTATION.md) · [Module 4](MODULE_4_DOCUMENTATION.md) · [Module 5 — Payment](MODULE_5_PAYMENT.md) · [Admin dashboard](ADMIN_DASHBOARD.md)
+**Narrative docs:** [README.md](README.md) · [Module 1](MODULE_1_DOCUMENTATION.md) · [Module 2](MODULE_2_DOCUMENTATION.md) · [Module 3](MODULE_3_DOCUMENTATION.md) · [Module 4](MODULE_4_DOCUMENTATION.md) · [Module 5 — Payment](MODULE_5_PAYMENT.md) · [Module 6 — Sell My Pair](MODULE_6_SELL_MY_PAIR.md) · [ENV](ENV.md) · [Admin dashboard](ADMIN_DASHBOARD.md)
 
 ---
 
@@ -30,16 +30,21 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 ## Module 1 — Authentication
 
 **Base:** `/api/auth`  
-**File:** `server/src/routes/auth.routes.js`
+**File:** `server/src/routes/auth.routes.js`  
+**Phone OTP:** [MODULE_1_DOCUMENTATION.md](MODULE_1_DOCUMENTATION.md) · [ENV.md](ENV.md) (`USE_MSG91_SMS`)
 
 | Method | Full path | Line | Controller handler |
 |--------|-----------|------|----------------------|
-| POST | `/api/auth/send-otp` | 32 | `sendOTP` |
-| POST | `/api/auth/verify-otp` | 33 | `verifyOTP` |
-| POST | `/api/auth/complete-profile` | 34 | `completeProfile` |
-| POST | `/api/auth/refresh-token` | 35 | `refreshToken` |
-| POST | `/api/auth/logout` | 36 | `logout` |
-| GET | `/api/auth/me` | 37 | `getCurrentUser` |
+| POST | `/api/auth/send-otp` | 37 | `sendOTP` |
+| POST | `/api/auth/verify-otp` | 38 | `verifyOTP` |
+| POST | `/api/auth/complete-profile` | 39 | `completeProfile` |
+| POST | `/api/auth/refresh-token` | 40 | `refreshToken` |
+| POST | `/api/auth/logout` | 41 | `logout` |
+| GET | `/api/auth/sessions` | 44 | `listUserSessions` |
+| DELETE | `/api/auth/sessions/:sessionId` | 45 | `revokeSession` |
+| GET | `/api/auth/me` | 47 | `getCurrentUser` |
+| GET | `/api/auth/languages` | 48 | `getSupportedLanguages` |
+| PUT | `/api/auth/language` | 49 | `updatePreferredLanguage` |
 
 ---
 
@@ -60,7 +65,12 @@ Line numbers point to the **route file** where `router.<method>(...)` is declare
 | POST | `/api/user/profile/upload-image` | 55 | `uploadProfileImage` |
 | POST | `/api/user/profile/address/add` | 60 | `addAddress` |
 | PUT | `/api/user/profile/address/update` | 65 | `updateAddress` |
-| DELETE | `/api/user/profile/address/delete/:addressId` | 70 | `deleteAddress` |
+| DELETE | `/api/user/profile/address/delete/:addressId` | 73 | `deleteAddress` |
+| POST | `/api/user/profile/family-members/add` | 78 | `addFamilyMember` |
+| PUT | `/api/user/profile/family-members/update` | 79 | `updateFamilyMember` |
+| DELETE | `/api/user/profile/family-members/delete/:memberId` | 80 | `deleteFamilyMember` |
+| POST | `/api/user/profile/family-members/upload-image` | 81 | `uploadFamilyMemberImage` |
+| PUT | `/api/user/profile/switch` | 86 | `switchActiveProfile` |
 
 ### Cobbler profile
 
@@ -158,6 +168,29 @@ Same handlers also mounted under `/api/retailer/profile/*`.
 
 ---
 
+## Module 6 — Sell My Pair
+
+**Base:** `/api/sell`  
+**File:** `server/src/routes/sell.routes.js`  
+**Auth:** JWT + role `USER`  
+**Doc:** [MODULE_6_SELL_MY_PAIR.md](MODULE_6_SELL_MY_PAIR.md)
+
+| Method | Full path | Line | Controller handler |
+|--------|-----------|------|----------------------|
+| POST | `/api/sell/upload-proof` | 12 | `uploadProof` |
+| POST | `/api/sell/listings` | 13 | `createListing` |
+| GET | `/api/sell/listings` | 14 | `listMine` |
+
+### Masteradmin review
+
+| Method | Full path | Controller handler |
+|--------|-----------|----------------------|
+| GET | `/api/masteradmin/sell-listings` | `adminList` |
+| GET | `/api/masteradmin/sell-listings/:id` | `adminGet` |
+| PATCH | `/api/masteradmin/sell-listings/:id/review` | `adminReview` |
+
+---
+
 ## Module 4 — Service requests
 
 **Base:** `/api/service`  
@@ -227,28 +260,36 @@ Same handlers also mounted under `/api/retailer/profile/*`.
 
 **Base:** `/api/masteradmin` (legacy alias: `/api/sys-admin`)  
 **File:** `server/src/routes/masteradmin.routes.js`  
-**Auth:** Masteradmin JWT (`adminMasterAuth`); login is public.
+**Auth:** Masteradmin JWT (`adminMasterAuth`); login / OTP steps are public.  
+**Doc:** [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md)
 
-| Method | Full path | Controller handler |
-|--------|-----------|----------------------|
-| POST | `/api/masteradmin/auth/login` | `login` |
-| GET | `/api/masteradmin/auth/me` | `me` |
-| GET | `/api/masteradmin/dashboard/stats` | `dashboardStats` |
-| GET/DELETE | `/api/masteradmin/users` | `listUsers` / `deleteUser` |
-| GET | `/api/masteradmin/articles` | `listArticles` |
-| GET/PATCH/DELETE | `/api/masteradmin/service-requests` | list / patch / delete |
-| GET/PATCH | `/api/masteradmin/cobblers` | list / verify |
-| GET | `/api/masteradmin/delivery-partners` | `listDeliveryPartners` |
-| * | `/api/masteradmin/payments/*` | Darkstore payment controllers |
-| * | `/api/masteradmin/db/*` | DB maintenance |
+| Area | Paths |
+|------|--------|
+| Auth | `POST .../auth/login`, `verify-otp`, `resend-otp`, forgot-password flow, `GET .../auth/me` |
+| Stats | `GET .../dashboard/stats` |
+| Users | `GET/DELETE .../users` |
+| Articles | `GET .../articles` |
+| **Sell My Pair** | `GET .../sell-listings`, `GET .../sell-listings/:id`, `PATCH .../sell-listings/:id/review` |
+| Service requests | `GET/PATCH/DELETE .../service-requests` |
+| Cobblers | `GET .../cobblers`, `PATCH .../cobblers/:id/verify` |
+| Delivery partners / members / jobs | `.../delivery-partners`, `.../delivery-members`, `.../delivery-jobs/*` |
+| Repairshops users | `.../repairshops-users` (legacy `darkworkstore-users` aliases) |
+| Payments | `.../payments/*` |
+| Email templates | `GET .../email-templates` |
+| DB maintenance | `.../db/*` |
 
 ## Repairshops dashboard
 
-**Base:** `/api/repairshops`  
+**Base:** `/api/repairshops` (legacy alias: `/api/darkworkstore`)  
 **File:** `server/src/routes/repairshops.routes.js`  
-**Auth:** same masteradmin JWT; login is public.
+**Auth:** portal JWT; login is public.
 
-Includes `/auth/*` and `/payments/*` only. Future store APIs are reserved (empty stubs).
+Includes `/auth/*`, jobs, cobbler tools, and payments as implemented in the route file.
+
+## Delivery portal
+
+**Base:** `/api/delivery` (+ `/api/delivery/profile` for mobile profile)  
+**Files:** `delivery.routes.js`, `deliveryProfile.routes.js`
 
 ---
 
@@ -258,4 +299,4 @@ Path definitions live under `server/src/docs/*.paths.js`. Per-app filtered Swagg
 
 ---
 
-*Generated for internal reference; update this file when routes change.*
+*Update this file when routes change. Prefer narrative docs for request/response examples.*

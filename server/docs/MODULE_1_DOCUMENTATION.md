@@ -2,7 +2,14 @@
 
 ## Overview
 
-Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/version**. All auth is mobile OTP–based with no passwords. Implemented in `server/src/routes/auth.routes.js`, `server/src/controllers/auth.controller.js`, `server/src/services/auth.service.js`, and validated via `server/src/validations/auth.validation.js`.
+Module 1 covers **authentication** (mobile OTP, JWT, sessions), **device sessions**, **preferred language**, and **health/version**. Mobile login is OTP-based (no passwords). Portal dashboards use a separate email OTP flow — see [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md).
+
+| Layer | File |
+|-------|------|
+| Routes | `server/src/routes/auth.routes.js` |
+| Controller | `server/src/controllers/auth.controller.js`, `session.controller.js` |
+| Service | `auth.service.js`, `otp.service.js`, `msg91.service.js`, `token.service.js` |
+| Config | `server/src/config/env.js` · [ENV.md](ENV.md) |
 
 ---
 
@@ -12,12 +19,16 @@ Module 1 covers **authentication** (mobile OTP, JWT, sessions) and **health/vers
 |--------|----------|-------------|---------------|
 | GET | `/health` | Server health + version | No |
 | GET | `/api/version` | Get API version (for app/update checks) | No |
-| POST | `/api/auth/send-otp` | Send OTP to mobile number | No |
+| POST | `/api/auth/send-otp` | Create OTP; SMS via MSG91 or return OTP (dummy) | No |
 | POST | `/api/auth/verify-otp` | Verify OTP and check if user exists | No |
-| POST | `/api/auth/complete-profile` | Complete profile for new users | No |
+| POST | `/api/auth/complete-profile` | Complete profile for new users | No (`X-App-Source` required) |
 | POST | `/api/auth/refresh-token` | Refresh access token | No |
 | POST | `/api/auth/logout` | User logout | Yes (Bearer JWT) |
-| GET | `/api/auth/me` | Get current user | Yes (Bearer JWT) |
+| GET | `/api/auth/me` | Get current user | Yes |
+| GET | `/api/auth/sessions` | List active sessions (devices) | Yes |
+| DELETE | `/api/auth/sessions/:sessionId` | Revoke a session | Yes |
+| GET | `/api/auth/languages` | Supported Cobbler languages | No |
+| PUT | `/api/auth/language` | Update preferred language | Yes |
 
 ---
 
@@ -60,7 +71,12 @@ Returns current API version and package name. No authentication.
 
 **POST** `/api/auth/send-otp`
 
-Send OTP to the given mobile number. OTP is stored (hashed) and rate-limited. Mobile is normalized (e.g. `+91` prefix for India if not provided).
+Creates a phone OTP (stored hashed), then either:
+
+1. **SMS mode** — `USE_MSG91_SMS=true`: sends the code via MSG91 (`msg91.service.js`). Response does **not** include the OTP.
+2. **Dummy mode** — `USE_MSG91_SMS=false` (default until DLT is ready): skips SMS and returns `data.otp` so the mobile app can show the development popup.
+
+Mobile is normalized (`+91` if missing). Rate-limited (`otpSendRateLimiter`). Blocks if the number is already registered under a different app role (`X-App-Source`).
 
 **Request:**
 ```json
@@ -69,22 +85,36 @@ Send OTP to the given mobile number. OTP is stored (hashed) and rate-limited. Mo
 }
 ```
 
+**Headers (recommended):** `X-App-Source: USER_APP` (or `COBBER_APP`).
+
 **Validation:** `mobile` required, at least 10 digits, valid phone format.
 
-**Response (200):**
+**Response — SMS mode (200):**
 ```json
 {
   "success": true,
   "message": "OTP sent successfully",
   "data": {
-    "expiresIn": 600
+    "expiresIn": 300
   }
 }
 ```
 
-**Development only:** In `NODE_ENV=development`, `data` may include `otp` for testing.
+**Response — dummy mode (200):**
+```json
+{
+  "success": true,
+  "message": "OTP sent successfully",
+  "data": {
+    "expiresIn": 300,
+    "otp": "123456"
+  }
+}
+```
 
-**Notes:** Rate limited via `otpRateLimiter`. OTP expiry and max attempts configured in env (e.g. 10 min). Failed attempts are audit-logged.
+**Env:** see [ENV.md](ENV.md) — `USE_MSG91_SMS`, `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`, `OTP_EXPIRE_MINUTES`.
+
+**Errors:** `503` if SMS mode is on but MSG91 is not configured; `429` rate limit; `400` role conflict / validation; `502` MSG91 delivery failure.
 
 ---
 
@@ -256,12 +286,27 @@ Return the authenticated user. Requires valid JWT.
       "gender": "male",
       "role": "user",
       "isPhoneVerified": true,
-      "isActive": true,
-      ...
+      "isActive": true
     }
   }
 }
 ```
+
+---
+
+## 9. Manage devices (sessions)
+
+**GET** `/api/auth/sessions` — list active sessions for the user.  
+**DELETE** `/api/auth/sessions/:sessionId` — revoke one session.
+
+Both require `Authorization: Bearer <accessToken>`. Implemented in `session.controller.js`.
+
+---
+
+## 10. Languages (Cobbler)
+
+**GET** `/api/auth/languages` — public list of supported language codes.  
+**PUT** `/api/auth/language` — update preferred language (auth required). Body: `{ "preferredLanguage": "en" }` (or supported code).
 
 ---
 
@@ -305,19 +350,24 @@ Return the authenticated user. Requires valid JWT.
 
 ## Security & Config
 
-- OTP hashed (bcrypt), expiry (e.g. 10 min), max attempts (e.g. 5)
-- JWT: access (e.g. 7d), refresh (e.g. 30d)
-- Rate limiting on OTP and global
+- OTP hashed, expiry default **5 minutes**, max verify attempts **3** (`OTP_*` env)
+- JWT access default `5m`, refresh `7d` (override via env)
+- Rate limiting on send/verify OTP and global API limiter
 - CORS, Helmet, audit logging
+- Phone SMS: MSG91 when `USE_MSG91_SMS=true` (requires DLT-ready template in India)
 
-**Environment variables (examples):**
+Full env list: [ENV.md](ENV.md).
+
 ```env
 JWT_SECRET=your-secret-key
-JWT_EXPIRE=7d
-JWT_REFRESH_EXPIRE=30d
-OTP_EXPIRE_MINUTES=10
+JWT_EXPIRE=5m
+JWT_REFRESH_EXPIRE=7d
+OTP_EXPIRE_MINUTES=5
 OTP_LENGTH=6
-RATE_LIMIT_MAX_REQUESTS=100
+USE_MSG91_SMS=false
+# USE_MSG91_SMS=true
+# MSG91_AUTH_KEY=...
+# MSG91_TEMPLATE_ID=...
 ```
 
 ---
@@ -327,16 +377,17 @@ RATE_LIMIT_MAX_REQUESTS=100
 | Layer | File |
 |-------|------|
 | Routes | `server/src/routes/auth.routes.js` |
-| Controller | `server/src/controllers/auth.controller.js` |
-| Service | `server/src/services/auth.service.js`, `server/src/services/token.service.js`, `server/src/services/otp.service.js` |
+| Controller | `server/src/controllers/auth.controller.js`, `session.controller.js` |
+| Service | `auth.service.js`, `otp.service.js`, `msg91.service.js`, `token.service.js` |
 | Validation | `server/src/validations/auth.validation.js` |
-| Models | `server/src/models/user.model.js`, `otp.model.js`, `session.model.js` |
-| Middleware | `server/src/middleware/auth.middleware.js`, `server/src/middleware/rateLimit.js` |
+| Models | `user.model.js`, `otp.model.js`, `session.model.js` |
+| Middleware | `auth.middleware.js`, `rateLimit.js`, `appSource.middleware.js` |
 | App mount | `server/src/app.js` — `/api/auth`, `/api/version`, `/health` |
 
 ## Related modules
 
-- **Module 2:** Profile rows created here via `complete-profile` → updated under `/api/user/profile`, `/api/cobbler/profile`, etc.
-- **Module 3–4:** Require `Authorization: Bearer <accessToken>` from this module.
+- **Module 2:** Profile rows created via `complete-profile` → `/api/user/profile`, `/api/cobbler/profile`, etc.
+- **Module 3–6:** Require `Authorization: Bearer <accessToken>` from this module.
+- **Admin portals:** [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) (email OTP, not phone MSG91).
 
-See also: [README.md](README.md), [API-CATALOG.md](API-CATALOG.md).
+See also: [README.md](README.md), [API-CATALOG.md](API-CATALOG.md), [ENV.md](ENV.md).

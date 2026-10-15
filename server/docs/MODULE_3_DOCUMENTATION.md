@@ -38,14 +38,17 @@ Module 3 manages **articles** — registered shoes tied to a customer (`ownerId`
 | `purchaseYear` | Number | 1900–2100; cannot be future year |
 | `materials` | `[{ type, percentage }]` | percentage 0–100 |
 | `condition` | enum | `excellent`, `good`, `fair`, `worn` (default `good`) |
+| `footwearType` | enum | `luxury` \| `everyday` (default `everyday`) — used by Sell My Pair racks |
 | `images` | `[String]` | Cloudinary HTTPS URLs |
+| `shoeSize` | Object / string | Optional size metadata |
 | `createdAt`, `updatedAt` | timestamps | |
 
-**Indexes:** `{ ownerId: 1, createdAt: -1 }`
+**Indexes:** `{ ownerId: 1, createdAt: -1 }`, `footwearType`
 
 **Business rules (controller):**
 - Rejects duplicate shoes for same owner (same brand, model, category, color, purchaseYear, condition)
 - On delete, attempts Cloudinary cleanup for each image URL
+- Sell My Pair listings must use an article whose `footwearType` matches the listing (`luxury` / `everyday`) — see [MODULE_6_SELL_MY_PAIR.md](MODULE_6_SELL_MY_PAIR.md)
 
 ---
 
@@ -178,8 +181,9 @@ Module 3 manages **articles** — registered shoes tied to a customer (`ownerId`
 | Consumer | Usage |
 |----------|--------|
 | Module 4 | `POST /api/service/create` requires valid `articleId` owned by user |
-| Sys-admin | `GET /api/sys-admin/articles`, `.../articles/by-owner` |
-| Mobile | `getmypair-mobile/gmp/docs/MODULE_3_ARTICLES.md` |
+| Module 6 | `POST /api/sell/listings` requires owned article + matching `footwearType` |
+| Masteradmin | `GET /api/masteradmin/articles` |
+| Mobile | My Rack + Sell My Pair selection |
 
 ---
 

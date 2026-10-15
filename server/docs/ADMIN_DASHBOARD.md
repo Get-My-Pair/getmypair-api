@@ -64,16 +64,30 @@ ADMIN_JWT_EXPIRE=12h
 
 ### Masteradmin — `/api/masteradmin`
 
-Auth, dashboard stats, users, articles, service requests, cobblers, delivery partners, payments, DB maintenance.
+Auth, dashboard stats, users, articles, **Sell My Pair listings review**, service requests, cobblers, delivery partners/members/jobs, repairshops users, payments, email templates, DB maintenance.
 
 Legacy alias (same router): `/api/sys-admin`.
 
+### Sell My Pair review (Masteradmin)
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | `/api/masteradmin/sell-listings` | Query: `status`, `footwearType` |
+| GET | `/api/masteradmin/sell-listings/:id` | Detail + proofs |
+| PATCH | `/api/masteradmin/sell-listings/:id/review` | Body: `{ status: "approved" \| "rejected", rejectReason? }` |
+
+Full request/response: [MODULE_6_SELL_MY_PAIR.md](MODULE_6_SELL_MY_PAIR.md).  
+React UI: `client/client` → `/masteradmin/sell-my-pair`.
+
 ### Repairshops — `/api/repairshops`
 
-Auth + payments only. Future store APIs are reserved (empty stubs in the route file).
+Auth, jobs, cobbler tooling, payments (see `repairshops.routes.js`).  
+Legacy alias: `/api/darkworkstore`.
 
 JWT payload: `{ type: 'admin_master', adminMasterId }` — separate from mobile `User` + `Session` auth.
 
 ## Note
 
 This is **not** the same as Retailer APIs (`/api/retailer` or legacy `/api/admin/profile/*`), which use the mobile **ADMIN** role and the standard `User` + session JWT.
+
+Phone login for User/Cobbler apps uses MSG91 / dummy OTP — see [MODULE_1_DOCUMENTATION.md](MODULE_1_DOCUMENTATION.md) and [ENV.md](ENV.md).
