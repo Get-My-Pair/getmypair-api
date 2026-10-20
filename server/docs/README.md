@@ -26,6 +26,7 @@ Delivery profile + portal APIs remain at `/api/delivery` (`/api-docs/delivery`) 
 | **Env** | Environment variables | [ENV.md](ENV.md) |
 | **AI** | WhatsApp GetMyPair AI | [GETMYPAIR_AI_WHATSAPP.md](GETMYPAIR_AI_WHATSAPP.md) |
 | **Admin** | Masteradmin / Repairshops portals | [ADMIN_DASHBOARD.md](ADMIN_DASHBOARD.md) |
+| **Delivery** | Delivery partner plan | [DELIVERY_PARTNER_PLAN.md](DELIVERY_PARTNER_PLAN.md) |
 
 ## Quick reference
 
