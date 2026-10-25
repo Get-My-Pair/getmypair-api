@@ -64,13 +64,12 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     // Create OTP with normalized mobile.
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // MSG91 SMS (enable with USE_MSG91_SMS=true after DLT Template ID is configured).
-    // Until then, skip SMS and return the OTP so the app can show the development popup.
+    // Production (USE_MSG91_SMS=true / NODE_ENV=production): deliver via MSG91, never echo OTP.
+    // Local dummy (USE_MSG91_SMS=false): skip SMS and return OTP for the app development popup.
     if (config.USE_MSG91_SMS) {
       await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
       logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
     } else {
-      // Dummy / no-DLT mode — OTP is returned in the API response (not SMS).
       logger.info(`Dummy OTP for mobile ${normalizedMobile}: ${otp} (USE_MSG91_SMS=false)`);
     }
 

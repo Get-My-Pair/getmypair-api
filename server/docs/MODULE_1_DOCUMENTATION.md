@@ -73,8 +73,8 @@ Returns current API version and package name. No authentication.
 
 Creates a phone OTP (stored hashed), then either:
 
-1. **SMS mode** — `USE_MSG91_SMS=true`: sends the code via MSG91 (`msg91.service.js`). Response does **not** include the OTP.
-2. **Dummy mode** — `USE_MSG91_SMS=false` (default until DLT is ready): skips SMS and returns `data.otp` so the mobile app can show the development popup.
+1. **SMS mode** — `USE_MSG91_SMS=true` (default when `NODE_ENV=production`): sends the code via MSG91 (`msg91.service.js`). Response does **not** include the OTP.
+2. **Dummy mode** — `USE_MSG91_SMS=false` (default in development): skips SMS and returns `data.otp` so the mobile app can show the development popup.
 
 Mobile is normalized (`+91` if missing). Rate-limited (`otpSendRateLimiter`). Blocks if the number is already registered under a different app role (`X-App-Source`).
 

@@ -48,11 +48,16 @@ const config = {
   RETURN_OTP_IN_RESPONSE: process.env.RETURN_OTP_IN_RESPONSE === 'true' || process.env.RETURN_OTP_IN_RESPONSE === '1',
   /**
    * Phone login SMS via MSG91.
-   * false (default until DLT is ready): skip SMS and return OTP in send-otp for the app popup.
    * true: send SMS via MSG91 and do not return the OTP in the API response.
-   * Flip to true once the MSG91 OTP template has a valid DLT Template ID.
+   * false: skip SMS and return OTP in send-otp for the app development popup.
+   * Default: enabled when NODE_ENV=production; set USE_MSG91_SMS=false for local dummy OTP.
    */
-  USE_MSG91_SMS: process.env.USE_MSG91_SMS === 'true' || process.env.USE_MSG91_SMS === '1',
+  USE_MSG91_SMS: (() => {
+    const raw = process.env.USE_MSG91_SMS;
+    if (raw === 'true' || raw === '1') return true;
+    if (raw === 'false' || raw === '0') return false;
+    return (process.env.NODE_ENV || 'development') === 'production';
+  })(),
   /** MSG91 auth key (Dashboard → API). Never return this to clients. */
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '579248A2Lz34OhFOf6ac5ef79P1',
   /** MSG91 OTP template id. Template must include the ##OTP## variable. */

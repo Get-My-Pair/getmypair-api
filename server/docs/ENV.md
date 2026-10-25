@@ -25,7 +25,7 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `OTP_EXPIRE_MINUTES` | `5` | OTP lifetime |
 | `OTP_LENGTH` | `6` | Digits |
 | `OTP_MAX_ATTEMPTS` | `3` | Verify attempts per OTP |
-| `USE_MSG91_SMS` | `false` | `true` / `1` → send SMS via MSG91; omit OTP from response. `false` → dummy mode: return `data.otp` for the app popup (use until DLT is ready) |
+| `USE_MSG91_SMS` | `true` in production, else `false` | `true` / `1` → send SMS via MSG91; omit OTP from response. `false` / `0` → dummy mode: return `data.otp` for the app popup. Unset → follows `NODE_ENV` |
 | `MSG91_AUTH_KEY` | *(empty unless set)* | MSG91 dashboard Authkey |
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | MSG91 OTP template id; template must include `##OTP##` |
 | `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing; phone login uses `USE_MSG91_SMS` instead |
@@ -92,10 +92,13 @@ JWT_REFRESH_SECRET=dev-refresh-secret
 USE_MSG91_SMS=false
 ```
 
-## Example production phone SMS (after DLT)
+## Example production phone SMS
 
 ```env
-USE_MSG91_SMS=true
+NODE_ENV=production
+# USE_MSG91_SMS defaults to true when NODE_ENV=production
 MSG91_AUTH_KEY=your_auth_key
 MSG91_TEMPLATE_ID=your_template_id
 ```
+
+On Render (or any host), set `NODE_ENV=production` and ensure `MSG91_AUTH_KEY` / `MSG91_TEMPLATE_ID` are set. Optionally set `USE_MSG91_SMS=true` explicitly.
