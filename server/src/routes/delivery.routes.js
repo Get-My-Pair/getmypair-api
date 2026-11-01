@@ -62,7 +62,7 @@ router.post(
 );
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 
-router.get('/hub-address', adminMasterAuth, hubSettingsController.getHub);
+router.get('/hub-address', adminMasterAuth, hubSettingsController.listHubs);
 
 router.get('/jobs', adminMasterAuth, deliveryJobsController.listJobs);
 router.get('/jobs/:id', adminMasterAuth, repairshopsJobIdValidation, deliveryJobsController.getJob);

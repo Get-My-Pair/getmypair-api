@@ -25,5 +25,11 @@ const geocodeController = require('../controllers/geocode.controller');
  */
 router.get('/reverse', geocodeController.reverse);
 
+/**
+ * Public forward geocode endpoint (address → lat/lng)
+ * GET /api/geocode/forward?q=...
+ */
+router.get('/forward', geocodeController.forward);
+
 module.exports = router;
 

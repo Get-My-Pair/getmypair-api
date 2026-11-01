@@ -29,6 +29,69 @@ if (!fetchFn) {
   }
 }
 
+async function nominatimFetch(url) {
+  if (!fetchFn) {
+    throw new Error('Fetch API not available. Install node-fetch or run on Node 18+');
+  }
+  const res = await fetchFn(url, {
+    headers: {
+      'User-Agent': 'getmypair-server/1.0 (contact@getmypair.example)',
+      Accept: 'application/json',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    logger.error(`Geocode provider responded ${res.status}: ${text}`);
+    throw new Error('Geocoding provider error');
+  }
+  return res.json();
+}
+
+async function forwardGeocode(query, { countrycodes = 'in' } = {}) {
+  const q = String(query || '').trim();
+  if (!q || q.length < 5) {
+    throw new Error('Enter a fuller address to look up coordinates');
+  }
+
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    q,
+    limit: '1',
+    addressdetails: '1',
+  });
+  if (countrycodes) params.set('countrycodes', countrycodes);
+
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+
+  try {
+    const data = await nominatimFetch(url);
+    const hit = Array.isArray(data) ? data[0] : null;
+    if (!hit) {
+      throw new Error('No coordinates found for that address');
+    }
+    const address = hit.address || {};
+    return {
+      displayName: hit.display_name || null,
+      houseNumber: address.house_number || null,
+      road: address.road || null,
+      neighbourhood: address.neighbourhood || null,
+      suburb: address.suburb || null,
+      city: address.city || address.town || address.village || address.hamlet || null,
+      county: address.county || null,
+      state: address.state || null,
+      postcode: address.postcode || null,
+      country: address.country || null,
+      countryCode: address.country_code || null,
+      lat: hit.lat != null ? Number(hit.lat) : null,
+      lon: hit.lon != null ? Number(hit.lon) : null,
+      raw: hit,
+    };
+  } catch (err) {
+    logger.error(`forwardGeocode error: ${err.message}`);
+    throw err;
+  }
+}
+
 async function reverseGeocode(lat, lon) {
   if (lat === undefined || lon === undefined) {
     throw new Error('lat and lon are required');
@@ -44,24 +107,8 @@ async function reverseGeocode(lat, lon) {
     latNum,
   )}&lon=${encodeURIComponent(lonNum)}&addressdetails=1`;
 
-  if (!fetchFn) {
-    throw new Error('Fetch API not available. Install node-fetch or run on Node 18+');
-  }
-
   try {
-    const res = await fetchFn(url, {
-      headers: {
-        'User-Agent': 'getmypair-server/1.0 (contact@getmypair.example)',
-      },
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      logger.error(`Geocode provider responded ${res.status}: ${text}`);
-      throw new Error('Geocoding provider error');
-    }
-
-    const data = await res.json();
+    const data = await nominatimFetch(url);
 
     const address = data.address || {};
     const location = {
@@ -91,5 +138,6 @@ async function reverseGeocode(lat, lon) {
 
 module.exports = {
   reverseGeocode,
+  forwardGeocode,
 };
 

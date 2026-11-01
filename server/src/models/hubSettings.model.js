@@ -1,20 +1,11 @@
 /**
- * Singleton hub (drop-off) address managed by Masteradmin.
- * Delivery members use this for Hub direction / maps.
+ * Hub drop-off locations managed by Masteradmin (multiple allowed).
+ * Delivery members use these for Hub direction / maps.
  */
 const mongoose = require('mongoose');
 
-const HUB_KEY = 'hub';
-
 const hubSettingsSchema = new mongoose.Schema(
   {
-    key: {
-      type: String,
-      required: true,
-      unique: true,
-      default: HUB_KEY,
-      immutable: true,
-    },
     name: {
       type: String,
       trim: true,
@@ -53,6 +44,11 @@ const hubSettingsSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'AdminMaster',
@@ -61,20 +57,5 @@ const hubSettingsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-hubSettingsSchema.statics.HUB_KEY = HUB_KEY;
-
-hubSettingsSchema.statics.getHub = async function getHub() {
-  let doc = await this.findOne({ key: HUB_KEY }).lean();
-  if (!doc) {
-    doc = (
-      await this.create({
-        key: HUB_KEY,
-        name: 'GetMyPair Hub',
-      })
-    ).toObject();
-  }
-  return doc;
-};
 
 module.exports = mongoose.model('HubSettings', hubSettingsSchema);

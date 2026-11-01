@@ -235,6 +235,7 @@ const hubAddressUpsertValidation = [
   body('notes').optional({ nullable: true }).trim(),
   body('lat').optional({ nullable: true }),
   body('lng').optional({ nullable: true }),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
   handleValidationErrors,
 ];
 

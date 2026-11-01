@@ -37,7 +37,24 @@ const reverse = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/geocode/forward?q=address
+ */
+const forward = async (req, res) => {
+  try {
+    const q = String(req.query.q || req.query.address || '').trim();
+    if (!q) return errorResponse(res, 'q (address) is required', 400);
+    const location = await geocodeService.forwardGeocode(q);
+    return success(res, 'Coordinates retrieved successfully', { location });
+  } catch (err) {
+    logger.error(`Geocode forward error: ${err.message}`);
+    const status = /No coordinates|fuller address/i.test(err.message) ? 404 : 500;
+    return errorResponse(res, err.message, status);
+  }
+};
+
 module.exports = {
   reverse,
+  forward,
 };
 

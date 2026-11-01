@@ -321,14 +321,21 @@ router.get(
   darkstorePaymentController.paymentNotifications
 );
 
-// Hub address (singleton drop-off location for delivery members)
-router.get('/hub-address', adminMasterAuth, hubSettingsController.getHub);
-router.put(
+// Hub addresses (multiple drop-off locations for delivery members)
+router.get('/hub-address', adminMasterAuth, hubSettingsController.listHubs);
+router.post(
   '/hub-address',
   adminMasterAuth,
   hubAddressUpsertValidation,
-  hubSettingsController.upsertHub
+  hubSettingsController.createHub
 );
+router.put(
+  '/hub-address/:id',
+  adminMasterAuth,
+  hubAddressUpsertValidation,
+  hubSettingsController.updateHub
+);
+router.delete('/hub-address/:id', adminMasterAuth, hubSettingsController.deleteHub);
 
 // DB maintenance
 router.get('/db/overview', adminMasterAuth, dbMaintenanceController.overview);
