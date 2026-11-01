@@ -3,6 +3,7 @@ const AuditLog = require('../models/auditLog.model');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
 const logger = require('../utils/logger');
+const config = require('../config/env');
 
 /**
  * Send OTP to mobile number
@@ -37,8 +38,8 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     // Create OTP with normalized mobile
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // TODO: Send OTP via SMS service
-    // For now, log it (in production, use SMS service)
+    // TODO: Send OTP via SMS service (MSG91). Until then, OTP is only available
+    // via server logs and (optionally) the API response for the app popup.
     logger.info(`OTP for mobile ${mobile}: ${otp}`);
 
     // Log audit event
@@ -51,9 +52,15 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
       details: { mobile: normalizedMobile, type: 'phone', purpose: 'login' },
     });
 
-    return {
+    const payload = {
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
+    // Testing only: include OTP in the response while SMS is not live.
+    // Set INCLUDE_OTP_IN_RESPONSE=false once MSG91/SMS is enabled.
+    if (config.INCLUDE_OTP_IN_RESPONSE) {
+      payload.otp = otp;
+    }
+    return payload;
   } catch (error) {
     logger.error(`Error sending OTP: ${error.message}`);
     throw error;

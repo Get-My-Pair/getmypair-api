@@ -15,9 +15,15 @@ const sendOTP = async (req, res) => {
 
     const result = await authService.sendOTP(mobile, ipAddress, userAgent);
 
-    return success(res, t('otp_sent', req.locale), {
+    const data = {
       expiresIn: result.expiresIn,
-    });
+    };
+    // Included when INCLUDE_OTP_IN_RESPONSE is enabled (default until SMS is live).
+    if (result.otp) {
+      data.otp = result.otp;
+    }
+
+    return success(res, t('otp_sent', req.locale), data);
   } catch (err) {
     const AuditLog = require('../models/auditLog.model');
     // Log failed OTP send attempt

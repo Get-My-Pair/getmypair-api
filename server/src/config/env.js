@@ -10,6 +10,9 @@ const config = {
   JWT_REFRESH_EXPIRE: process.env.JWT_REFRESH_EXPIRE || '7d',
   OTP_EXPIRE_MINUTES: parseInt(process.env.OTP_EXPIRE_MINUTES) || 10,
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH) || 6,
+  // No SMS provider yet — return OTP in API response so mobile/web can show a
+  // development popup. Set INCLUDE_OTP_IN_RESPONSE=false once MSG91/SMS is live.
+  INCLUDE_OTP_IN_RESPONSE: process.env.INCLUDE_OTP_IN_RESPONSE !== 'false',
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
   SMTP_USER: process.env.SMTP_USER || '',
