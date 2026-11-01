@@ -162,7 +162,7 @@ const ACTIONS = {
   },
   picked_up: {
     requireType: 'pickup',
-    from: ['pickup_scheduled', 'request_created'],
+    from: ['pickup_scheduled', 'request_created', 'pending', null, ''],
     trackingState: 'item_picked',
     workflowStatus: 'PICKUP_SCHEDULED',
     note: 'Footwear picked up from customer',
@@ -172,7 +172,7 @@ const ACTIONS = {
     from: ['item_picked'],
     trackingState: 'dark_store_received',
     workflowStatus: 'IN_PROGRESS',
-    note: 'Dropped at Repairshops',
+    note: 'Dropped at hub / Repairshops',
   },
   collect_from_store: {
     requireType: 'return',
@@ -238,19 +238,35 @@ const updateStatus = async (req, res) => {
       }
       if (
         claimType === 'pickup' &&
-        (!request.trackingState || request.trackingState === 'request_created')
+        (!request.trackingState ||
+          request.trackingState === 'request_created' ||
+          request.trackingState === 'pending')
       ) {
         workflow.applyTracking(request, 'pickup_scheduled', { workflowStatus: 'PICKUP_SCHEDULED' });
       }
     }
 
-    if (spec.requireType && request.deliveryAssignmentType !== spec.requireType) {
+    // Collect can set/repair missing pickup assignment type for this rider.
+    if (
+      action === 'picked_up' &&
+      isMine &&
+      (!request.deliveryAssignmentType || request.deliveryAssignmentType === 'pickup')
+    ) {
+      request.deliveryAssignmentType = 'pickup';
+    }
+
+    if (
+      spec.requireType &&
+      request.deliveryAssignmentType &&
+      request.deliveryAssignmentType !== spec.requireType
+    ) {
       return errorResponse(res, `This action is only for ${spec.requireType} jobs`, 400);
     }
-    if (spec.from && !spec.from.includes(request.trackingState)) {
+    const stateNow = request.trackingState || '';
+    if (spec.from && !spec.from.includes(stateNow) && !(spec.from.includes(null) && !stateNow)) {
       return errorResponse(
         res,
-        `Job is ${request.trackingState}; ${action} is not allowed yet`,
+        `Job is ${request.trackingState || 'new'}; ${action} is not allowed yet`,
         400
       );
     }

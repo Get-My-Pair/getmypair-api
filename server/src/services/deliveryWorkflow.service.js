@@ -7,6 +7,9 @@ const User = require('../models/user.model');
 const UserProfile = require('../models/userProfile.model');
 const Article = require('../models/article.model');
 const AdminMaster = require('../models/adminMaster.model');
+const HubSettings = require('../models/hubSettings.model');
+const { forwardGeocode } = require('./geocode.service');
+const logger = require('../utils/logger');
 
 const TRACKING_TO_STATUS = {
   request_created: 'pending',
@@ -65,6 +68,56 @@ function haversineKm(aLat, aLng, bLat, bLng) {
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+/** Reject null-island / garbage coords that produce ~9000km distances. */
+function isValidMapCoord(lat, lng) {
+  const a = Number(lat);
+  const b = Number(lng);
+  if (![a, b].every((n) => Number.isFinite(n))) return false;
+  if (Math.abs(a) < 0.001 && Math.abs(b) < 0.001) return false;
+  if (Math.abs(a) > 90 || Math.abs(b) > 180) return false;
+  return true;
+}
+
+function isIndiaCoord(lat, lng) {
+  const a = Number(lat);
+  const b = Number(lng);
+  return a >= 6 && a <= 37.5 && b >= 68 && b <= 98;
+}
+
+function normalizeCoord(lat, lng) {
+  if (!isValidMapCoord(lat, lng)) return null;
+  return { lat: Number(lat), lng: Number(lng) };
+}
+
+function roundKm(km) {
+  if (km == null || !Number.isFinite(km)) return null;
+  // City logistics: hide absurd cross-continent distances from bad GPS.
+  if (km > 2500) return null;
+  return Math.round(km * 10) / 10;
+}
+
+const geocodeMemo = new Map();
+
+async function geocodeQuery(query) {
+  const key = String(query || '')
+    .trim()
+    .toLowerCase();
+  if (!key || key.length < 6) return null;
+  if (geocodeMemo.has(key)) return geocodeMemo.get(key);
+  try {
+    const loc = await forwardGeocode(query, { countrycodes: 'in' });
+    const point = normalizeCoord(loc.lat, loc.lon);
+    geocodeMemo.set(key, point);
+    // Nominatim fair-use: ~1 req/sec
+    await new Promise((r) => setTimeout(r, 1100));
+    return point;
+  } catch (err) {
+    logger.warn(`Pickup geocode failed for "${query}": ${err.message}`);
+    geocodeMemo.set(key, null);
+    return null;
+  }
+}
+
 function paidConfirmedFilter(extra = {}) {
   return {
     status: { $nin: ['cancelled', 'completed'] },
@@ -94,12 +147,53 @@ function pickupReadyFilter(storeId) {
 }
 
 function pickupAssignedFilter(memberId) {
+  // Active pickups for this rider — including after collect (go to hub next).
   return {
-    deliveryMemberId: memberId,
-    deliveryAssignmentType: 'pickup',
     status: { $nin: ['cancelled', 'completed'] },
-    trackingState: { $in: ['pickup_scheduled', 'item_picked'] },
+    $or: [
+      {
+        deliveryMemberId: memberId,
+        deliveryAssignmentType: 'pickup',
+        trackingState: { $in: ['pickup_scheduled', 'item_picked', 'request_created'] },
+      },
+      {
+        deliveryMemberId: memberId,
+        trackingState: 'item_picked',
+      },
+    ],
   };
+}
+
+function formatHubLine(hub) {
+  return [hub.address, hub.city, hub.state, hub.pincode].filter(Boolean).join(', ');
+}
+
+function pickNearestHub(hubs, fromLat, fromLng) {
+  if (!hubs.length) return null;
+  const from = normalizeCoord(fromLat, fromLng);
+  let best = null;
+  for (const hub of hubs) {
+    const line = formatHubLine(hub);
+    const hubPoint = normalizeCoord(hub.lat, hub.lng);
+    const distanceKm =
+      from && hubPoint ? roundKm(haversineKm(from.lat, from.lng, hubPoint.lat, hubPoint.lng)) : null;
+    const candidate = {
+      _id: String(hub._id),
+      name: hub.name || 'GetMyPair Hub',
+      line,
+      lat: hubPoint?.lat ?? null,
+      lng: hubPoint?.lng ?? null,
+      notes: hub.notes || '',
+      distanceKm,
+    };
+    if (!best) {
+      best = candidate;
+      continue;
+    }
+    if (candidate.distanceKm == null) continue;
+    if (best.distanceKm == null || candidate.distanceKm < best.distanceKm) best = candidate;
+  }
+  return best;
 }
 
 function returnReadyFilter(storeId) {
@@ -175,7 +269,7 @@ async function enrichDeliveryJobs(requests, origin = null) {
   ];
   const storeIds = [...new Set(requests.map((r) => String(r.darkStoreId || '')).filter(Boolean))];
 
-  const [users, profiles, articles, members, stores] = await Promise.all([
+  const [users, profiles, articles, members, stores, hubs] = await Promise.all([
     userIds.length ? User.find({ _id: { $in: userIds } }).select('name mobile email location').lean() : [],
     userIds.length
       ? UserProfile.find({ userId: { $in: userIds } }).select('userId name phone addresses').lean()
@@ -193,6 +287,9 @@ async function enrichDeliveryJobs(requests, origin = null) {
           .select('name storeName address city state pincode lastLat lastLng')
           .lean()
       : [],
+    HubSettings.find({ isActive: { $ne: false } })
+      .select('name address city state pincode lat lng notes')
+      .lean(),
   ]);
 
   const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
@@ -200,28 +297,81 @@ async function enrichDeliveryJobs(requests, origin = null) {
   const articleMap = Object.fromEntries(articles.map((a) => [String(a._id), a]));
   const memberMap = Object.fromEntries(members.map((m) => [String(m._id), m]));
   const storeMap = Object.fromEntries(stores.map((s) => [String(s._id), s]));
+  let activeHubs = Array.isArray(hubs) ? hubs : [];
 
-  const mapped = requests.map((r) => {
+  // Geocode hubs missing valid lat/lng (once per enrich call).
+  for (const hub of activeHubs) {
+    if (normalizeCoord(hub.lat, hub.lng)) continue;
+    const line = formatHubLine(hub);
+    if (!line) continue;
+    const point = await geocodeQuery(line);
+    if (point) {
+      hub.lat = point.lat;
+      hub.lng = point.lng;
+    }
+  }
+
+  const draft = requests.map((r) => {
     const user = userMap[String(r.userId)] || null;
     const profile = profileMap[String(r.userId)] || null;
     const addresses = profile?.addresses || [];
     const pickupAddress =
       addresses.find((a) => String(a._id) === String(r.addressId)) || addresses[0] || null;
-    const lat =
-      pickupAddress?.lat ??
-      pickupAddress?.location?.lat ??
-      user?.location?.lat ??
-      null;
-    const lng =
-      pickupAddress?.lng ??
-      pickupAddress?.location?.lng ??
-      user?.location?.lng ??
-      null;
-    const store = r.darkStoreId ? storeMap[String(r.darkStoreId)] || null : null;
-    const distanceKm = origin ? haversineKm(origin.lat, origin.lng, lat, lng) : null;
     const addressLine = pickupAddress
       ? formatAddress(pickupAddress)
       : user?.location?.address || '';
+    const rawPoint = normalizeCoord(
+      pickupAddress?.lat ?? pickupAddress?.location?.lat ?? user?.location?.lat,
+      pickupAddress?.lng ?? pickupAddress?.location?.lng ?? user?.location?.lng
+    );
+    // Prefer India-plausible stored coords; otherwise geocode the address text.
+    const storedOk = rawPoint && isIndiaCoord(rawPoint.lat, rawPoint.lng) ? rawPoint : null;
+    return {
+      r,
+      user,
+      profile,
+      pickupAddress,
+      addressLine,
+      storedOk,
+      needsGeocode: !storedOk && Boolean(addressLine),
+    };
+  });
+
+  const uniqueQueries = [
+    ...new Set(draft.filter((d) => d.needsGeocode).map((d) => d.addressLine)),
+  ];
+  const geocoded = new Map();
+  for (const q of uniqueQueries.slice(0, 8)) {
+    geocoded.set(q, await geocodeQuery(q));
+  }
+
+  const originOk = origin && normalizeCoord(origin.lat, origin.lng);
+
+  const mapped = draft.map((d) => {
+    const { r, user, profile, pickupAddress, addressLine, storedOk } = d;
+    const geocodedPoint = addressLine ? geocoded.get(addressLine) : null;
+    const pickupPoint = storedOk || geocodedPoint || null;
+    const lat = pickupPoint?.lat ?? null;
+    const lng = pickupPoint?.lng ?? null;
+    const store = r.darkStoreId ? storeMap[String(r.darkStoreId)] || null : null;
+
+    let distanceKm = null;
+    if (originOk && pickupPoint) {
+      // Only show rider→pickup km when both points look like the same region
+      // (avoids 8000km+ when browser GPS is wrong / abroad).
+      const bothIndia =
+        isIndiaCoord(originOk.lat, originOk.lng) && isIndiaCoord(pickupPoint.lat, pickupPoint.lng);
+      if (bothIndia || (!isIndiaCoord(originOk.lat, originOk.lng) && !isIndiaCoord(pickupPoint.lat, pickupPoint.lng))) {
+        distanceKm = roundKm(haversineKm(originOk.lat, originOk.lng, pickupPoint.lat, pickupPoint.lng));
+      }
+    }
+
+    // Nearest drop hub = pickup address → hub (not rider live location).
+    const nearestHub = pickNearestHub(activeHubs, lat, lng);
+    const hubKm = nearestHub?.distanceKm ?? null;
+    const totalKm =
+      distanceKm != null && hubKm != null ? roundKm(distanceKm + hubKm) : hubKm ?? distanceKm;
+
     return {
       ...r,
       user: user
@@ -239,7 +389,7 @@ async function enrichDeliveryJobs(requests, origin = null) {
           }
         : null,
       pickupLocationLabel: addressLine || 'Pickup location not set',
-      pickupGeo: lat != null && lng != null ? { lat, lng } : null,
+      pickupGeo: pickupPoint,
       orderCode: String(r._id).slice(-8).toUpperCase(),
       store: store
         ? {
@@ -247,19 +397,28 @@ async function enrichDeliveryJobs(requests, origin = null) {
             address: [store.address, store.city, store.state, store.pincode].filter(Boolean).join(', '),
           }
         : { name: r.darkStoreName || 'Repairshops', address: '' },
-      distanceKm: distanceKm == null ? null : Math.round(distanceKm * 10) / 10,
+      distanceKm,
+      nearestHub,
+      hubDistanceKm: hubKm,
+      totalKm,
       isUnassigned: !r.deliveryMemberId,
     };
   });
 
-  if (origin) {
-    mapped.sort((a, b) => {
-      if (a.distanceKm == null && b.distanceKm == null) return 0;
-      if (a.distanceKm == null) return 1;
-      if (b.distanceKm == null) return -1;
-      return a.distanceKm - b.distanceKm;
-    });
-  }
+  mapped.sort((a, b) => {
+    const aKey =
+      a.trackingState === 'item_picked'
+        ? a.hubDistanceKm ?? a.distanceKm
+        : a.distanceKm ?? a.hubDistanceKm;
+    const bKey =
+      b.trackingState === 'item_picked'
+        ? b.hubDistanceKm ?? b.distanceKm
+        : b.distanceKm ?? b.hubDistanceKm;
+    if (aKey == null && bKey == null) return 0;
+    if (aKey == null) return 1;
+    if (bKey == null) return -1;
+    return aKey - bKey;
+  });
   return mapped;
 }
 
