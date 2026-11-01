@@ -23,6 +23,19 @@ const errorHandler = (err, req, res, next) => {
   let message = err.message || 'Internal Server Error';
   let errorDetails = null;
 
+  // body-parser: invalid JSON (e.g. {mobile: "…"} without quoted keys, or single quotes)
+  if (
+    err instanceof SyntaxError ||
+    err.type === 'entity.parse.failed' ||
+    (typeof err.message === 'string' &&
+      err.message.includes('JSON') &&
+      (err.status === 400 || err.statusCode === 400))
+  ) {
+    statusCode = 400;
+    message =
+      'Invalid JSON body. Use Content-Type: application/json with double-quoted keys, e.g. {"mobile":"+919876543210"}';
+  }
+
   // Mongoose validation error
   if (err.name === 'ValidationError') {
     statusCode = 400;

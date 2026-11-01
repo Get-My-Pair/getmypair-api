@@ -48,6 +48,9 @@ const path = require('path');
 
 const app = express();
 
+// Render / reverse proxies: real client IP on req.ip (avoids logging ::1 for every request)
+app.set('trust proxy', 1);
+
 /**
  * CORS: Flutter web (localhost / hosted) calls this API cross-origin with cookies-like flows.
  * `credentials: true` cannot be combined with `origin: '*'` in the static cors config — browsers block it.
