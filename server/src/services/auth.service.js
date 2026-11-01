@@ -80,8 +80,15 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     const isProduction = config.NODE_ENV === 'production';
     const useSms = config.USE_MSG91_SMS || (isProduction && msg91Service.isConfigured());
     if (useSms) {
-      await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
-      logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
+      const smsResult = await msg91Service.sendOtpSms({
+        mobile: normalizedMobile,
+        otp,
+      });
+      // Accepted by MSG91 only — handset delivery is in MSG91 OTP Logs (DLT/Pending/Failed).
+      logger.info(
+        `OTP SMS sent for mobile ${normalizedMobile}` +
+          (smsResult?.requestId ? ` request_id=${smsResult.requestId}` : '')
+      );
     } else {
       logger.info(`Dummy OTP for mobile ${normalizedMobile}: ${otp} (USE_MSG91_SMS=false)`);
     }

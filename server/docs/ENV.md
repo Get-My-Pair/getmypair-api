@@ -39,6 +39,8 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 
 India DLT: MSG91 template must have an approved DLT Template ID + sender ID, or SMS stays Pending.
 
+**API `200` / “OTP SMS sent” ≠ SMS on the handset.** MSG91 may accept the request (`type: success` + `request_id`) while delivery is Pending/Failed (DLT mapping, sender ID, template mismatch, operator). Check **MSG91 → OTP → Logs** for that `request_id` or mobile (`91XXXXXXXXXX`).
+
 ## Portal email OTP (Masteradmin / Repairshops)
 
 | Variable | Default | Notes |
