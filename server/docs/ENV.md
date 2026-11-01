@@ -30,7 +30,7 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `MSG91_FLOW_ID` | *(empty unless set)* | MSG91 **SMS Flow / Template** id (SMS → Templates). Preferred. |
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | Legacy alias for flow id if `MSG91_FLOW_ID` is unset |
 | `MSG91_SENDER_ID` | *(empty)* | Optional; only if the flow sender is FromAPI |
-| `MSG91_OTP_VAR` | `OTP` | Flow variable name for the code (`##OTP##` → `OTP`). Case-sensitive. |
+| `MSG91_OTP_VAR` | `OTP` | Flow variable name for the code (`##OTP##` → `OTP`). Case-sensitive. Comma-separated allowed (`OTP,VAR1`). App also sends common aliases (`OTP`, `VAR1`, …) so the code is not blank. |
 | `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing; phone login uses `USE_MSG91_SMS` instead |
 
 ### Phone OTP behaviour

@@ -66,22 +66,43 @@ async function sendOtpSms({ mobile, otp }) {
   }
 
   const otpCode = String(otp);
-  const varName = String(config.MSG91_OTP_VAR || 'OTP').trim() || 'OTP';
   const sender = String(config.MSG91_SENDER_ID || '').trim();
 
-  const recipient = {
-    mobiles: msg91Mobile,
-    [varName]: otpCode,
-  };
+  // Template var must match the Flow exactly (##OTP## → OTP, ##VAR1## → VAR1).
+  // Send common aliases so a mismatched name does not leave a blank code in the SMS.
+  const configuredVars = String(config.MSG91_OTP_VAR || 'OTP')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const otpVarNames = [
+    ...new Set([
+      ...configuredVars,
+      'OTP',
+      'otp',
+      'VAR1',
+      'var1',
+      'Var1',
+    ]),
+  ];
+
+  const recipient = { mobiles: msg91Mobile };
+  for (const name of otpVarNames) {
+    recipient[name] = otpCode;
+  }
 
   const payload = {
     flow_id: flowId(),
+    short_url: '0',
     recipients: [recipient],
   };
   // Only when the flow sender is "FromAPI".
   if (sender) {
     payload.sender = sender;
   }
+
+  logger.info(
+    `MSG91 Flow SMS request mobile=${msg91Mobile} flow_id=${flowId()} vars=${otpVarNames.join(',')}`
+  );
 
   const response = await fetchFn('https://api.msg91.com/api/v5/flow/', {
     method: 'POST',
