@@ -10,3 +10,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Phone OTP SMS for APK / real devices. Dummy OTP popup is for local/Chrome only.
+      - key: USE_MSG91_SMS
+        value: "true"

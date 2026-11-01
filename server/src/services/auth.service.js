@@ -30,6 +30,20 @@ const config = require('../config/env');
 const logger = require('../utils/logger');
 
 /**
+ * Normalize phone to E.164-ish `+91…` for India.
+ * Accepts `8682851249`, `918682851249`, `+918682851249`.
+ */
+const normalizePhoneMobile = (mobile) => {
+  const raw = String(mobile || '').trim();
+  if (!raw) return raw;
+  if (raw.startsWith('+')) return raw;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  return `+91${digits}`;
+};
+
+/**
  * Send OTP to mobile number
  * @param {String} mobile - User mobile number
  * @param {String} ipAddress - IP address
@@ -39,10 +53,7 @@ const logger = require('../utils/logger');
 const sendOTP = async (mobile, ipAddress, userAgent) => {
   try {
     // Normalize mobile number format (ensure consistency)
-    let normalizedMobile = mobile;
-    if (mobile && !mobile.startsWith('+')) {
-      normalizedMobile = '+91' + mobile; // Default to India +91
-    }
+    let normalizedMobile = normalizePhoneMobile(mobile);
 
     // Check rate limit
     const rateLimitExceeded = await otpService.checkRateLimit(null, normalizedMobile, 'phone');
@@ -64,9 +75,11 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     // Create OTP with normalized mobile.
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // Production (USE_MSG91_SMS=true / NODE_ENV=production): deliver via MSG91, never echo OTP.
-    // Local dummy (USE_MSG91_SMS=false): skip SMS and return OTP for the app development popup.
-    if (config.USE_MSG91_SMS) {
+    // Production always delivers via MSG91 and never echoes OTP (APK / real devices).
+    // Local/dev dummy (USE_MSG91_SMS=false, non-production): return OTP for Chrome popup.
+    const isProduction = config.NODE_ENV === 'production';
+    const useSms = config.USE_MSG91_SMS || (isProduction && msg91Service.isConfigured());
+    if (useSms) {
       await msg91Service.sendOtpSms({ mobile: normalizedMobile, otp });
       logger.info(`OTP SMS sent for mobile ${normalizedMobile}`);
     } else {
@@ -84,13 +97,13 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
         mobile: normalizedMobile,
         type: 'phone',
         purpose: 'login',
-        delivery: config.USE_MSG91_SMS ? 'msg91' : 'dummy',
+        delivery: useSms ? 'msg91' : 'dummy',
       },
     });
 
     return {
-      // Only included in dummy mode so the app can show the code.
-      otp: config.USE_MSG91_SMS ? undefined : otp,
+      // Never echo OTP in production. Dummy mode only outside production.
+      otp: useSms || isProduction ? undefined : otp,
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {
@@ -111,10 +124,7 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
 const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
   try {
     // Normalize mobile number format (ensure consistency)
-    let normalizedMobile = mobile;
-    if (mobile && !mobile.startsWith('+')) {
-      normalizedMobile = '+91' + mobile; // Default to India +91
-    }
+    let normalizedMobile = normalizePhoneMobile(mobile);
 
     // Verify OTP
     const verification = await otpService.verifyOTP(null, normalizedMobile, otp, 'phone');
@@ -247,10 +257,7 @@ const completeProfile = async (
     }
 
     // Normalize mobile number format
-    let normalizedMobile = mobile;
-    if (mobile && !mobile.startsWith('+')) {
-      normalizedMobile = '+91' + mobile; // Default to India +91
-    }
+    let normalizedMobile = normalizePhoneMobile(mobile);
 
     // Check if user already exists (try both formats)
     let existingUser = await User.findOne({ mobile: normalizedMobile });

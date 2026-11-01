@@ -25,7 +25,7 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `OTP_EXPIRE_MINUTES` | `5` | OTP lifetime |
 | `OTP_LENGTH` | `6` | Digits |
 | `OTP_MAX_ATTEMPTS` | `3` | Verify attempts per OTP |
-| `USE_MSG91_SMS` | `true` in production, else `false` | `true` / `1` → send SMS via MSG91; omit OTP from response. `false` / `0` → dummy mode: return `data.otp` for the app popup. Unset → follows `NODE_ENV` |
+| `USE_MSG91_SMS` | `true` in production, else `false` | `true` / `1` → send SMS via MSG91; omit OTP from response. `false` / `0` → dummy mode (local/Chrome only): return `data.otp` for the app popup. Unset → follows `NODE_ENV`. In `NODE_ENV=production`, OTP is never returned and SMS is used when MSG91 keys are configured (even if this was wrongly set to `false`). |
 | `MSG91_AUTH_KEY` | *(empty unless set)* | MSG91 dashboard Authkey |
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | MSG91 OTP template id; template must include `##OTP##` |
 | `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing; phone login uses `USE_MSG91_SMS` instead |
@@ -81,7 +81,7 @@ See [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md) and [ZOHO_OAUTH_SETUP.md](ZOHO_OA
 | `SETTLEMENT_SCHEDULER_INTERVAL_MS` | Default 1 hour |
 | `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX_REQUESTS` | Global API limiter |
 
-## Example `.env` (local phone login without SMS)
+## Example `.env` (SMS OTP via MSG91)
 
 ```env
 NODE_ENV=development
@@ -89,16 +89,18 @@ PORT=3000
 MONGODB_URI=mongodb+srv://...
 JWT_SECRET=dev-secret
 JWT_REFRESH_SECRET=dev-refresh-secret
-USE_MSG91_SMS=false
+USE_MSG91_SMS=true
+MSG91_AUTH_KEY=your_auth_key
+MSG91_TEMPLATE_ID=your_template_id
 ```
 
 ## Example production phone SMS
 
 ```env
 NODE_ENV=production
-# USE_MSG91_SMS defaults to true when NODE_ENV=production
+USE_MSG91_SMS=true
 MSG91_AUTH_KEY=your_auth_key
 MSG91_TEMPLATE_ID=your_template_id
 ```
 
-On Render (or any host), set `NODE_ENV=production` and ensure `MSG91_AUTH_KEY` / `MSG91_TEMPLATE_ID` are set. Optionally set `USE_MSG91_SMS=true` explicitly.
+On Render (or any host), set `NODE_ENV=production`, `USE_MSG91_SMS=true`, and ensure `MSG91_AUTH_KEY` / `MSG91_TEMPLATE_ID` are set.

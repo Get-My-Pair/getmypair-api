@@ -36,8 +36,19 @@ const sendOTP = async (req, res) => {
 
     // Normalize mobile (match auth.service sendOTP logic)
     let normalizedMobile = mobile;
-    if (mobile && !mobile.startsWith('+')) {
-      normalizedMobile = '+91' + mobile;
+    if (mobile) {
+      const raw = String(mobile).trim();
+      if (raw.startsWith('+')) {
+        normalizedMobile = raw;
+      } else {
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length === 10) normalizedMobile = `+91${digits}`;
+        else if (digits.length === 12 && digits.startsWith('91')) {
+          normalizedMobile = `+${digits}`;
+        } else {
+          normalizedMobile = `+91${digits}`;
+        }
+      }
     }
 
     // If this mobile already belongs to a user with a different app role,
