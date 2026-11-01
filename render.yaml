@@ -14,4 +14,7 @@ services:
       - key: USE_MSG91_SMS
         value: "true"
       # Set these in the Render dashboard (do not commit secrets):
-      # MSG91_AUTH_KEY, MSG91_FLOW_ID (SMS template), optional MSG91_SENDER_ID / MSG91_OTP_VAR
+      # MSG91_AUTH_KEY, MSG91_FLOW_ID (SMS template with ##number##)
+      # MSG91_OTP_VAR=number  (optional MSG91_SENDER_ID)
+      - key: MSG91_OTP_VAR
+        value: number

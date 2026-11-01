@@ -68,20 +68,20 @@ async function sendOtpSms({ mobile, otp }) {
   const otpCode = String(otp);
   const sender = String(config.MSG91_SENDER_ID || '').trim();
 
-  // Template var must match the Flow exactly (##OTP## → OTP, ##VAR1## → VAR1).
-  // Send common aliases so a mismatched name does not leave a blank code in the SMS.
-  const configuredVars = String(config.MSG91_OTP_VAR || 'OTP')
+  // Template var must match the Flow exactly (##number## → number).
+  // Also send common aliases so older templates still fill the code.
+  const configuredVars = String(config.MSG91_OTP_VAR || 'number')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
   const otpVarNames = [
     ...new Set([
       ...configuredVars,
+      'number',
       'OTP',
       'otp',
       'VAR1',
       'var1',
-      'Var1',
     ]),
   ];
 

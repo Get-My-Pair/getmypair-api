@@ -73,10 +73,10 @@ const config = {
   /** Optional sender id when the flow uses FromAPI. Otherwise set on the flow. */
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID || '',
   /**
-   * Variable name inside the Flow template for the login code (##OTP## → OTP).
+   * Variable name inside the Flow template for the login code (##number## → number).
    * Must match the flow variable exactly (case-sensitive).
    */
-  MSG91_OTP_VAR: process.env.MSG91_OTP_VAR || 'OTP',
+  MSG91_OTP_VAR: process.env.MSG91_OTP_VAR || 'number',
   MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 

@@ -30,7 +30,7 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `MSG91_FLOW_ID` | *(empty unless set)* | MSG91 **SMS Flow / Template** id (SMS → Templates). Preferred. |
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | Legacy alias for flow id if `MSG91_FLOW_ID` is unset |
 | `MSG91_SENDER_ID` | *(empty)* | Optional; only if the flow sender is FromAPI |
-| `MSG91_OTP_VAR` | `OTP` | Flow variable name for the code (`##OTP##` → `OTP`). Case-sensitive. Comma-separated allowed (`OTP,VAR1`). App also sends common aliases (`OTP`, `VAR1`, …) so the code is not blank. |
+| `MSG91_OTP_VAR` | `number` | Flow variable name for the code (`##number##` → `number`). Case-sensitive. Comma-separated allowed. App also sends aliases (`number`, `OTP`, `VAR1`, …). |
 | `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing; phone login uses `USE_MSG91_SMS` instead |
 
 ### Phone OTP behaviour
@@ -97,7 +97,7 @@ JWT_REFRESH_SECRET=dev-refresh-secret
 USE_MSG91_SMS=true
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
-MSG91_OTP_VAR=OTP
+MSG91_OTP_VAR=number
 # MSG91_SENDER_ID=YOURHDR   # only if flow sender is FromAPI
 ```
 
@@ -108,7 +108,7 @@ NODE_ENV=production
 USE_MSG91_SMS=true
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
-MSG91_OTP_VAR=OTP
+MSG91_OTP_VAR=number
 ```
 
-On Render, set `NODE_ENV=production`, `USE_MSG91_SMS=true`, `MSG91_AUTH_KEY`, and `MSG91_FLOW_ID` (SMS template with `##OTP##`, DLT-mapped).
+On Render, set `NODE_ENV=production`, `USE_MSG91_SMS=true`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, and `MSG91_OTP_VAR=number` (template uses `##number##`, DLT-mapped).
