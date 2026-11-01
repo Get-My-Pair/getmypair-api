@@ -60,8 +60,23 @@ const config = {
   })(),
   /** MSG91 auth key (Dashboard → API). Never return this to clients. */
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '579248A2Lz34OhFOf6ac5ef79P1',
-  /** MSG91 OTP template id. Template must include the ##OTP## variable. */
+  /**
+   * MSG91 Flow / SMS template id (SMS → Templates). Preferred over OTP templates.
+   * Falls back to MSG91_TEMPLATE_ID when unset.
+   */
+  MSG91_FLOW_ID: process.env.MSG91_FLOW_ID || '',
+  /**
+   * Legacy alias for flow/template id. Prefer MSG91_FLOW_ID.
+   * Kept so existing Render env keeps working after switching to Flow SMS.
+   */
   MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID || '6ac5f1bbbfdc2cd1a6051a62',
+  /** Optional sender id when the flow uses FromAPI. Otherwise set on the flow. */
+  MSG91_SENDER_ID: process.env.MSG91_SENDER_ID || '',
+  /**
+   * Variable name inside the Flow template for the login code (##OTP## → OTP).
+   * Must match the flow variable exactly (case-sensitive).
+   */
+  MSG91_OTP_VAR: process.env.MSG91_OTP_VAR || 'OTP',
   MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 

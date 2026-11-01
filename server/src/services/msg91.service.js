@@ -1,10 +1,12 @@
 /**
- * MSG91 OTP SMS — sends the server-generated code. Verification stays in otp.service.
- * Docs: query params on /api/v5/otp (mobile, template_id, otp, …); body is for extra template vars.
- * https://control.msg91.com/api/v5/otp
+ * MSG91 transactional SMS via Flow API (not SendOTP).
+ * Server generates the login code; this service only delivers it as SMS.
+ * Verify stays in otp.service — never call MSG91 verify.
  *
- * "type":"success" only means MSG91 accepted the request — check OTP Logs in the
- * MSG91 dashboard for Delivered / Pending / Failed (India DLT is a common Pending cause).
+ * POST https://api.msg91.com/api/v5/flow/
+ * Docs: https://api.msg91.com/apidoc/textsms/send-sms-flow.php
+ *
+ * Dashboard: SMS → Templates/Flow (DLT-mapped). Logs: SMS → Logs (not OTP Logs).
  */
 const config = require('../config/env');
 const logger = require('../utils/logger');
@@ -19,11 +21,15 @@ if (!fetchFn) {
   }
 }
 
+/** Flow / SMS template id (MSG91_FLOW_ID or legacy MSG91_TEMPLATE_ID). */
+function flowId() {
+  return String(
+    config.MSG91_FLOW_ID || config.MSG91_TEMPLATE_ID || ''
+  ).trim();
+}
+
 function isConfigured() {
-  return Boolean(
-    String(config.MSG91_AUTH_KEY || '').trim() &&
-      String(config.MSG91_TEMPLATE_ID || '').trim()
-  );
+  return Boolean(String(config.MSG91_AUTH_KEY || '').trim() && flowId());
 }
 
 /** MSG91 expects country code + number, digits only (e.g. 9198xxxxxxxx). */
@@ -33,10 +39,14 @@ function toMsg91Mobile(mobile) {
   return digits;
 }
 
+/**
+ * Send login code via MSG91 Flow SMS.
+ * Template variable name defaults to OTP (##OTP## in the flow). Override with MSG91_OTP_VAR.
+ */
 async function sendOtpSms({ mobile, otp }) {
   if (!isConfigured()) {
     const err = new Error(
-      'SMS delivery is not configured. Set MSG91_AUTH_KEY and MSG91_TEMPLATE_ID.'
+      'SMS delivery is not configured. Set MSG91_AUTH_KEY and MSG91_FLOW_ID (or MSG91_TEMPLATE_ID).'
     );
     err.statusCode = 503;
     throw err;
@@ -56,29 +66,31 @@ async function sendOtpSms({ mobile, otp }) {
   }
 
   const otpCode = String(otp);
-  const otpExpiry = Number(config.OTP_EXPIRE_MINUTES) || 5;
-  const otpLength = Number(config.OTP_LENGTH) || 6;
-  const templateId = String(config.MSG91_TEMPLATE_ID).trim();
+  const varName = String(config.MSG91_OTP_VAR || 'OTP').trim() || 'OTP';
+  const sender = String(config.MSG91_SENDER_ID || '').trim();
 
-  // MSG91 Send OTP: mobile / template_id / otp belong in the query string.
-  const url = new URL('https://control.msg91.com/api/v5/otp');
-  url.searchParams.set('mobile', msg91Mobile);
-  url.searchParams.set('template_id', templateId);
-  url.searchParams.set('otp', otpCode);
-  url.searchParams.set('otp_length', String(otpLength));
-  url.searchParams.set('otp_expiry', String(otpExpiry));
-  // Prefer live operator response over a cached accept.
-  url.searchParams.set('realTimeResponse', '1');
+  const recipient = {
+    mobiles: msg91Mobile,
+    [varName]: otpCode,
+  };
 
-  const response = await fetchFn(url.toString(), {
+  const payload = {
+    flow_id: flowId(),
+    recipients: [recipient],
+  };
+  // Only when the flow sender is "FromAPI".
+  if (sender) {
+    payload.sender = sender;
+  }
+
+  const response = await fetchFn('https://api.msg91.com/api/v5/flow/', {
     method: 'POST',
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
       authkey: config.MSG91_AUTH_KEY,
     },
-    // Extra template variables only (##OTP## is filled from the otp query param).
-    body: JSON.stringify({}),
+    body: JSON.stringify(payload),
   });
 
   let body = {};
@@ -93,17 +105,24 @@ async function sendOtpSms({ mobile, otp }) {
 
   if (!succeeded) {
     logger.error(
-      `MSG91 OTP send failed (${response.status}): ${JSON.stringify(body)}`
+      `MSG91 Flow SMS failed (${response.status}): ${JSON.stringify(body)}`
     );
-    const err = new Error(body.message || 'Failed to send OTP SMS');
+    const err = new Error(body.message || 'Failed to send SMS');
     err.statusCode = response.status >= 400 && response.status < 500 ? 400 : 502;
     throw err;
   }
 
-  const requestId = body.request_id || body.requestId || null;
+  // Flow success payload: { type: "success", message: "<request_id>" }
+  const requestId =
+    body.request_id ||
+    body.requestId ||
+    (typeof body.message === 'string' && body.message.length < 64
+      ? body.message
+      : null);
+
   logger.info(
-    `MSG91 accepted OTP for ${msg91Mobile} request_id=${requestId || 'n/a'} ` +
-      `(API success ≠ handset delivery — check MSG91 OTP Logs / DLT)`
+    `MSG91 Flow SMS accepted for ${msg91Mobile} request_id=${requestId || 'n/a'} ` +
+      `(check MSG91 → SMS → Logs / DLT for handset delivery)`
   );
 
   return { requestId, raw: body };

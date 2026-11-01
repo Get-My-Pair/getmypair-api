@@ -84,9 +84,9 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
         mobile: normalizedMobile,
         otp,
       });
-      // Accepted by MSG91 only — handset delivery is in MSG91 OTP Logs (DLT/Pending/Failed).
+      // Accepted by MSG91 Flow only — handset delivery is in MSG91 SMS Logs (DLT/Pending/Failed).
       logger.info(
-        `OTP SMS sent for mobile ${normalizedMobile}` +
+        `Login SMS sent for mobile ${normalizedMobile}` +
           (smsResult?.requestId ? ` request_id=${smsResult.requestId}` : '')
       );
     } else {

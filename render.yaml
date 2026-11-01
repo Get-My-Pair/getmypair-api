@@ -10,6 +10,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Phone OTP SMS for APK / real devices. Dummy OTP popup is for local/Chrome only.
+      # Login code via MSG91 Flow SMS (not SendOTP). Dummy OTP popup is local/Chrome only.
       - key: USE_MSG91_SMS
         value: "true"
+      # Set these in the Render dashboard (do not commit secrets):
+      # MSG91_AUTH_KEY, MSG91_FLOW_ID (SMS template), optional MSG91_SENDER_ID / MSG91_OTP_VAR
