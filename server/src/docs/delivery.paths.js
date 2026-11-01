@@ -214,7 +214,7 @@ void 0;
  *     parameters:
  *       - in: query
  *         name: tab
- *         schema: { type: string, enum: [assigned, pickup, return, picked], example: assigned }
+ *         schema: { type: string, enum: [all, assigned, nearby, pickup, return, picked], example: all }
  *       - in: query
  *         name: status
  *         schema: { type: string }

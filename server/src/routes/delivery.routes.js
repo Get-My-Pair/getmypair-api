@@ -7,6 +7,7 @@ const router = express.Router();
 const adminMasterAuth = require('../middleware/adminMasterAuth.middleware');
 const adminDashboardController = require('../controllers/adminDashboard.controller');
 const deliveryJobsController = require('../controllers/deliveryJobs.controller');
+const hubSettingsController = require('../controllers/hubSettings.controller');
 const {
   adminLoginValidation,
   adminVerifyOtpValidation,
@@ -60,6 +61,8 @@ router.post(
   adminDashboardController.resetPassword
 );
 router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
+
+router.get('/hub-address', adminMasterAuth, hubSettingsController.getHub);
 
 router.get('/jobs', adminMasterAuth, deliveryJobsController.listJobs);
 router.get('/jobs/:id', adminMasterAuth, repairshopsJobIdValidation, deliveryJobsController.getJob);

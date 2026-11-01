@@ -226,6 +226,18 @@ const assignDeliveryValidation = [
   handleValidationErrors,
 ];
 
+const hubAddressUpsertValidation = [
+  body('name').optional({ nullable: true }).trim(),
+  body('address').trim().notEmpty().withMessage('Hub street address is required'),
+  body('city').optional({ nullable: true }).trim(),
+  body('state').optional({ nullable: true }).trim(),
+  body('pincode').optional({ nullable: true }).trim(),
+  body('notes').optional({ nullable: true }).trim(),
+  body('lat').optional({ nullable: true }),
+  body('lng').optional({ nullable: true }),
+  handleValidationErrors,
+];
+
 module.exports = {
   adminLoginValidation,
   adminVerifyOtpValidation,
@@ -254,4 +266,5 @@ module.exports = {
   deliveryMemberIdValidation,
   deliveryMemberUpdateValidation,
   assignDeliveryValidation,
+  hubAddressUpsertValidation,
 };

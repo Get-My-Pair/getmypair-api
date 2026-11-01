@@ -207,10 +207,21 @@ async function enrichDeliveryJobs(requests, origin = null) {
     const addresses = profile?.addresses || [];
     const pickupAddress =
       addresses.find((a) => String(a._id) === String(r.addressId)) || addresses[0] || null;
-    const lat = user?.location?.lat ?? null;
-    const lng = user?.location?.lng ?? null;
+    const lat =
+      pickupAddress?.lat ??
+      pickupAddress?.location?.lat ??
+      user?.location?.lat ??
+      null;
+    const lng =
+      pickupAddress?.lng ??
+      pickupAddress?.location?.lng ??
+      user?.location?.lng ??
+      null;
     const store = r.darkStoreId ? storeMap[String(r.darkStoreId)] || null : null;
     const distanceKm = origin ? haversineKm(origin.lat, origin.lng, lat, lng) : null;
+    const addressLine = pickupAddress
+      ? formatAddress(pickupAddress)
+      : user?.location?.address || '';
     return {
       ...r,
       user: user
@@ -220,15 +231,14 @@ async function enrichDeliveryJobs(requests, origin = null) {
           : null,
       article: articleMap[String(r.articleId)] || null,
       deliveryMember: r.deliveryMemberId ? memberMap[String(r.deliveryMemberId)] || null : null,
-      pickupAddress: pickupAddress
+      pickupAddress: addressLine
         ? {
-            line: formatAddress(pickupAddress),
-            city: pickupAddress.city || '',
-            pincode: pickupAddress.pincode || '',
+            line: addressLine,
+            city: pickupAddress?.city || '',
+            pincode: pickupAddress?.pincode || '',
           }
-        : user?.location?.address
-          ? { line: user.location.address, city: '', pincode: '' }
-          : null,
+        : null,
+      pickupLocationLabel: addressLine || 'Pickup location not set',
       pickupGeo: lat != null && lng != null ? { lat, lng } : null,
       orderCode: String(r._id).slice(-8).toUpperCase(),
       store: store
@@ -238,6 +248,7 @@ async function enrichDeliveryJobs(requests, origin = null) {
           }
         : { name: r.darkStoreName || 'Repairshops', address: '' },
       distanceKm: distanceKm == null ? null : Math.round(distanceKm * 10) / 10,
+      isUnassigned: !r.deliveryMemberId,
     };
   });
 

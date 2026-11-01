@@ -35,12 +35,14 @@ const {
   deliveryMemberIdValidation,
   deliveryMemberUpdateValidation,
   assignDeliveryValidation,
+  hubAddressUpsertValidation,
 } = require('../validations/adminDashboard.validation');
 const { adminLoginRateLimiter } = require('../middleware/rateLimit');
 const repairshopsUserController = require('../controllers/repairshopsUser.controller');
 const deliveryMemberController = require('../controllers/deliveryMember.controller');
 const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
 const sellListingController = require('../controllers/sellListing.controller');
+const hubSettingsController = require('../controllers/hubSettings.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -317,6 +319,15 @@ router.get(
   adminMasterAuth,
   darkstorePaymentQueryValidation,
   darkstorePaymentController.paymentNotifications
+);
+
+// Hub address (singleton drop-off location for delivery members)
+router.get('/hub-address', adminMasterAuth, hubSettingsController.getHub);
+router.put(
+  '/hub-address',
+  adminMasterAuth,
+  hubAddressUpsertValidation,
+  hubSettingsController.upsertHub
 );
 
 // DB maintenance

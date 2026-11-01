@@ -53,7 +53,7 @@ async function rememberLocation(req) {
 
 const listJobs = async (req, res) => {
   try {
-    const tab = String(req.query.tab || req.query.status || 'assigned').trim().toLowerCase();
+    const tab = String(req.query.tab || req.query.status || 'all').trim().toLowerCase();
     const q = String(req.query.q || '').trim();
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
@@ -70,9 +70,12 @@ const listJobs = async (req, res) => {
         trackingState: 'item_picked',
         status: { $nin: ['cancelled', 'completed'] },
       };
+    } else if (tab === 'nearby' || tab === 'available') {
+      // Unassigned pickups ready for a delivery member (with pickup locations).
+      filter = workflow.pickupReadyFilter(null);
     } else {
+      // All / assigned — every active service request (no assignment required).
       filter = {
-        deliveryMemberId: mid,
         status: { $nin: ['cancelled', 'completed'] },
       };
     }
@@ -94,6 +97,7 @@ const listJobs = async (req, res) => {
           row.article?.name,
           row.article?.brand,
           row.pickupAddress?.line,
+          row.pickupLocationLabel,
           row.store?.name,
           row.serviceType,
           row.orderCode,
@@ -119,7 +123,9 @@ const listJobs = async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
       origin,
       nearbyHint:
-        'Jobs are ordered nearest-first. After several pickups, drop the batch at the Repairshops.',
+        tab === 'nearby' || tab === 'available'
+          ? 'Open pickups with customer locations (nearest-first when live location is on).'
+          : 'All active service requests with pickup locations. Nearest-first when live location is on.',
     });
   } catch (err) {
     logger.error(`Delivery list jobs error: ${err.message}`);
@@ -131,9 +137,11 @@ const getJob = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return errorResponse(res, 'Invalid job id', 400);
+    const mid = memberId(req);
     const request = await workflow.ServiceRequest.findOne({
       _id: id,
-      deliveryMemberId: memberId(req),
+      status: { $nin: ['cancelled', 'completed'] },
+      $or: [{ deliveryMemberId: mid }, { deliveryMemberId: null }, { deliveryMemberId: { $exists: false } }],
     }).lean();
     if (!request) return notFound(res, 'Job not found');
     const [job] = await workflow.enrichDeliveryJobs([request]);
@@ -203,14 +211,39 @@ const updateStatus = async (req, res) => {
       );
     }
 
-    const request = await workflow.ServiceRequest.findOne({
-      _id: id,
-      deliveryMemberId: memberId(req),
-    });
+    const mid = memberId(req);
+    const request = await workflow.ServiceRequest.findById(id);
     if (!request) return notFound(res, 'Job not found');
     if (request.status === 'cancelled' || request.status === 'completed') {
       return errorResponse(res, `Cannot update a ${request.status} job`, 400);
     }
+
+    const assignedTo = request.deliveryMemberId ? String(request.deliveryMemberId) : '';
+    const isMine = assignedTo && assignedTo === String(mid);
+    const isOpen = !assignedTo;
+    if (!isMine && !isOpen) {
+      return errorResponse(res, 'This job is assigned to another delivery member', 403);
+    }
+
+    // Claim open jobs on first action — no Masteradmin/Repairshops assign step required.
+    if (isOpen) {
+      const claimType =
+        spec.requireType ||
+        (['dispatch_ready', 'out_for_delivery'].includes(request.trackingState) ? 'return' : 'pickup');
+      request.deliveryMemberId = mid;
+      request.deliveryAssignmentType = claimType;
+      request.deliveryAssignedAt = new Date();
+      if (claimType === 'pickup' && !request.pickupAssignedAt) {
+        request.pickupAssignedAt = new Date();
+      }
+      if (
+        claimType === 'pickup' &&
+        (!request.trackingState || request.trackingState === 'request_created')
+      ) {
+        workflow.applyTracking(request, 'pickup_scheduled', { workflowStatus: 'PICKUP_SCHEDULED' });
+      }
+    }
+
     if (spec.requireType && request.deliveryAssignmentType !== spec.requireType) {
       return errorResponse(res, `This action is only for ${spec.requireType} jobs`, 400);
     }
@@ -263,16 +296,17 @@ const updateStatus = async (req, res) => {
       request.status = 'completed';
       request.workflowStatus = 'DELIVERED';
     }
+    const claimNote = isOpen ? `Claimed job · ${spec.note}` : spec.note;
     workflow.pushLifecycle(request, {
       actorType: 'delivery',
-      actorId: memberId(req),
-      note: proofUrl ? `${spec.note} (photo proof)` : spec.note,
+      actorId: mid,
+      note: proofUrl ? `${claimNote} (photo proof)` : claimNote,
       photos: proofUrl ? [proofUrl] : [],
     });
     await request.save();
 
     const [job] = await workflow.enrichDeliveryJobs([request.toObject()]);
-    return success(res, spec.note, { job });
+    return success(res, isOpen ? `Claimed · ${spec.note}` : spec.note, { job });
   } catch (err) {
     logger.error(`Delivery update status error: ${err.message}`);
     return errorResponse(res, err.message, 500);
