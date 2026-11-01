@@ -71,11 +71,17 @@ const uploadProof = async (req, res) => {
       return errorResponse(res, 'Invalid proof type', 400);
     }
 
+    const mime = (req.file.mimetype || '').toLowerCase();
+    const originalName = (req.file.originalname || '').toLowerCase();
+    const isPdf = mime === 'application/pdf' || originalName.endsWith('.pdf');
+
     const result = await uploadToCloudinary(req.file.buffer, {
       folder: 'getmypair/sell-proofs',
       public_id: `sell-${req.user._id}-${proofType}-${Date.now()}`,
-      resource_type: 'image',
-      transformation: [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto' }],
+      resource_type: isPdf ? 'auto' : 'image',
+      ...(isPdf
+        ? {}
+        : { transformation: [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto' }] }),
     });
 
     return success(res, 'Proof uploaded', {

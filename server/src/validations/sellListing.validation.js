@@ -31,7 +31,7 @@ const createSellListingValidation = [
     }),
   body('proofs').custom((value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error('Upload all authenticity photos');
+      throw new Error('Upload an image or PDF for each authenticity proof');
     }
     return true;
   }),
@@ -40,7 +40,7 @@ const createSellListingValidation = [
       .isString()
       .trim()
       .isURL()
-      .withMessage('Please upload images')
+      .withMessage('Please upload an image or PDF')
   ),
   handleValidationErrors,
 ];

@@ -79,6 +79,21 @@ const profileImageFileFilter = (req, file, cb) => {
     cb(new Error('Only JPEG, JPG, PNG, and WEBP images are allowed for profile photos'), false);
 };
 
+// Sell authenticity proofs: same images as article photos, plus PDF only.
+const sellProofFileFilter = (req, file, cb) => {
+    const mime = (file.mimetype || '').toLowerCase();
+    const originalName = (file.originalname || '').toLowerCase();
+    if (mime === 'application/pdf' || originalName.endsWith('.pdf')) {
+        return cb(null, true);
+    }
+    imageFileFilter(req, file, (err, accept) => {
+        if (err) {
+            return cb(new Error('Only image and PDF files are allowed'), false);
+        }
+        return cb(null, accept);
+    });
+};
+
 // File filter for documents (images + PDF)
 const documentFileFilter = (req, file, cb) => {
     const allowedTypes = [
@@ -121,6 +136,15 @@ const uploadDeliveryDoc = multer({
     fileFilter: documentFileFilter,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
+    },
+}).single('file');
+
+// Sell My Pair authenticity proof – image or PDF, 10MB
+const uploadSellProof = multer({
+    storage: memoryStorage,
+    fileFilter: sellProofFileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024,
     },
 }).single('file');
 
@@ -248,6 +272,7 @@ module.exports = {
     uploadKycDoc: handleUpload(uploadKycDoc),
     uploadDeliveryDoc: handleUpload(uploadDeliveryDoc),
     uploadArticleImage: handleUpload(uploadArticleImage),
+    uploadSellProof: handleUpload(uploadSellProof),
     uploadServiceProofImage: handleUpload(uploadServiceProofImage),
     uploadServiceProofVideo: handleUpload(uploadServiceProofVideo),
 };
