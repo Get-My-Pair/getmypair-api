@@ -9,7 +9,11 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const config = require('../config/env');
-const { isValidPortalPassword } = require('../utils/validators');
+const {
+  isValidPortalPassword,
+  isValidIndianMobile,
+  getLocalMobileDigits,
+} = require('../utils/validators');
 const AdminMaster = require('../models/adminMaster.model');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
@@ -843,6 +847,186 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const normalizeAdminMobile = (mobile) => {
+  const digits = String(mobile || '').replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  if (String(mobile || '').trim().startsWith('+')) return String(mobile).trim();
+  return digits ? `+${digits}` : '';
+};
+
+const resolveRoleDoc = async (roleInput) => {
+  await Role.initializeDefaultRoles();
+  if (roleInput == null || roleInput === '') {
+    return Role.findOne({ name: 'USER' });
+  }
+  if (mongoose.isValidObjectId(roleInput)) {
+    return Role.findById(roleInput);
+  }
+  const name = String(roleInput).trim().toUpperCase();
+  return (
+    (await Role.findOne({ name })) || (await Role.findOne({ name: 'USER' }))
+  );
+};
+
+const serializeUser = (user, roleDoc) => {
+  const row = user?.toObject ? user.toObject() : { ...user };
+  row.role = roleDoc
+    ? { _id: roleDoc._id, name: roleDoc.name }
+    : row.role && row.role.name
+      ? row.role
+      : null;
+  return row;
+};
+
+/**
+ * GET /api/masteradmin/roles
+ */
+const listRoles = async (req, res) => {
+  try {
+    await Role.initializeDefaultRoles();
+    const items = await Role.find().select('name description').sort({ name: 1 }).lean();
+    return success(res, 'Roles list', { items });
+  } catch (err) {
+    logger.error(`List roles error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * POST /api/masteradmin/users
+ * Create a mobile app user (CRUD).
+ */
+const createUser = async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const mobile = normalizeAdminMobile(req.body?.mobile || req.body?.phone);
+    const email = String(req.body?.email || '').trim().toLowerCase() || undefined;
+    const gender = String(req.body?.gender || 'other').trim().toLowerCase();
+    const dateOfBirth = req.body?.dateOfBirth
+      ? new Date(req.body.dateOfBirth)
+      : new Date('2000-01-01');
+    const isActive = req.body?.isActive !== false && req.body?.isActive !== 'false';
+
+    if (!name) return errorResponse(res, 'Name is required', 400);
+    if (!mobile || mobile.replace(/\D/g, '').length < 10) {
+      return errorResponse(res, 'Valid phone / mobile is required', 400);
+    }
+    if (!['male', 'female', 'other'].includes(gender)) {
+      return errorResponse(res, 'Gender must be male, female, or other', 400);
+    }
+    if (Number.isNaN(dateOfBirth.getTime())) {
+      return errorResponse(res, 'Invalid date of birth', 400);
+    }
+
+    const existing = await User.findOne({ mobile });
+    if (existing) return errorResponse(res, 'Mobile number already registered', 409);
+
+    const roleDoc = await resolveRoleDoc(req.body?.role || req.body?.roleName || 'USER');
+    if (!roleDoc) return errorResponse(res, 'Invalid role', 400);
+
+    const user = await User.create({
+      name,
+      mobile,
+      email,
+      gender,
+      dateOfBirth,
+      role: roleDoc._id,
+      isPhoneVerified: Boolean(req.body?.isPhoneVerified),
+      isActive,
+    });
+
+    return success(res, 'User created', serializeUser(user, roleDoc), 201);
+  } catch (err) {
+    if (err?.code === 11000) {
+      return errorResponse(res, 'Mobile or email already exists', 409);
+    }
+    logger.error(`Create user error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * PATCH /api/masteradmin/users/:id
+ * Update user name, phone, role, email, etc.
+ */
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid user id', 400);
+    }
+
+    const user = await User.findById(id);
+    if (!user) return errorResponse(res, 'User not found', 404);
+
+    if (req.body?.name != null) {
+      const name = String(req.body.name).trim();
+      if (!name) return errorResponse(res, 'Name cannot be empty', 400);
+      user.name = name;
+    }
+
+    if (req.body?.mobile != null || req.body?.phone != null) {
+      const mobile = normalizeAdminMobile(req.body.mobile || req.body.phone);
+      if (!mobile || mobile.replace(/\D/g, '').length < 10) {
+        return errorResponse(res, 'Valid phone / mobile is required', 400);
+      }
+      const clash = await User.findOne({ mobile, _id: { $ne: user._id } });
+      if (clash) return errorResponse(res, 'Mobile number already registered', 409);
+      user.mobile = mobile;
+    }
+
+    if (req.body?.email !== undefined) {
+      const email = String(req.body.email || '').trim().toLowerCase();
+      user.email = email || undefined;
+    }
+
+    if (req.body?.gender != null) {
+      const gender = String(req.body.gender).trim().toLowerCase();
+      if (!['male', 'female', 'other'].includes(gender)) {
+        return errorResponse(res, 'Gender must be male, female, or other', 400);
+      }
+      user.gender = gender;
+    }
+
+    if (req.body?.dateOfBirth != null) {
+      const dob = new Date(req.body.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) {
+        return errorResponse(res, 'Invalid date of birth', 400);
+      }
+      user.dateOfBirth = dob;
+    }
+
+    if (req.body?.isActive !== undefined) {
+      user.isActive = !(req.body.isActive === false || req.body.isActive === 'false');
+    }
+
+    if (req.body?.isPhoneVerified !== undefined) {
+      user.isPhoneVerified = Boolean(req.body.isPhoneVerified);
+    }
+
+    let roleDoc = null;
+    if (req.body?.role != null || req.body?.roleName != null) {
+      roleDoc = await resolveRoleDoc(req.body.role || req.body.roleName);
+      if (!roleDoc) return errorResponse(res, 'Invalid role', 400);
+      user.role = roleDoc._id;
+    }
+
+    await user.save();
+    if (!roleDoc && user.role) {
+      roleDoc = await Role.findById(user.role).select('name').lean();
+    }
+
+    return success(res, 'User updated', serializeUser(user, roleDoc));
+  } catch (err) {
+    if (err?.code === 11000) {
+      return errorResponse(res, 'Mobile or email already exists', 409);
+    }
+    logger.error(`Update user error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
 /**
  * Normalize article row: ownerId populated → flat `owner` + string ownerId
  */
@@ -1432,8 +1616,34 @@ const patchServiceRequestWorkflow = async (req, res) => {
   }
 };
 
+const mapMasterCobbler = (profile, user, roleName = 'COBBER') => {
+  const row = profile && typeof profile.toJSON === 'function' ? profile.toJSON() : { ...profile };
+  return {
+    id: String(row._id),
+    _id: String(row._id),
+    userId: String(row.userId),
+    name: row.name || user?.name || '',
+    phone: row.phone || user?.mobile || '',
+    mobile: row.phone || user?.mobile || '',
+    shopName: row.shopName || '',
+    shopAddress: row.shopAddress || '',
+    verificationStatus: row.verificationStatus || 'pending',
+    verified: row.verificationStatus === 'verified',
+    isVerified: row.verificationStatus === 'verified',
+    isOnline: row.isOnline !== false,
+    isActive: user?.isActive !== false,
+    darkStoreId: row.darkStoreId || null,
+    role: { name: roleName || 'COBBER' },
+    roleName: roleName || 'COBBER',
+    gender: user?.gender || 'other',
+    dateOfBirth: user?.dateOfBirth || null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+};
+
 /**
- * GET /api/sys-admin/cobblers?page=1&limit=50
+ * GET /api/masteradmin/cobblers?page=1&limit=50
  */
 const listCobblers = async (req, res) => {
   try {
@@ -1441,30 +1651,38 @@ const listCobblers = async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const skip = (page - 1) * limit;
 
-    const result = await CobblerProfile.aggregate([
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'userRef',
-        },
-      },
-      {
-        $match: {
-          'userRef.0': { $exists: true },
-        },
-      },
-      { $sort: { updatedAt: -1 } },
-      {
-        $facet: {
-          items: [{ $skip: skip }, { $limit: limit }, { $project: { userRef: 0 } }],
-          totalCount: [{ $count: 'count' }],
-        },
-      },
+    const [profiles, total] = await Promise.all([
+      CobblerProfile.find().sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+      CobblerProfile.countDocuments(),
     ]);
-    const items = (result[0] && result[0].items) || [];
-    const total = (result[0] && result[0].totalCount && result[0].totalCount[0] && result[0].totalCount[0].count) || 0;
+
+    const userIds = profiles.map((p) => p.userId).filter(Boolean);
+    const users = userIds.length
+      ? await User.find({ _id: { $in: userIds } }).select('name mobile isActive gender dateOfBirth role').lean()
+      : [];
+    const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
+
+    await Role.initializeDefaultRoles();
+    const roleIds = [
+      ...new Set(
+        users
+          .map((u) => u.role)
+          .filter((id) => id != null && mongoose.isValidObjectId(id))
+          .map((id) => String(id))
+      ),
+    ];
+    const roles = roleIds.length
+      ? await Role.find({ _id: { $in: roleIds.map((id) => new mongoose.Types.ObjectId(id)) } })
+          .select('name')
+          .lean()
+      : [];
+    const roleMap = Object.fromEntries(roles.map((r) => [String(r._id), r.name]));
+
+    const items = profiles.map((p) => {
+      const user = userMap[String(p.userId)];
+      const roleName = user?.role ? roleMap[String(user.role)] || 'COBBER' : 'COBBER';
+      return mapMasterCobbler(p, user, roleName);
+    });
 
     return success(res, 'Cobblers list', {
       items,
@@ -1480,7 +1698,196 @@ const listCobblers = async (req, res) => {
 };
 
 /**
- * PATCH /api/sys-admin/cobblers/:id/verify
+ * POST /api/masteradmin/cobblers
+ */
+const createCobbler = async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const phoneRaw = String(req.body.phone || req.body.mobile || '').trim();
+    const shopName = String(req.body.shopName || '').trim() || null;
+    const shopAddress = String(req.body.shopAddress || '').trim() || null;
+    const genderRaw = String(req.body.gender || 'other').trim().toLowerCase();
+    const gender = ['male', 'female', 'other'].includes(genderRaw) ? genderRaw : 'other';
+    const statusRaw = String(req.body.verificationStatus || 'verified').trim().toLowerCase();
+    const verificationStatus = ['pending', 'verified', 'rejected'].includes(statusRaw)
+      ? statusRaw
+      : 'verified';
+
+    if (!name) return errorResponse(res, 'Name is required', 400);
+    if (!isValidIndianMobile(phoneRaw)) {
+      return errorResponse(res, 'Valid 10-digit Indian mobile is required', 400);
+    }
+
+    const mobile = getLocalMobileDigits(phoneRaw);
+    const existingUser = await User.findOne({ mobile });
+    if (existingUser) {
+      return errorResponse(res, 'This mobile number is already registered', 409);
+    }
+
+    await Role.initializeDefaultRoles();
+    const cobblerRole = await Role.findOne({ name: 'COBBER' });
+    if (!cobblerRole) return errorResponse(res, 'COBBER role is not configured', 500);
+
+    const dob = req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : new Date('1990-01-01');
+    if (Number.isNaN(dob.getTime())) {
+      return errorResponse(res, 'Invalid date of birth', 400);
+    }
+
+    const user = await User.create({
+      mobile,
+      name,
+      dateOfBirth: dob,
+      gender,
+      role: cobblerRole._id,
+      isPhoneVerified: true,
+      isActive: true,
+    });
+
+    try {
+      const profile = await CobblerProfile.create({
+        userId: user._id,
+        name,
+        phone: mobile,
+        shopName,
+        shopAddress,
+        darkStoreId: null,
+        verificationStatus,
+        isOnline: true,
+        servicesOffered: ['Repair', 'Maintenance', 'Wash'],
+      });
+      return success(
+        res,
+        'Cobbler created',
+        { cobbler: mapMasterCobbler(profile, user, 'COBBER') },
+        201
+      );
+    } catch (profileErr) {
+      await User.deleteOne({ _id: user._id });
+      throw profileErr;
+    }
+  } catch (err) {
+    logger.error(`Create cobbler error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * PATCH /api/masteradmin/cobblers/:id
+ */
+const updateCobbler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid cobbler profile id', 400);
+    }
+
+    const profile = await CobblerProfile.findById(id);
+    if (!profile) return errorResponse(res, 'Cobbler profile not found', 404);
+
+    const user = await User.findById(profile.userId);
+    if (!user) return errorResponse(res, 'Linked user not found', 404);
+
+    if (req.body.name != null) {
+      const name = String(req.body.name).trim();
+      if (!name) return errorResponse(res, 'Name cannot be empty', 400);
+      profile.name = name;
+      user.name = name;
+    }
+
+    if (req.body.phone != null || req.body.mobile != null) {
+      const phoneRaw = String(req.body.phone || req.body.mobile || '').trim();
+      if (!isValidIndianMobile(phoneRaw)) {
+        return errorResponse(res, 'Valid 10-digit Indian mobile is required', 400);
+      }
+      const mobile = getLocalMobileDigits(phoneRaw);
+      const clash = await User.findOne({ mobile, _id: { $ne: user._id } });
+      if (clash) return errorResponse(res, 'This mobile number is already registered', 409);
+      profile.phone = mobile;
+      user.mobile = mobile;
+    }
+
+    if (req.body.shopName !== undefined) {
+      profile.shopName = String(req.body.shopName || '').trim() || null;
+    }
+    if (req.body.shopAddress !== undefined) {
+      profile.shopAddress = String(req.body.shopAddress || '').trim() || null;
+    }
+
+    if (req.body.gender != null) {
+      const gender = String(req.body.gender).trim().toLowerCase();
+      if (!['male', 'female', 'other'].includes(gender)) {
+        return errorResponse(res, 'Gender must be male, female, or other', 400);
+      }
+      user.gender = gender;
+    }
+
+    if (req.body.dateOfBirth != null) {
+      const dob = new Date(req.body.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) {
+        return errorResponse(res, 'Invalid date of birth', 400);
+      }
+      user.dateOfBirth = dob;
+    }
+
+    if (req.body.verificationStatus != null || req.body.status != null) {
+      const requested = String(req.body.verificationStatus || req.body.status)
+        .trim()
+        .toLowerCase();
+      const allowed = ['pending', 'verified', 'rejected'];
+      if (!allowed.includes(requested)) {
+        return errorResponse(res, `status must be one of: ${allowed.join(', ')}`, 400);
+      }
+      profile.verificationStatus = requested;
+    }
+
+    if (req.body.isActive !== undefined) {
+      user.isActive = !(req.body.isActive === false || req.body.isActive === 'false');
+    }
+
+    await Promise.all([profile.save(), user.save()]);
+
+    return success(res, 'Cobbler updated', {
+      cobbler: mapMasterCobbler(profile, user, 'COBBER'),
+    });
+  } catch (err) {
+    logger.error(`Update cobbler error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * DELETE /api/masteradmin/cobblers/:id
+ */
+const deleteCobbler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, 'Invalid cobbler profile id', 400);
+    }
+
+    const profile = await CobblerProfile.findById(id);
+    if (!profile) return errorResponse(res, 'Cobbler profile not found', 404);
+
+    const activeJobs = await ServiceRequest.countDocuments({
+      cobblerId: profile.userId,
+      status: { $nin: ['completed', 'cancelled'] },
+    });
+    if (activeJobs > 0) {
+      return errorResponse(res, 'Cannot delete a cobbler with active jobs', 400);
+    }
+
+    await CobblerProfile.deleteOne({ _id: profile._id });
+    await User.updateOne({ _id: profile.userId }, { $set: { isActive: false } });
+
+    return success(res, 'Cobbler deleted', { id: String(profile._id) });
+  } catch (err) {
+    logger.error(`Delete cobbler error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * PATCH /api/masteradmin/cobblers/:id/verify
  * Body: { status?: 'pending' | 'verified' | 'rejected' } (default: 'verified')
  */
 const verifyCobbler = async (req, res) => {
@@ -1568,6 +1975,9 @@ module.exports = {
   me,
   dashboardStats,
   listUsers,
+  listRoles,
+  createUser,
+  updateUser,
   deleteUser,
   listArticleOwnersSummary,
   listArticles,
@@ -1576,6 +1986,9 @@ module.exports = {
   deleteServiceRequest,
   patchServiceRequestWorkflow,
   listCobblers,
+  createCobbler,
+  updateCobbler,
+  deleteCobbler,
   verifyCobbler,
   listDeliveryPartners,
   listEmailTemplates,

@@ -90,6 +90,9 @@ router.get('/auth/me', adminMasterAuth, adminDashboardController.me);
 // Operations
 router.get('/dashboard/stats', adminMasterAuth, adminDashboardController.dashboardStats);
 router.get('/users', adminMasterAuth, adminDashboardController.listUsers);
+router.get('/roles', adminMasterAuth, adminDashboardController.listRoles);
+router.post('/users', adminMasterAuth, adminDashboardController.createUser);
+router.patch('/users/:id', adminMasterAuth, adminDashboardController.updateUser);
 router.delete('/users/:id', adminMasterAuth, adminDashboardController.deleteUser);
 router.get(
   '/articles/by-owner',
@@ -117,6 +120,9 @@ router.delete(
   adminDashboardController.deleteServiceRequest
 );
 router.get('/cobblers', adminMasterAuth, adminDashboardController.listCobblers);
+router.post('/cobblers', adminMasterAuth, adminDashboardController.createCobbler);
+router.patch('/cobblers/:id', adminMasterAuth, adminDashboardController.updateCobbler);
+router.delete('/cobblers/:id', adminMasterAuth, adminDashboardController.deleteCobbler);
 router.patch('/cobblers/:id/verify', adminMasterAuth, adminDashboardController.verifyCobbler);
 router.get('/delivery-partners', adminMasterAuth, adminDashboardController.listDeliveryPartners);
 router.get('/email-templates', adminMasterAuth, adminDashboardController.listEmailTemplates);
