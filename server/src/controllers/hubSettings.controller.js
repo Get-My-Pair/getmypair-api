@@ -148,4 +148,17 @@ const deleteHub = async (req, res) => {
   }
 };
 
-module.exports = { listHubs, createHub, updateHub, deleteHub, getHub: listHubs };
+/** Customer / care-flow: active hubs only (Self Drop off). */
+const listActiveHubsForCustomer = async (req, res) => {
+  req.query = { ...(req.query || {}), active: '1' };
+  return listHubs(req, res);
+};
+
+module.exports = {
+  listHubs,
+  listActiveHubsForCustomer,
+  createHub,
+  updateHub,
+  deleteHub,
+  getHub: listHubs,
+};

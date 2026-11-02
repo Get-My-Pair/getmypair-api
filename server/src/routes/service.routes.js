@@ -16,6 +16,7 @@ const {
   uploadServiceProofVideo: uploadServiceProofVideoMw,
 } = require('../middleware/upload.middleware');
 const serviceController = require('../controllers/service.controller');
+const hubSettingsController = require('../controllers/hubSettings.controller');
 const {
   createServiceRequestValidation,
   getServiceRequestDetailsValidation,
@@ -35,6 +36,12 @@ router.use(authMiddleware);
 
 router.get('/my', roleMiddleware(['USER']), serviceController.getMyServiceRequests);
 router.get('/estimation-defaults', roleMiddleware(['USER']), serviceController.getEstimationDefaults);
+/** Active Masteradmin hub drop-off locations for CareMyPair Self Drop. */
+router.get(
+  '/hub-locations',
+  roleMiddleware(['USER']),
+  hubSettingsController.listActiveHubsForCustomer
+);
 router.post('/create', roleMiddleware(['USER']), createServiceRequestValidation, serviceController.createServiceRequest);
 router.post(
   '/upload-proof/image',
