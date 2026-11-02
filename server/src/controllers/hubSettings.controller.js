@@ -3,6 +3,7 @@
  */
 const mongoose = require('mongoose');
 const HubSettings = require('../models/hubSettings.model');
+const { WEEK_DAYS, defaultWeeklyHours } = require('../models/hubSettings.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -10,8 +11,100 @@ function formatLine(hub) {
   return [hub.address, hub.city, hub.state, hub.pincode].filter(Boolean).join(', ');
 }
 
+/** Normalize "9:00", "09:00", "09:00AM" → "HH:mm" 24h. */
+function normalizeTime(raw, fallback = '09:00') {
+  const s = String(raw ?? '').trim().toUpperCase();
+  if (!s) return fallback;
+  const ampm = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!ampm) {
+    const plain = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (!plain) return fallback;
+    let h = Number(plain[1]);
+    const m = Number(plain[2]);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return fallback;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  let h = Number(ampm[1]);
+  const m = Number(ampm[2]);
+  const mer = (ampm[3] || '').toUpperCase();
+  if (!Number.isFinite(h) || !Number.isFinite(m) || m > 59) return fallback;
+  if (mer === 'PM' && h < 12) h += 12;
+  if (mer === 'AM' && h === 12) h = 0;
+  if (h > 23) return fallback;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function parseWeeklyHours(raw) {
+  const defaults = defaultWeeklyHours();
+  if (!Array.isArray(raw) || raw.length === 0) return defaults;
+  const byDay = new Map();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const day = String(item.day || '').trim().toLowerCase();
+    if (!WEEK_DAYS.includes(day)) continue;
+    byDay.set(day, {
+      day,
+      openTime: normalizeTime(item.openTime, '09:00'),
+      closeTime: normalizeTime(item.closeTime, '18:00'),
+      isClosed: item.isClosed === true || item.isClosed === 'true',
+    });
+  }
+  return WEEK_DAYS.map((day) => byDay.get(day) || defaults.find((d) => d.day === day));
+}
+
+function formatDisplayTime(hhmm) {
+  const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return hhmm || '';
+  let h = Number(m[1]);
+  const min = m[2];
+  const mer = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${String(h).padStart(2, '0')}:${min}${mer}`;
+}
+
+function todayHours(weeklyHours) {
+  const hours = Array.isArray(weeklyHours) && weeklyHours.length
+    ? weeklyHours
+    : defaultWeeklyHours();
+  // Use India local day for GMP.
+  const dayIdx = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+  ).getDay(); // 0 Sun … 6 Sat
+  const dayKey = WEEK_DAYS[(dayIdx + 6) % 7]; // monday=0 in WEEK_DAYS
+  const today = hours.find((h) => h.day === dayKey) || hours[0];
+  return today;
+}
+
+function isOpenNow(dayHours) {
+  if (!dayHours || dayHours.isClosed) return false;
+  const open = normalizeTime(dayHours.openTime, '09:00');
+  const close = normalizeTime(dayHours.closeTime, '18:00');
+  const nowParts = new Date()
+    .toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    .split(':');
+  const nowMins = Number(nowParts[0]) * 60 + Number(nowParts[1]);
+  const [oh, om] = open.split(':').map(Number);
+  const [ch, cm] = close.split(':').map(Number);
+  const openMins = oh * 60 + om;
+  const closeMins = ch * 60 + cm;
+  if (closeMins <= openMins) {
+    // overnight window
+    return nowMins >= openMins || nowMins < closeMins;
+  }
+  return nowMins >= openMins && nowMins < closeMins;
+}
+
 function publicHub(hub) {
   if (!hub) return null;
+  const weeklyHours = parseWeeklyHours(hub.weeklyHours);
+  const today = todayHours(weeklyHours);
+  const open = isOpenNow(today);
   return {
     _id: String(hub._id),
     id: String(hub._id),
@@ -23,6 +116,10 @@ function publicHub(hub) {
     lat: hub.lat == null ? null : Number(hub.lat),
     lng: hub.lng == null ? null : Number(hub.lng),
     notes: hub.notes || '',
+    weeklyHours,
+    isOpen: open,
+    closesAt: today.isClosed ? null : formatDisplayTime(today.closeTime),
+    opensAt: today.isClosed ? null : formatDisplayTime(today.openTime),
     isActive: hub.isActive !== false,
     line: formatLine(hub),
     updatedAt: hub.updatedAt || null,
@@ -57,6 +154,7 @@ function pickFields(body = {}) {
     notes: str('notes'),
     lat: coords.lat,
     lng: coords.lng,
+    weeklyHours: parseWeeklyHours(body.weeklyHours),
   };
 }
 

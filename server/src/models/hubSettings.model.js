@@ -1,8 +1,53 @@
 /**
  * Hub drop-off locations managed by Masteradmin (multiple allowed).
  * Delivery members use these for Hub direction / maps.
+ * Customers see them on CareMyPair Self Drop off.
  */
 const mongoose = require('mongoose');
+
+const WEEK_DAYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+];
+
+const dayHoursSchema = new mongoose.Schema(
+  {
+    day: {
+      type: String,
+      enum: WEEK_DAYS,
+      required: true,
+    },
+    openTime: {
+      type: String,
+      trim: true,
+      default: '09:00',
+    },
+    closeTime: {
+      type: String,
+      trim: true,
+      default: '18:00',
+    },
+    isClosed: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false }
+);
+
+function defaultWeeklyHours() {
+  return WEEK_DAYS.map((day) => ({
+    day,
+    openTime: '09:00',
+    closeTime: '18:00',
+    isClosed: false,
+  }));
+}
 
 const hubSettingsSchema = new mongoose.Schema(
   {
@@ -44,6 +89,10 @@ const hubSettingsSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    weeklyHours: {
+      type: [dayHoursSchema],
+      default: defaultWeeklyHours,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -59,3 +108,5 @@ const hubSettingsSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('HubSettings', hubSettingsSchema);
+module.exports.WEEK_DAYS = WEEK_DAYS;
+module.exports.defaultWeeklyHours = defaultWeeklyHours;
