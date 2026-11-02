@@ -43,6 +43,7 @@ const deliveryMemberController = require('../controllers/deliveryMember.controll
 const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
 const sellListingController = require('../controllers/sellListing.controller');
 const hubSettingsController = require('../controllers/hubSettings.controller');
+const careServiceProblemController = require('../controllers/careServiceProblem.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -319,6 +320,29 @@ router.get(
   adminMasterAuth,
   darkstorePaymentQueryValidation,
   darkstorePaymentController.paymentNotifications
+);
+
+// CareMyPair problem tiles (Repair / Maintain / Wash)
+router.get('/care-services', adminMasterAuth, careServiceProblemController.overview);
+router.get(
+  '/care-services/:serviceType/problems',
+  adminMasterAuth,
+  careServiceProblemController.listByServiceType
+);
+router.post(
+  '/care-services/:serviceType/problems',
+  adminMasterAuth,
+  careServiceProblemController.createProblem
+);
+router.put(
+  '/care-services/problems/:id',
+  adminMasterAuth,
+  careServiceProblemController.updateProblem
+);
+router.delete(
+  '/care-services/problems/:id',
+  adminMasterAuth,
+  careServiceProblemController.deleteProblem
 );
 
 // Hub addresses (multiple drop-off locations for delivery members)

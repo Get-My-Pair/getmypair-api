@@ -17,6 +17,7 @@ const {
 } = require('../middleware/upload.middleware');
 const serviceController = require('../controllers/service.controller');
 const hubSettingsController = require('../controllers/hubSettings.controller');
+const careServiceProblemController = require('../controllers/careServiceProblem.controller');
 const {
   createServiceRequestValidation,
   getServiceRequestDetailsValidation,
@@ -41,6 +42,12 @@ router.get(
   '/hub-locations',
   roleMiddleware(['USER']),
   hubSettingsController.listActiveHubsForCustomer
+);
+/** Active CareMyPair problem tiles (repair | maintenance | wash). */
+router.get(
+  '/care-options/:serviceType',
+  roleMiddleware(['USER']),
+  careServiceProblemController.listActiveForCustomer
 );
 router.post('/create', roleMiddleware(['USER']), createServiceRequestValidation, serviceController.createServiceRequest);
 router.post(
