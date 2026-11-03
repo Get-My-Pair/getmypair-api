@@ -185,31 +185,12 @@ const verifyOTP = async (req, res) => {
 };
 
 /**
- * Silent re-login with a previously trusted device credential.
  * POST /api/auth/login-trusted-device
- * Skips Google SMS consent + OTP when the same phone+device was verified before.
+ * Disabled: OTP is mandatory for every mobile login.
  */
 const loginWithTrustedDevice = async (req, res) => {
   try {
-    const { mobile, deviceId, deviceAuthToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('user-agent') || 'unknown';
-    const deviceInfo = req.get('device-info') || 'mobile';
-
-    const result = await authService.loginWithTrustedDevice({
-      mobile,
-      deviceId: String(deviceId || '').trim(),
-      deviceAuthToken: String(deviceAuthToken || '').trim(),
-      ipAddress,
-      userAgent,
-      deviceInfo,
-    });
-
-    return success(res, 'Login successful', {
-      user: result.user,
-      tokens: result.tokens,
-      deviceAuth: result.deviceAuth,
-    });
+    await authService.loginWithTrustedDevice();
   } catch (err) {
     logger.error(`Trusted device login error: ${err.message}`);
     return errorResponse(res, err.message, err.statusCode || 401, err.code);
