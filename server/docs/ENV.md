@@ -25,19 +25,19 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `OTP_EXPIRE_MINUTES` | `5` | OTP lifetime |
 | `OTP_LENGTH` | `6` | Digits |
 | `OTP_MAX_ATTEMPTS` | `3` | Verify attempts per OTP |
-| `USE_MSG91_SMS` | `true` in production, else `false` | `true` / `1` → send SMS via MSG91 Flow; omit OTP from response. `false` / `0` → dummy mode (local/Chrome only): return `data.otp` for the app popup. Unset → follows `NODE_ENV`. |
+| ~~`USE_MSG91_SMS`~~ | *(removed)* | Phone OTP mode is **platform-based** via `X-Client-Platform` (`web` → Dev OTP in response; `android`/`ios` → MSG91 SMS, no OTP in response). |
 | `MSG91_AUTH_KEY` | *(empty unless set)* | MSG91 dashboard Authkey |
 | `MSG91_FLOW_ID` | *(empty unless set)* | MSG91 **SMS Flow / Template** id (SMS → Templates). Preferred. |
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | Legacy alias for flow id if `MSG91_FLOW_ID` is unset |
 | `MSG91_SENDER_ID` | *(empty)* | Optional; only if the flow sender is FromAPI |
 | `MSG91_OTP_VAR` | `number` | Flow variable name for the code (`##number##` → `number`). Case-sensitive. Comma-separated allowed. App also sends aliases (`number`, `OTP`, `VAR1`, …). |
-| `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing; phone login uses `USE_MSG91_SMS` instead |
+| `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing only (not phone login) |
 
 ### Phone OTP behaviour
 
 1. `POST /api/auth/send-otp` always creates a **server-side** OTP (`otp.service`).
-2. If `USE_MSG91_SMS=true` → `msg91.service` sends it with **MSG91 Flow SMS** (`POST /api/v5/flow/`), not the SendOTP API. Response is `{ expiresIn }` only.
-3. If `USE_MSG91_SMS=false` → SMS skipped; response includes `{ expiresIn, otp }` for development login.
+2. If `X-Client-Platform: android` or `ios` → `msg91.service` sends **MSG91 Flow SMS**. Response is `{ expiresIn }` only.
+3. If `X-Client-Platform: web` → SMS skipped; response includes `{ expiresIn, otp }` for Flutter web Dev OTP.
 4. Verify always uses the stored OTP (`POST /api/auth/verify-otp`), never MSG91 verify/OTP APIs.
 
 India DLT: the SMS Flow template must map an approved DLT Template ID + sender ID, and content must match DLT exactly (use `{#var#}` on DLT, `##OTP##` on MSG91).
@@ -94,21 +94,20 @@ PORT=3000
 MONGODB_URI=mongodb+srv://...
 JWT_SECRET=dev-secret
 JWT_REFRESH_SECRET=dev-refresh-secret
-USE_MSG91_SMS=true
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
 MSG91_OTP_VAR=number
 # MSG91_SENDER_ID=YOURHDR   # only if flow sender is FromAPI
+# Phone OTP: Android/iOS → MSG91; Flutter web → Dev OTP (X-Client-Platform)
 ```
 
 ## Example production phone SMS
 
 ```env
 NODE_ENV=production
-USE_MSG91_SMS=true
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
 MSG91_OTP_VAR=number
 ```
 
-On Render, set `NODE_ENV=production`, `USE_MSG91_SMS=true`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, and `MSG91_OTP_VAR=number` (template uses `##number##`, DLT-mapped).
+On Render, set `NODE_ENV=production`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, and `MSG91_OTP_VAR=number` (template uses `##number##`, DLT-mapped). Android/iOS use MSG91; Flutter web gets Dev OTP via `X-Client-Platform: web`.

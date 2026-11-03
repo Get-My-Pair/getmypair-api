@@ -21,6 +21,7 @@ const logger = require('../utils/logger');
 const User = require('../models/user.model');
 const { getRoleFromAppSource } = require('../config/roles');
 const { getAppSourceHeader } = require('../middleware/appSource.middleware');
+const { resolveClientPlatform } = require('../utils/clientPlatform');
 
 /**
  * Send OTP to mobile number
@@ -91,12 +92,18 @@ const sendOTP = async (req, res) => {
       }
     }
 
-    const result = await authService.sendOTP(mobile, ipAddress, userAgent);
+    const clientPlatform = resolveClientPlatform(req);
+    const result = await authService.sendOTP(
+      mobile,
+      ipAddress,
+      userAgent,
+      clientPlatform
+    );
 
     const responseData = {
       expiresIn: result.expiresIn,
     };
-    // Dummy mode (USE_MSG91_SMS=false): include OTP for the app development popup.
+    // Web Dev OTP only: include OTP for Flutter web popup. Android never gets this.
     if (result.otp) {
       responseData.otp = String(result.otp);
     }

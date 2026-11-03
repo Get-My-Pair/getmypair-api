@@ -68,7 +68,7 @@
  *                     otp:
  *                       type: string
  *                       example: "123456"
- *                       description: Returned only when USE_MSG91_SMS=false (dummy / no-DLT mode). Omitted when SMS is sent via MSG91.
+ *                       description: Returned only for web Dev OTP (X-Client-Platform: web). Omitted for Android/iOS MSG91 SMS.
  *       400:
  *         description: Bad request - Validation error or invalid mobile number
  *       429:

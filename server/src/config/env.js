@@ -47,17 +47,10 @@ const config = {
   /** When true, some portal responses may include OTP for local testing. */
   RETURN_OTP_IN_RESPONSE: process.env.RETURN_OTP_IN_RESPONSE === 'true' || process.env.RETURN_OTP_IN_RESPONSE === '1',
   /**
-   * Phone login SMS via MSG91.
-   * true: send SMS via MSG91 and do not return the OTP in the API response.
-   * false: skip SMS and return OTP in send-otp for the app development popup.
-   * Default: enabled when NODE_ENV=production; set USE_MSG91_SMS=false for local dummy OTP.
+   * Phone login SMS is platform-based (no USE_MSG91_SMS env):
+   * - X-Client-Platform: web → Dev OTP in API response
+   * - X-Client-Platform: android/ios → MSG91 production SMS
    */
-  USE_MSG91_SMS: (() => {
-    const raw = process.env.USE_MSG91_SMS;
-    if (raw === 'true' || raw === '1') return true;
-    if (raw === 'false' || raw === '0') return false;
-    return (process.env.NODE_ENV || 'development') === 'production';
-  })(),
   /** MSG91 auth key (Dashboard → API). Never return this to clients. */
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY || '579248A2Lz34OhFOf6ac5ef79P1',
   /**

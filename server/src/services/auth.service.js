@@ -48,9 +48,10 @@ const normalizePhoneMobile = (mobile) => {
  * @param {String} mobile - User mobile number
  * @param {String} ipAddress - IP address
  * @param {String} userAgent - User agent
+ * @param {String} [clientPlatform] - web | android | ios (from X-Client-Platform)
  * @returns {Object} OTP info
  */
-const sendOTP = async (mobile, ipAddress, userAgent) => {
+const sendOTP = async (mobile, ipAddress, userAgent, clientPlatform = 'android') => {
   try {
     // Normalize mobile number format (ensure consistency)
     let normalizedMobile = normalizePhoneMobile(mobile);
@@ -75,22 +76,26 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
     // Create OTP with normalized mobile.
     const { otp, expiresAt } = await otpService.createOTP(null, normalizedMobile, 'phone', 'login');
 
-    // Production always delivers via MSG91 and never echoes OTP (APK / real devices).
-    // Local/dev dummy (USE_MSG91_SMS=false, non-production): return OTP for Chrome popup.
-    const isProduction = config.NODE_ENV === 'production';
-    const useSms = config.USE_MSG91_SMS || (isProduction && msg91Service.isConfigured());
+    // Platform-based delivery (no USE_MSG91_SMS env):
+    // - Flutter web → Dev OTP (return code in response, skip MSG91)
+    // - Android / iOS app → production MSG91 SMS (never echo OTP)
+    const platform = String(clientPlatform || 'android').toLowerCase();
+    const isWebClient = platform === 'web';
+    const useSms = !isWebClient;
+
     if (useSms) {
       const smsResult = await msg91Service.sendOtpSms({
         mobile: normalizedMobile,
         otp,
       });
-      // Accepted by MSG91 Flow only — handset delivery is in MSG91 SMS Logs (DLT/Pending/Failed).
       logger.info(
-        `Login SMS sent for mobile ${normalizedMobile}` +
+        `Login SMS sent for mobile ${normalizedMobile} platform=${platform}` +
           (smsResult?.requestId ? ` request_id=${smsResult.requestId}` : '')
       );
     } else {
-      logger.info(`Dummy OTP for mobile ${normalizedMobile}: ${otp} (USE_MSG91_SMS=false)`);
+      logger.info(
+        `Dev OTP for web client mobile ${normalizedMobile}: ${otp} (platform=web)`
+      );
     }
 
     // Log audit event
@@ -104,13 +109,14 @@ const sendOTP = async (mobile, ipAddress, userAgent) => {
         mobile: normalizedMobile,
         type: 'phone',
         purpose: 'login',
-        delivery: useSms ? 'msg91' : 'dummy',
+        platform,
+        delivery: useSms ? 'msg91' : 'dev_web',
       },
     });
 
     return {
-      // Never echo OTP in production. Dummy mode only outside production.
-      otp: useSms || isProduction ? undefined : otp,
+      // Echo OTP only for web Dev OTP; never for Android/iOS production SMS.
+      otp: useSms ? undefined : otp,
       expiresIn: Math.floor((expiresAt - new Date()) / 1000), // seconds
     };
   } catch (error) {
