@@ -67,6 +67,8 @@ async function sendOtpSms({ mobile, otp }) {
 
   const otpCode = String(otp);
   const sender = String(config.MSG91_SENDER_ID || '').trim();
+  // 11-char Android SMS Retriever hash → silent autofill (no Google Allow dialog).
+  const appHash = String(config.ANDROID_SMS_APP_HASH || '').trim();
 
   // Template var must match the Flow exactly (##number## → number).
   // Also send common aliases so older templates still fill the code.
@@ -86,8 +88,16 @@ async function sendOtpSms({ mobile, otp }) {
   ];
 
   const recipient = { mobiles: msg91Mobile };
+  // Include app hash in the SMS body so SMS Retriever can read OTP without consent UI.
+  // Format keeps the 6-digit code extractable via /(\d{6})/.
+  const otpForSms = appHash ? `${otpCode}\n${appHash}` : otpCode;
   for (const name of otpVarNames) {
-    recipient[name] = otpCode;
+    recipient[name] = otpForSms;
+  }
+  if (appHash) {
+    recipient.hash = appHash;
+    recipient.HASH = appHash;
+    recipient.app_hash = appHash;
   }
 
   const payload = {

@@ -70,6 +70,12 @@ const config = {
    * Must match the flow variable exactly (case-sensitive).
    */
   MSG91_OTP_VAR: process.env.MSG91_OTP_VAR || 'number',
+  /**
+   * Android SMS Retriever app hash (11 chars) for silent OTP autofill.
+   * Computed from release keystore + applicationId (com.getmypair.userapp).
+   * When set, OTP SMS includes this hash so Google does not show the Allow dialog.
+   */
+  ANDROID_SMS_APP_HASH: String(process.env.ANDROID_SMS_APP_HASH || 'lqQ0L8S+Cvo').trim(),
   MAX_LOGIN_ATTEMPTS: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
   LOCKOUT_DURATION_MINUTES: parseInt(process.env.LOCKOUT_DURATION_MINUTES) || 30,
 

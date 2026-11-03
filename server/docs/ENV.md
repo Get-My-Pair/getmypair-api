@@ -31,6 +31,7 @@ Set secrets on the host (Render / local `.env`). Prefer env vars over code defau
 | `MSG91_TEMPLATE_ID` | *(empty unless set)* | Legacy alias for flow id if `MSG91_FLOW_ID` is unset |
 | `MSG91_SENDER_ID` | *(empty)* | Optional; only if the flow sender is FromAPI |
 | `MSG91_OTP_VAR` | `number` | Flow variable name for the code (`##number##` → `number`). Case-sensitive. Comma-separated allowed. App also sends aliases (`number`, `OTP`, `VAR1`, …). |
+| `ANDROID_SMS_APP_HASH` | release hash | 11-char SMS Retriever hash so Android autofills OTP **without** the Google Allow dialog. Default is GetMyPair release keystore hash. |
 | `RETURN_OTP_IN_RESPONSE` | `false` | Portal / email OTP testing only (not phone login) |
 
 ### Phone OTP behaviour
