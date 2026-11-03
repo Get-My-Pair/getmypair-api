@@ -26,6 +26,7 @@ const { COBBLER_SUPPORTED_LANGUAGES } = require('../config/languages');
 const otpService = require('./otp.service');
 const tokenService = require('./token.service');
 const msg91Service = require('./msg91.service');
+const trustedDeviceService = require('./trustedDevice.service');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 
@@ -51,7 +52,13 @@ const normalizePhoneMobile = (mobile) => {
  * @param {String} [clientPlatform] - web | android | ios (from X-Client-Platform)
  * @returns {Object} OTP info
  */
-const sendOTP = async (mobile, ipAddress, userAgent, clientPlatform = 'android') => {
+const sendOTP = async (
+  mobile,
+  ipAddress,
+  userAgent,
+  clientPlatform = 'android',
+  androidSmsHash = ''
+) => {
   try {
     // Normalize mobile number format (ensure consistency)
     let normalizedMobile = normalizePhoneMobile(mobile);
@@ -87,6 +94,7 @@ const sendOTP = async (mobile, ipAddress, userAgent, clientPlatform = 'android')
       const smsResult = await msg91Service.sendOtpSms({
         mobile: normalizedMobile,
         otp,
+        androidSmsHash,
       });
       logger.info(
         `Login SMS sent for mobile ${normalizedMobile} platform=${platform}` +
@@ -134,7 +142,14 @@ const sendOTP = async (mobile, ipAddress, userAgent, clientPlatform = 'android')
  * @param {String} deviceInfo - Device information
  * @returns {Object} Verification result with user status
  */
-const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
+const verifyOTP = async (
+  mobile,
+  otp,
+  ipAddress,
+  userAgent,
+  deviceInfo,
+  deviceId = ''
+) => {
   try {
     // Normalize mobile number format (ensure consistency)
     let normalizedMobile = normalizePhoneMobile(mobile);
@@ -190,6 +205,17 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
         userAgent || 'unknown'
       );
 
+      // Remember this device so later logins can skip Google consent + OTP.
+      let deviceAuth = null;
+      if (deviceId) {
+        deviceAuth = await trustedDeviceService.issueTrustedDevice({
+          userId: updatedUser._id,
+          mobile: normalizedMobile,
+          deviceId,
+          deviceInfo,
+        });
+      }
+
       // Log successful login
       await AuditLog.createLog({
         userId: updatedUser._id,
@@ -198,7 +224,7 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
         ipAddress,
         userAgent,
         status: 'success',
-        details: { mobile },
+        details: { mobile, trustedDevice: Boolean(deviceAuth) },
       });
 
       return {
@@ -209,6 +235,13 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
           refreshToken,
           expiresIn,
         },
+        deviceAuth: deviceAuth
+          ? {
+              deviceId,
+              deviceAuthToken: deviceAuth.deviceAuthToken,
+              expiresAt: deviceAuth.expiresAt,
+            }
+          : undefined,
       };
     } else {
       // New user - Need profile completion
@@ -234,6 +267,87 @@ const verifyOTP = async (mobile, otp, ipAddress, userAgent, deviceInfo) => {
 };
 
 /**
+ * Re-login with a trusted device credential (no OTP / no Google SMS consent).
+ */
+const loginWithTrustedDevice = async ({
+  mobile,
+  deviceId,
+  deviceAuthToken,
+  ipAddress,
+  userAgent,
+  deviceInfo,
+}) => {
+  const normalizedMobile = normalizePhoneMobile(mobile);
+  const trusted = await trustedDeviceService.findValidTrustedDevice({
+    mobile: normalizedMobile,
+    deviceId,
+    deviceAuthToken,
+  });
+
+  if (!trusted) {
+    const err = new Error('Device authorization expired. Please verify OTP again.');
+    err.statusCode = 401;
+    err.code = 'DEVICE_REAUTH_REQUIRED';
+    throw err;
+  }
+
+  const user = await User.findById(trusted.userId);
+  if (!user) {
+    await trustedDeviceService.revokeTrustedDevice({
+      mobile: normalizedMobile,
+      deviceId,
+    });
+    const err = new Error('Device authorization expired. Please verify OTP again.');
+    err.statusCode = 401;
+    err.code = 'DEVICE_REAUTH_REQUIRED';
+    throw err;
+  }
+
+  await trustedDeviceService.touchTrustedDevice(trusted);
+
+  const updatedUser = await User.findByIdAndUpdate(
+    user._id,
+    { $set: { lastLogin: new Date() } },
+    { new: true }
+  );
+
+  const { accessToken, refreshToken, expiresIn } = await tokenService.createSession(
+    updatedUser,
+    deviceInfo || trusted.deviceInfo || 'mobile',
+    ipAddress || '127.0.0.1',
+    userAgent || 'unknown'
+  );
+
+  // Rotate device token on each silent login.
+  const deviceAuth = await trustedDeviceService.issueTrustedDevice({
+    userId: updatedUser._id,
+    mobile: normalizedMobile,
+    deviceId,
+    deviceInfo: deviceInfo || trusted.deviceInfo,
+  });
+
+  await AuditLog.createLog({
+    userId: updatedUser._id,
+    action: 'login',
+    resource: 'auth',
+    ipAddress,
+    userAgent,
+    status: 'success',
+    details: { mobile: normalizedMobile, method: 'trusted_device' },
+  });
+
+  return {
+    user: updatedUser.toJSON(),
+    tokens: { accessToken, refreshToken, expiresIn },
+    deviceAuth: {
+      deviceId,
+      deviceAuthToken: deviceAuth.deviceAuthToken,
+      expiresAt: deviceAuth.expiresAt,
+    },
+  };
+};
+
+/**
  * Complete profile and create user account
  * @param {String} mobile - User mobile number
  * @param {String} name - User name
@@ -256,7 +370,8 @@ const completeProfile = async (
   deviceInfo,
   appSource,
   location = null,
-  householdType = 'just_me'
+  householdType = 'just_me',
+  deviceId = ''
 ) => {
   try {
     const roleName = getRoleFromAppSource(appSource);
@@ -347,6 +462,17 @@ const completeProfile = async (
       userAgent || 'unknown'
     );
 
+    // Issue trusted device so the next login on this phone can skip OTP/consent.
+    let deviceAuth = null;
+    if (deviceId) {
+      deviceAuth = await trustedDeviceService.issueTrustedDevice({
+        userId: user._id,
+        mobile: normalizedMobile,
+        deviceId,
+        deviceInfo,
+      });
+    }
+
     // Log audit event
     await AuditLog.createLog({
       userId: user._id,
@@ -355,7 +481,7 @@ const completeProfile = async (
       status: 'success',
       ipAddress,
       userAgent,
-      details: { mobile, name, gender, dateOfBirth },
+      details: { mobile, name, gender, dateOfBirth, trustedDevice: Boolean(deviceAuth) },
     });
 
     return {
@@ -365,6 +491,13 @@ const completeProfile = async (
         refreshToken,
         expiresIn,
       },
+      deviceAuth: deviceAuth
+        ? {
+            deviceId,
+            deviceAuthToken: deviceAuth.deviceAuthToken,
+            expiresAt: deviceAuth.expiresAt,
+          }
+        : undefined,
     };
   } catch (error) {
     logger.error(`Error completing profile: ${error.message}`);
@@ -575,6 +708,7 @@ const getSupportedLanguages = () => [...COBBLER_SUPPORTED_LANGUAGES];
 module.exports = {
   sendOTP,
   verifyOTP,
+  loginWithTrustedDevice,
   completeProfile,
   verifyMobileOTPAndLoginOrRegister,
   completeMobileRegistration,

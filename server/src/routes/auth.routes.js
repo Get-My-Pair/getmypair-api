@@ -23,6 +23,7 @@ const authMiddleware = require('../middleware/auth.middleware');
 const {
   sendOTPValidation,
   verifyOTPValidation,
+  loginTrustedDeviceValidation,
   completeProfileValidation,
   refreshTokenValidation,
   logoutValidation,
@@ -36,6 +37,12 @@ const { requireAppSource } = require('../middleware/appSource.middleware');
 
 router.post('/send-otp', sendOTPValidation, otpSendRateLimiter, authController.sendOTP);
 router.post('/verify-otp', verifyOTPValidation, otpVerifyRateLimiter, authController.verifyOTP);
+router.post(
+  '/login-trusted-device',
+  loginTrustedDeviceValidation,
+  otpVerifyRateLimiter,
+  authController.loginWithTrustedDevice
+);
 router.post('/complete-profile', requireAppSource, completeProfileValidation, authController.completeProfile);
 router.post('/refresh-token', refreshTokenValidation, authController.refreshToken);
 router.post('/logout', authMiddleware, logoutValidation, authController.logout);

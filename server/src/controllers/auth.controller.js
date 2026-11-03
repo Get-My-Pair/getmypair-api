@@ -93,11 +93,13 @@ const sendOTP = async (req, res) => {
     }
 
     const clientPlatform = resolveClientPlatform(req);
+    const androidSmsHash = String(req.body.androidSmsHash || '').trim();
     const result = await authService.sendOTP(
       mobile,
       ipAddress,
       userAgent,
-      clientPlatform
+      clientPlatform,
+      androidSmsHash
     );
 
     const responseData = {
@@ -132,19 +134,30 @@ const sendOTP = async (req, res) => {
  */
 const verifyOTP = async (req, res) => {
   try {
-    const { mobile, otp } = req.body;
+    const { mobile, otp, deviceId } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
 
-    const result = await authService.verifyOTP(mobile, otp, ipAddress, userAgent, deviceInfo);
+    const result = await authService.verifyOTP(
+      mobile,
+      otp,
+      ipAddress,
+      userAgent,
+      deviceInfo,
+      String(deviceId || '').trim()
+    );
 
     if (result.isExistingUser) {
       // Existing user - Login successful
-      return success(res, 'Login successful', {
+      const payload = {
         user: result.user,
         tokens: result.tokens,
-      });
+      };
+      if (result.deviceAuth) {
+        payload.deviceAuth = result.deviceAuth;
+      }
+      return success(res, 'Login successful', payload);
     } else {
       // New user - Profile completion required
       return success(res, result.message, {
@@ -172,6 +185,38 @@ const verifyOTP = async (req, res) => {
 };
 
 /**
+ * Silent re-login with a previously trusted device credential.
+ * POST /api/auth/login-trusted-device
+ * Skips Google SMS consent + OTP when the same phone+device was verified before.
+ */
+const loginWithTrustedDevice = async (req, res) => {
+  try {
+    const { mobile, deviceId, deviceAuthToken } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent') || 'unknown';
+    const deviceInfo = req.get('device-info') || 'mobile';
+
+    const result = await authService.loginWithTrustedDevice({
+      mobile,
+      deviceId: String(deviceId || '').trim(),
+      deviceAuthToken: String(deviceAuthToken || '').trim(),
+      ipAddress,
+      userAgent,
+      deviceInfo,
+    });
+
+    return success(res, 'Login successful', {
+      user: result.user,
+      tokens: result.tokens,
+      deviceAuth: result.deviceAuth,
+    });
+  } catch (err) {
+    logger.error(`Trusted device login error: ${err.message}`);
+    return errorResponse(res, err.message, err.statusCode || 401, err.code);
+  }
+};
+
+/**
  * Complete profile and create user account
  * POST /api/auth/complete-profile
  * Headers: X-App-Source (USER_APP, COBBER_APP, etc.), X-App-Version (optional)
@@ -179,7 +224,7 @@ const verifyOTP = async (req, res) => {
  */
 const completeProfile = async (req, res) => {
   try {
-    const { mobile, name, dateOfBirth, gender, location, householdType } = req.body;
+    const { mobile, name, dateOfBirth, gender, location, householdType, deviceId } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || 'unknown';
     const deviceInfo = req.get('device-info') || 'mobile';
@@ -198,13 +243,18 @@ const completeProfile = async (req, res) => {
       deviceInfo,
       appSource,
       location,
-      householdType
+      householdType,
+      String(deviceId || '').trim()
     );
 
-    return success(res, 'Profile completed successfully. Login successful.', {
+    const payload = {
       user: result.user,
       tokens: result.tokens,
-    }, 201);
+    };
+    if (result.deviceAuth) {
+      payload.deviceAuth = result.deviceAuth;
+    }
+    return success(res, 'Profile completed successfully. Login successful.', payload, 201);
   } catch (err) {
     const AuditLog = require('../models/auditLog.model');
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -371,6 +421,7 @@ const getSupportedLanguages = async (req, res) => {
 module.exports = {
   sendOTP,
   verifyOTP,
+  loginWithTrustedDevice,
   completeProfile,
   refreshToken,
   logout,

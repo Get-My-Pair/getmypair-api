@@ -37,6 +37,11 @@ const sendOTPValidation = [
     .notEmpty()
     .withMessage('Mobile number is required')
     .custom(assertExactTenDigitMobile),
+  body('androidSmsHash')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 11, max: 11 })
+    .withMessage('androidSmsHash must be 11 characters'),
   handleValidationErrors,
 ];
 
@@ -54,6 +59,33 @@ const verifyOTPValidation = [
     .withMessage('OTP must be 6 digits')
     .isNumeric()
     .withMessage('OTP must be numeric'),
+  body('deviceId')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 8, max: 128 })
+    .withMessage('deviceId must be between 8 and 128 characters'),
+  handleValidationErrors,
+];
+
+// Trusted device silent login (skip OTP after first successful verification on this device)
+const loginTrustedDeviceValidation = [
+  body('mobile')
+    .trim()
+    .notEmpty()
+    .withMessage('Mobile number is required')
+    .custom(assertExactTenDigitMobile),
+  body('deviceId')
+    .trim()
+    .notEmpty()
+    .withMessage('deviceId is required')
+    .isLength({ min: 8, max: 128 })
+    .withMessage('deviceId must be between 8 and 128 characters'),
+  body('deviceAuthToken')
+    .trim()
+    .notEmpty()
+    .withMessage('deviceAuthToken is required')
+    .isLength({ min: 32, max: 128 })
+    .withMessage('deviceAuthToken is invalid'),
   handleValidationErrors,
 ];
 
@@ -133,6 +165,11 @@ const completeProfileValidation = [
   body('location.lat').optional().isFloat({ min: -90, max: 90 }),
   body('location.lng').optional().isFloat({ min: -180, max: 180 }),
   body('location.address').optional().trim().isLength({ max: 500 }),
+  body('deviceId')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ min: 8, max: 128 })
+    .withMessage('deviceId must be between 8 and 128 characters'),
   handleValidationErrors,
 ];
 
@@ -168,6 +205,7 @@ const updateLanguageValidation = [
 module.exports = {
   sendOTPValidation,
   verifyOTPValidation,
+  loginTrustedDeviceValidation,
   completeProfileValidation,
   refreshTokenValidation,
   logoutValidation,

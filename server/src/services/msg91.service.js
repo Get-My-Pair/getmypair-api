@@ -43,7 +43,7 @@ function toMsg91Mobile(mobile) {
  * Send login code via MSG91 Flow SMS.
  * Template variable name defaults to OTP (##OTP## in the flow). Override with MSG91_OTP_VAR.
  */
-async function sendOtpSms({ mobile, otp }) {
+async function sendOtpSms({ mobile, otp, androidSmsHash = '' }) {
   if (!isConfigured()) {
     const err = new Error(
       'SMS delivery is not configured. Set MSG91_AUTH_KEY and MSG91_FLOW_ID (or MSG91_TEMPLATE_ID).'
@@ -68,7 +68,9 @@ async function sendOtpSms({ mobile, otp }) {
   const otpCode = String(otp);
   const sender = String(config.MSG91_SENDER_ID || '').trim();
   // 11-char Android SMS Retriever hash → silent autofill (no Google Allow dialog).
-  const appHash = String(config.ANDROID_SMS_APP_HASH || '').trim();
+  // Prefer client-provided hash (debug vs release builds differ), else server env.
+  const clientHash = String(androidSmsHash || '').trim();
+  const appHash = clientHash || String(config.ANDROID_SMS_APP_HASH || '').trim();
 
   // Template var must match the Flow exactly (##number## → number).
   // Also send common aliases so older templates still fill the code.
