@@ -168,15 +168,26 @@ async function syncCategoryRepairServices() {
 /**
  * Seed defaults once. Never re-sync repair seeds on every customer list call
  * (that was making CareMyPair feel very slow in the app).
+ *
+ * Repair: if only legacy generic tiles exist (no categoryCodes), run category
+ * seed once so the app gets footwear-category problem lists instead of the
+ * old static 4-item list.
  */
 async function ensureDefaults(serviceType) {
-  const count = await CareServiceProblem.countDocuments({ serviceType });
-  if (count > 0) return;
-
   if (serviceType === 'repair') {
-    await syncCategoryRepairServices();
+    const hasCategoryBound = await CareServiceProblem.exists({
+      serviceType: 'repair',
+      isActive: { $ne: false },
+      'categoryCodes.0': { $exists: true },
+    });
+    if (!hasCategoryBound) {
+      await syncCategoryRepairServices();
+    }
     return;
   }
+
+  const count = await CareServiceProblem.countDocuments({ serviceType });
+  if (count > 0) return;
 
   const seeds = DEFAULTS[serviceType] || [];
   if (!seeds.length) return;
@@ -204,19 +215,28 @@ const listByServiceType = async (req, res) => {
     const categories = normalizeCategoryCodes(categoryRaw);
     const filter = { serviceType };
     if (activeOnly) filter.isActive = { $ne: false };
-    // Boot → boot services; sandal → sandal services; empty categoryCodes = all.
+    // Repair: strict category match only (no legacy "empty = all" generics).
+    // Maintain/Wash: empty categoryCodes still means available for every article.
     if (categories.length === 1) {
-      filter.$or = [
-        { categoryCodes: { $exists: false } },
-        { categoryCodes: { $size: 0 } },
-        { categoryCodes: categories[0] },
-      ];
+      if (serviceType === 'repair') {
+        filter.categoryCodes = categories[0];
+      } else {
+        filter.$or = [
+          { categoryCodes: { $exists: false } },
+          { categoryCodes: { $size: 0 } },
+          { categoryCodes: categories[0] },
+        ];
+      }
     } else if (categories.length > 1) {
-      filter.$or = [
-        { categoryCodes: { $exists: false } },
-        { categoryCodes: { $size: 0 } },
-        { categoryCodes: { $in: categories } },
-      ];
+      if (serviceType === 'repair') {
+        filter.categoryCodes = { $in: categories };
+      } else {
+        filter.$or = [
+          { categoryCodes: { $exists: false } },
+          { categoryCodes: { $size: 0 } },
+          { categoryCodes: { $in: categories } },
+        ];
+      }
     }
     const items = await CareServiceProblem.find(filter)
       .sort({ sortOrder: 1, createdAt: 1 })
