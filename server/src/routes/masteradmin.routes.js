@@ -44,6 +44,7 @@ const repairshopsJobsController = require('../controllers/repairshopsJobs.contro
 const sellListingController = require('../controllers/sellListing.controller');
 const hubSettingsController = require('../controllers/hubSettings.controller');
 const careServiceProblemController = require('../controllers/careServiceProblem.controller');
+const articleCategoryController = require('../controllers/articleCategory.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -320,6 +321,29 @@ router.get(
   adminMasterAuth,
   darkstorePaymentQueryValidation,
   darkstorePaymentController.paymentNotifications
+);
+
+// Article DB — categories for add-article + CareMyPair mapping
+router.get('/article-db', adminMasterAuth, articleCategoryController.overview);
+router.get(
+  '/article-categories',
+  adminMasterAuth,
+  articleCategoryController.listCategories
+);
+router.post(
+  '/article-categories',
+  adminMasterAuth,
+  articleCategoryController.createCategory
+);
+router.put(
+  '/article-categories/:id',
+  adminMasterAuth,
+  articleCategoryController.updateCategory
+);
+router.delete(
+  '/article-categories/:id',
+  adminMasterAuth,
+  articleCategoryController.deleteCategory
 );
 
 // CareMyPair problem tiles (Repair / Maintain / Wash)

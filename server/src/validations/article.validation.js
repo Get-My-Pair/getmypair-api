@@ -8,33 +8,51 @@
 
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../utils/validators');
+const {
+  isValidCategoryCode,
+  slugifyCode,
+} = require('../controllers/articleCategory.controller');
 
+/** Fallback codes if Article DB is unreachable (matches canonical product list). */
 const categoryEnum = [
+  'formal_shoes',
+  'casual_shoes',
+  'sports_shoes',
+  'safety_shoes',
+  'leather_sandals',
+  'flip_flops',
+  'womens_heels',
+  'boots',
+  'childrens_shoes',
+  'orthopedic_shoes',
+  'traditional_footwear',
+  // Legacy codes still accepted for older passports.
   'sports_shoe',
-  'sneaker',
-  'running',
-  'trainer',
-  'basketball',
-  'football',
   'casual',
   'formal',
-  'loafer',
-  'oxford',
-  'heel',
   'sandal',
-  'flip_flop',
-  'slide',
   'boot',
-  'ankle_boot',
-  'slipper',
-  'school',
+  'flip_flop',
+  'heel',
   'kids',
   'safety',
   'ethnic',
-  'canvas',
   'other',
 ];
 const conditionEnum = ['excellent', 'good', 'fair', 'worn', ''];
+
+async function assertActiveCategory(value) {
+  const code = slugifyCode(value);
+  if (!code) throw new Error('Category is required');
+  try {
+    const ok = await isValidCategoryCode(code);
+    if (ok) return true;
+  } catch (_) {
+    // Fall through to static enum if DB check fails.
+  }
+  if (categoryEnum.includes(code)) return true;
+  throw new Error('Category is not an active Article DB category');
+}
 
 const footwearTypeEnum = ['luxury', 'everyday'];
 
@@ -73,8 +91,7 @@ const createArticleValidation = [
     .trim()
     .notEmpty()
     .withMessage('Category is required')
-    .isIn(categoryEnum)
-    .withMessage(`Category must be one of: ${categoryEnum.join(', ')}`),
+    .custom(assertActiveCategory),
   body('color')
     .optional()
     .trim()
@@ -140,8 +157,9 @@ const updateArticleValidation = [
   body('category')
     .optional()
     .trim()
-    .isIn(categoryEnum)
-    .withMessage(`Category must be one of: ${categoryEnum.join(', ')}`),
+    .notEmpty()
+    .withMessage('Category cannot be empty')
+    .custom(assertActiveCategory),
   body('color')
     .optional()
     .trim()

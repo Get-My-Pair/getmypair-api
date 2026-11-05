@@ -4,44 +4,13 @@
 const mongoose = require('mongoose');
 const CareServiceProblem = require('../models/careServiceProblem.model');
 const { SERVICE_TYPES } = require('../models/careServiceProblem.model');
+const { CATEGORY_REPAIR_SERVICES } = require('../data/categoryRepairServices.seed');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
 const DEFAULTS = {
-  repair: [
-    {
-      code: 'sole_bottom_construction',
-      name: 'Sole & Bottom Construction Repairs',
-      description:
-        'Complete bottom-up sole restoration, from re-gluing delaminated outsoles and replacing worn heels to full resoles and midsole rebuilds.',
-      priceRupees: 236,
-      sortOrder: 1,
-    },
-    {
-      code: 'upper_seam_restoration',
-      name: 'Upper Material & Seam Restoration',
-      description:
-        'Full upper and interior restoration to patch tears, fix split seams, rebuild heel linings, and replace damaged panels.',
-      priceRupees: 236,
-      sortOrder: 2,
-    },
-    {
-      code: 'hardware_fastener',
-      name: 'Hardware & Fastener Repairs',
-      description:
-        'Complete hardware and fastener replacement for eyelets, zippers, straps, buckles, velcro, and snaps.',
-      priceRupees: 236,
-      sortOrder: 3,
-    },
-    {
-      code: 'fit_structural',
-      name: 'Fit & Structural Adjustments',
-      description:
-        'Fixes squeaks, shaky support inside your shoes, and stretches tight spots for a comfortable fit.',
-      priceRupees: 236,
-      sortOrder: 4,
-    },
-  ],
+  // Repair tiles are seeded per article category (see CATEGORY_REPAIR_SERVICES).
+  repair: [],
   maintenance: [
     {
       code: 'protection_conditioning',
@@ -104,6 +73,24 @@ const DEFAULTS = {
   ],
 };
 
+function normalizeCategoryCodes(raw) {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : String(raw).split(',');
+  const out = [];
+  const seen = new Set();
+  for (const item of list) {
+    const code = String(item || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  return out;
+}
+
 function publicProblem(doc) {
   if (!doc) return null;
   return {
@@ -115,6 +102,7 @@ function publicProblem(doc) {
     description: doc.description || '',
     priceRupees: Number(doc.priceRupees) || 0,
     sortOrder: Number(doc.sortOrder) || 0,
+    categoryCodes: normalizeCategoryCodes(doc.categoryCodes),
     isActive: doc.isActive !== false,
     createdAt: doc.createdAt || null,
     updatedAt: doc.updatedAt || null,
@@ -131,7 +119,50 @@ function normalizeServiceType(raw) {
   return t;
 }
 
+/**
+ * Upsert category-wise RepairMyPair tiles and deactivate legacy generic repair rows.
+ */
+async function syncCategoryRepairServices() {
+  const canonicalCodes = [];
+
+  for (const [categoryCode, services] of Object.entries(CATEGORY_REPAIR_SERVICES)) {
+    for (const s of services) {
+      canonicalCodes.push(s.code);
+      await CareServiceProblem.findOneAndUpdate(
+        { serviceType: 'repair', code: s.code },
+        {
+          $set: {
+            serviceType: 'repair',
+            code: s.code,
+            name: s.name,
+            description: s.description,
+            priceRupees: s.priceRupees,
+            sortOrder: s.sortOrder,
+            categoryCodes: [categoryCode],
+            isActive: true,
+          },
+        },
+        { upsert: true, new: true }
+      );
+    }
+  }
+
+  // Hide old generic / non-canonical repair tiles so only category lists show.
+  await CareServiceProblem.updateMany(
+    {
+      serviceType: 'repair',
+      code: { $nin: canonicalCodes },
+    },
+    { $set: { isActive: false } }
+  );
+}
+
 async function ensureDefaults(serviceType) {
+  if (serviceType === 'repair') {
+    await syncCategoryRepairServices();
+    return;
+  }
+
   const count = await CareServiceProblem.countDocuments({ serviceType });
   if (count > 0) return;
   const seeds = DEFAULTS[serviceType] || [];
@@ -140,6 +171,7 @@ async function ensureDefaults(serviceType) {
     seeds.map((s) => ({
       ...s,
       serviceType,
+      categoryCodes: [],
       isActive: true,
     }))
   );
@@ -153,13 +185,33 @@ const listByServiceType = async (req, res) => {
     }
     await ensureDefaults(serviceType);
     const activeOnly = String(req.query.active || '').trim() === '1';
+    const categoryRaw = String(
+      req.query.category || req.query.articleCategory || req.query.categories || ''
+    ).trim();
+    const categories = normalizeCategoryCodes(categoryRaw);
     const filter = { serviceType };
     if (activeOnly) filter.isActive = { $ne: false };
+    // Boot → boot services; sandal → sandal services; empty categoryCodes = all.
+    if (categories.length === 1) {
+      filter.$or = [
+        { categoryCodes: { $exists: false } },
+        { categoryCodes: { $size: 0 } },
+        { categoryCodes: categories[0] },
+      ];
+    } else if (categories.length > 1) {
+      filter.$or = [
+        { categoryCodes: { $exists: false } },
+        { categoryCodes: { $size: 0 } },
+        { categoryCodes: { $in: categories } },
+      ];
+    }
     const items = await CareServiceProblem.find(filter)
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
     return success(res, 'Care service problems', {
       serviceType,
+      category: categories[0] || null,
+      categories,
       items: items.map(publicProblem),
     });
   } catch (err) {
@@ -218,6 +270,7 @@ const createProblem = async (req, res) => {
       sortOrder = (last?.sortOrder || 0) + 1;
     }
     const code = String(req.body.code || '').trim();
+    const categoryCodes = normalizeCategoryCodes(req.body.categoryCodes);
     const problem = await CareServiceProblem.create({
       serviceType,
       name,
@@ -225,6 +278,7 @@ const createProblem = async (req, res) => {
       priceRupees,
       sortOrder,
       code,
+      categoryCodes,
       isActive: req.body.isActive === false || req.body.isActive === 'false' ? false : true,
       updatedBy: req.adminMaster?._id || null,
     });
@@ -262,6 +316,9 @@ const updateProblem = async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'code')) {
       $set.code = String(req.body.code || '').trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'categoryCodes')) {
+      $set.categoryCodes = normalizeCategoryCodes(req.body.categoryCodes);
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'isActive')) {
       $set.isActive = !(req.body.isActive === false || req.body.isActive === 'false');

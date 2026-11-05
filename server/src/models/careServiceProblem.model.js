@@ -47,6 +47,15 @@ const careServiceProblemSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    /**
+     * Article category codes this problem applies to (e.g. boot, sandal).
+     * Empty array = available for all categories.
+     */
+    categoryCodes: {
+      type: [String],
+      default: [],
+      index: true,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'AdminMaster',
@@ -57,6 +66,7 @@ const careServiceProblemSchema = new mongoose.Schema(
 );
 
 careServiceProblemSchema.index({ serviceType: 1, sortOrder: 1, createdAt: 1 });
+careServiceProblemSchema.index({ serviceType: 1, categoryCodes: 1 });
 
 module.exports = mongoose.model('CareServiceProblem', careServiceProblemSchema);
 module.exports.SERVICE_TYPES = SERVICE_TYPES;

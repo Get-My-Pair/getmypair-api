@@ -12,10 +12,14 @@ const authMiddleware = require('../middleware/auth.middleware');
 const roleMiddleware = require('../middleware/role.middleware');
 const { uploadArticleImage } = require('../middleware/upload.middleware');
 const articleController = require('../controllers/article.controller');
+const articleCategoryController = require('../controllers/articleCategory.controller');
 const { createArticleValidation, updateArticleValidation } = require('../validations/article.validation');
 
 router.use(authMiddleware);
 router.use(roleMiddleware(['USER']));
+
+/** Active categories from Masteradmin Article DB (dynamic add-article dropdown). */
+router.get('/categories', articleCategoryController.listActiveForCustomer);
 
 router.post('/create', createArticleValidation, articleController.createArticle);
 router.get('/my', articleController.getMyArticles);
