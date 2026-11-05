@@ -121,30 +121,38 @@ function normalizeServiceType(raw) {
 
 /**
  * Upsert category-wise RepairMyPair tiles and deactivate legacy generic repair rows.
+ * Uses bulkWrite so first-time seed is fast; callers must only run when DB is empty.
  */
 async function syncCategoryRepairServices() {
   const canonicalCodes = [];
+  const ops = [];
 
   for (const [categoryCode, services] of Object.entries(CATEGORY_REPAIR_SERVICES)) {
     for (const s of services) {
       canonicalCodes.push(s.code);
-      await CareServiceProblem.findOneAndUpdate(
-        { serviceType: 'repair', code: s.code },
-        {
-          $set: {
-            serviceType: 'repair',
-            code: s.code,
-            name: s.name,
-            description: s.description,
-            priceRupees: s.priceRupees,
-            sortOrder: s.sortOrder,
-            categoryCodes: [categoryCode],
-            isActive: true,
+      ops.push({
+        updateOne: {
+          filter: { serviceType: 'repair', code: s.code },
+          update: {
+            $set: {
+              serviceType: 'repair',
+              code: s.code,
+              name: s.name,
+              description: s.description,
+              priceRupees: s.priceRupees,
+              sortOrder: s.sortOrder,
+              categoryCodes: [categoryCode],
+              isActive: true,
+            },
           },
+          upsert: true,
         },
-        { upsert: true, new: true }
-      );
+      });
     }
+  }
+
+  if (ops.length) {
+    await CareServiceProblem.bulkWrite(ops, { ordered: false });
   }
 
   // Hide old generic / non-canonical repair tiles so only category lists show.
@@ -157,14 +165,19 @@ async function syncCategoryRepairServices() {
   );
 }
 
+/**
+ * Seed defaults once. Never re-sync repair seeds on every customer list call
+ * (that was making CareMyPair feel very slow in the app).
+ */
 async function ensureDefaults(serviceType) {
+  const count = await CareServiceProblem.countDocuments({ serviceType });
+  if (count > 0) return;
+
   if (serviceType === 'repair') {
     await syncCategoryRepairServices();
     return;
   }
 
-  const count = await CareServiceProblem.countDocuments({ serviceType });
-  if (count > 0) return;
   const seeds = DEFAULTS[serviceType] || [];
   if (!seeds.length) return;
   await CareServiceProblem.insertMany(
