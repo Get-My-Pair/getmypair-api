@@ -92,6 +92,14 @@ async function updateActualCost(serviceRequestId, actualCost, adminId, req) {
   }
 
   const prev = request.actualCost;
+  const baseline =
+    prev != null && Number(prev) >= 0
+      ? Number(prev)
+      : Number(request.estimatedCost) || 0;
+  // Only surface additional-charges UI when the repair shop changes the amount.
+  if (n === baseline) {
+    return { request: request.toObject() };
+  }
   request.actualCost = n;
   request.actualCostUserDecision = 'pending';
   request.actualCostAcceptedAt = null;

@@ -29,15 +29,44 @@ async function getPayableRequest(serviceRequestId, userId) {
     err.statusCode = 404;
     throw err;
   }
-  if (request.actualCostUserDecision !== 'accepted') {
-    const err = new Error('User must accept the final service cost before payment');
-    err.statusCode = 400;
-    throw err;
-  }
-  if (request.actualCost == null || request.actualCost <= 0) {
+  // Prefer accepted actualCost; otherwise fall back to estimatedCost so payment
+  // can continue right after service create (no separate "actual amount" gate).
+  const payable =
+    request.actualCost != null && Number(request.actualCost) > 0
+      ? Number(request.actualCost)
+      : request.estimatedCost != null && Number(request.estimatedCost) > 0
+        ? Number(request.estimatedCost)
+        : null;
+
+  if (payable == null || payable <= 0) {
     const err = new Error('No payable amount on this request');
     err.statusCode = 400;
     throw err;
+  }
+
+  // Block only when repair shop proposed additional charges still pending review.
+  if (request.actualCostUserDecision === 'pending') {
+    const err = new Error(
+      'Please review additional charges from the repair shop before payment'
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (request.actualCostUserDecision === 'rejected') {
+    const err = new Error('This request was cancelled after cost rejection');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Ensure payment amount source is set for order creation.
+  if (request.actualCost == null || Number(request.actualCost) <= 0) {
+    request.actualCost = payable;
+    if (!request.actualCostUserDecision) {
+      request.actualCostUserDecision = 'accepted';
+      request.actualCostAcceptedAt = new Date();
+    }
+    await request.save();
   }
   if (request.paymentState === 'PAYMENT_SUCCESS') {
     const err = new Error('This request is already paid');

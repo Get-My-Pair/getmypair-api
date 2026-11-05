@@ -143,7 +143,24 @@ const createServiceRequest = async (req, res) => {
       workflowStatus: 'AWAITING_ACCEPTANCE',
       paymentState: 'PAYMENT_PENDING',
       estimatedCost: estimated,
-      actualCost: actualCost != null && Number(actualCost) >= 0 ? Number(actualCost) : null,
+      // Payable amount = service price at create. User continues to payment immediately
+      // (no separate "actual amount" gate). Repair shop may later propose additional charges.
+      actualCost:
+        actualCost != null && Number(actualCost) >= 0
+          ? Number(actualCost)
+          : estimated != null && Number(estimated) >= 0
+            ? Number(estimated)
+            : null,
+      actualCostUserDecision:
+        (actualCost != null && Number(actualCost) >= 0) ||
+        (estimated != null && Number(estimated) >= 0)
+          ? 'accepted'
+          : null,
+      actualCostAcceptedAt:
+        (actualCost != null && Number(actualCost) >= 0) ||
+        (estimated != null && Number(estimated) >= 0)
+          ? new Date()
+          : null,
       routingType: 'dark_store',
       trackingState: 'request_created',
       trackingUpdatedAt: new Date(),
@@ -153,7 +170,7 @@ const createServiceRequest = async (req, res) => {
           status: 'pending',
           actorType: 'customer',
           actorId: String(userId),
-          note: 'Service request created',
+          note: 'Service request created — ready for payment',
           timestamp: new Date(),
         },
       ],
@@ -847,7 +864,7 @@ const cobblerAcceptRequest = async (req, res) => {
 };
 
 /**
- * Cobbler sets the final actual cost (requires user acceptance later).
+ * Repair shop / cobbler proposes additional charges (only then user sees charge UI).
  * POST /api/service/cobbler/set-actual-cost
  * Body: { requestId, actualCost }
  */
@@ -872,6 +889,16 @@ const cobblerSetActualCost = async (req, res) => {
       return errorResponse(res, 'actualCost must be a non-negative number', 400);
     }
 
+    const previous = Number(request.actualCost);
+    const baseline =
+      Number.isFinite(previous) && previous >= 0
+        ? previous
+        : Number(request.estimatedCost) || 0;
+    // No change vs current payable — keep payment flow as-is.
+    if (Number.isFinite(baseline) && costNum === baseline) {
+      return success(res, 'No additional charges', { request: request.toObject() });
+    }
+
     request.actualCost = costNum;
     request.actualCostUserDecision = 'pending';
     request.actualCostAcceptedAt = null;
@@ -891,7 +918,7 @@ const cobblerSetActualCost = async (req, res) => {
       status: request.status,
       actorType: 'cobbler',
       actorId: String(cobblerId),
-      note: `Cobbler proposed final service cost (${costNum})`,
+      note: `Repair shop proposed additional charges (${costNum})`,
       media: { photos: [], videos: [] },
       timestamp: new Date(),
     });
