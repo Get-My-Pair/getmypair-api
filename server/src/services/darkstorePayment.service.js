@@ -45,17 +45,31 @@ async function enrichServiceRequests(requests) {
   }));
 }
 
-/** Jobs awaiting or in cost approval workflow for dark store routes. */
+/**
+ * Accepted jobs where the store can set / update additional cost.
+ * Only in-shop work (or already pending customer cost approval) — not inbox / paid.
+ */
 async function listCostApprovalJobs({ darkStoreId, page, limit }) {
   const { page: p, limit: l, skip } = paginate(page, limit);
   const filter = {
     ...darkStoreFilter(darkStoreId),
-    status: { $ne: 'cancelled' },
+    status: { $nin: ['cancelled', 'completed'] },
+    paymentState: { $nin: ['PAYMENT_SUCCESS', 'PAYMENT_REFUNDED'] },
+    trackingState: {
+      $in: [
+        'dark_store_received',
+        'inspection_started',
+        'repair_in_progress',
+        'repair_completed',
+        'dispatch_ready',
+      ],
+    },
     $or: [
+      // Needs an additional-cost update (or first actual cost).
+      { actualCostUserDecision: { $in: [null, 'pending'] } },
+      { paymentState: { $in: ['COST_APPROVAL_PENDING', 'PAYMENT_PENDING', 'PAYMENT_INITIATED'] } },
+      { workflowStatus: { $in: ['COBBLER_COST_PENDING', 'COST_APPROVAL_PENDING', 'PAYMENT_PENDING'] } },
       { actualCost: null },
-      { actualCostUserDecision: 'pending' },
-      { paymentState: 'COST_APPROVAL_PENDING' },
-      { workflowStatus: { $in: ['COBBLER_COST_PENDING', 'COST_APPROVAL_PENDING'] } },
     ],
   };
   const [items, total] = await Promise.all([
@@ -141,15 +155,32 @@ async function listPaymentStatus({ darkStoreId, status, page, limit }) {
 
   const srIds = items.map((i) => i.serviceRequestId);
   const requests = await ServiceRequest.find({ _id: { $in: srIds } })
-    .select('serviceType trackingState darkStoreId darkStoreName paymentState workflowStatus')
+    .select(
+      'publicId serviceType trackingState darkStoreId darkStoreName paymentState workflowStatus userId articleId actualCost estimatedCost'
+    )
     .lean();
-  const srMap = Object.fromEntries(requests.map((r) => [String(r._id), r]));
+  const enrichedRequests = await enrichServiceRequests(requests);
+  const srMap = Object.fromEntries(enrichedRequests.map((r) => [String(r._id), r]));
+
+  const userIds = [...new Set(items.map((i) => String(i.userId || '')).filter(Boolean))];
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } }).select('name mobile email').lean()
+    : [];
+  const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
 
   return {
-    items: items.map((pay) => ({
-      ...pay,
-      serviceRequest: srMap[String(pay.serviceRequestId)] || null,
-    })),
+    items: items.map((pay) => {
+      const serviceRequest = srMap[String(pay.serviceRequestId)] || null;
+      const user = userMap[String(pay.userId)] || serviceRequest?.user || null;
+      return {
+        ...pay,
+        publicId: serviceRequest?.publicId || null,
+        serviceRequest,
+        user,
+        customerName: user?.name || null,
+        serviceType: serviceRequest?.serviceType || null,
+      };
+    }),
     total,
     page: p,
     limit: l,
@@ -417,48 +448,120 @@ async function getMonthlyReport({ darkStoreId, year, month }) {
   const from = new Date(Date.UTC(y, m - 1, 1));
   const to = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
 
-  const match = { ...darkStoreFilter(darkStoreId), status: 'PAYMENT_SUCCESS', paidAt: { $gte: from, $lte: to } };
+  const match = {
+    ...darkStoreFilter(darkStoreId),
+    status: 'PAYMENT_SUCCESS',
+    paidAt: { $gte: from, $lte: to },
+  };
+  const storeJobs = {
+    ...darkStoreFilter(darkStoreId),
+    createdAt: { $gte: from, $lte: to },
+  };
 
-  const [totals] = await Payment.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: null,
-        gross: { $sum: '$amount' },
-        gmp: { $sum: '$gmpShare' },
-        partner: { $sum: '$cobblerShare' },
-        count: { $sum: 1 },
-      },
-    },
-  ]);
+  const [[totals], byDay, paymentByStatus, jobStats, failedPayments, revenueRollup] =
+    await Promise.all([
+      Payment.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            gross: { $sum: '$amount' },
+            gmp: { $sum: '$gmpShare' },
+            partner: { $sum: '$cobblerShare' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Payment.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt' } },
+            gross: { $sum: '$amount' },
+            gmp: { $sum: '$gmpShare' },
+            partner: { $sum: '$cobblerShare' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Payment.aggregate([
+        {
+          $match: {
+            ...darkStoreFilter(darkStoreId),
+            createdAt: { $gte: from, $lte: to },
+          },
+        },
+        { $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+      ]),
+      ServiceRequest.aggregate([
+        { $match: storeJobs },
+        {
+          $group: {
+            _id: null,
+            totalJobs: { $sum: 1 },
+            completed: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ['$status', 'completed'] },
+                      { $eq: ['$trackingState', 'delivered'] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            cancelled: {
+              $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+      Payment.countDocuments({
+        ...darkStoreFilter(darkStoreId),
+        status: 'PAYMENT_FAILED',
+        createdAt: { $gte: from, $lte: to },
+      }),
+      Revenue.find({
+        period: 'daily',
+        periodKey: {
+          $gte: from.toISOString().slice(0, 10),
+          $lte: to.toISOString().slice(0, 10),
+        },
+        providerType: 'dark_store',
+        ...(darkStoreId ? { beneficiaryId: String(darkStoreId) } : {}),
+      })
+        .sort({ periodKey: 1 })
+        .lean(),
+    ]);
 
-  const byDay = await Payment.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt' } },
-        gross: { $sum: '$amount' },
-        count: { $sum: 1 },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ]);
-
-  const revenueRollup = await Revenue.find({
-    period: 'daily',
-    periodKey: {
-      $gte: from.toISOString().slice(0, 10),
-      $lte: to.toISOString().slice(0, 10),
-    },
-    providerType: 'dark_store',
-  })
-    .sort({ periodKey: 1 })
-    .lean();
+  const jobs = jobStats[0] || { totalJobs: 0, completed: 0, cancelled: 0 };
+  const summary = totals || { gross: 0, gmp: 0, partner: 0, count: 0 };
 
   return {
     period: { year: y, month: m, from, to },
-    totals: totals || { gross: 0, gmp: 0, partner: 0, count: 0 },
-    byDay,
+    totals: summary,
+    // Flat aliases for older clients
+    totalRevenue: summary.gross,
+    revenue: summary.gross,
+    gmpShare: summary.gmp,
+    partnerShare: summary.partner,
+    jobCount: jobs.totalJobs,
+    paidJobs: summary.count,
+    completedJobs: jobs.completed,
+    cancelledJobs: jobs.cancelled,
+    refundCount: failedPayments,
+    byStatus: paymentByStatus,
+    byDay: byDay.map((d) => ({
+      date: d._id,
+      gross: d.gross,
+      gmp: d.gmp,
+      partner: d.partner,
+      count: d.count,
+    })),
     revenueRollup,
   };
 }

@@ -148,7 +148,22 @@ const repairshopsUserUpdateValidation = [
 ];
 
 const repairshopsJobQueryValidation = [
-  query('status').optional().isIn(['inbox', 'accepted', 'all']).withMessage('status must be inbox, accepted, or all'),
+  query('status')
+    .optional()
+    .isIn([
+      'inbox',
+      'accepted',
+      'awaiting_pickup',
+      'at_shop',
+      'in_shop',
+      'awaiting_return',
+      'completed',
+      'done',
+      'all',
+    ])
+    .withMessage(
+      'status must be inbox, accepted, awaiting_pickup, at_shop, awaiting_return, completed, or all'
+    ),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   handleValidationErrors,

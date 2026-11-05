@@ -658,14 +658,17 @@ void 0;
  * /api/repairshops/jobs:
  *   get:
  *     summary: List jobs for this Repairshops
- *     description: inbox = unclaimed user-app jobs. accepted = jobs this store took. all = both.
+ *     description: Stage filters — inbox, awaiting_pickup, at_shop, awaiting_return, completed (accepted maps to awaiting_pickup; all = inbox + accepted).
  *     tags: [Repairshops Jobs]
  *     security:
  *       - adminBearerAuth: []
  *     parameters:
  *       - in: query
  *         name: status
- *         schema: { type: string, enum: [inbox, accepted, all], example: inbox }
+ *         schema:
+ *           type: string
+ *           enum: [inbox, accepted, awaiting_pickup, at_shop, awaiting_return, completed, all]
+ *           example: inbox
  *       - in: query
  *         name: page
  *         schema: { type: integer, example: 1 }
