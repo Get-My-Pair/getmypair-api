@@ -16,11 +16,8 @@ const zohoPayment = require('./zohoPayment.service');
 const { logPaymentAudit } = require('./paymentAudit.service');
 const paymentNotification = require('./paymentNotification.service');
 const { updateServiceWorkflow, resolveProviderType } = require('../utils/paymentWorkflow.helper');
+const { allocatePaymentOrderId } = require('../utils/gmpPublicId');
 const logger = require('../utils/logger');
-
-function generateOrderId(serviceRequestId) {
-  return `GMP-${String(serviceRequestId).slice(-8)}-${Date.now()}`;
-}
 
 async function getPayableRequest(serviceRequestId, userId) {
   const request = await ServiceRequest.findOne({ _id: serviceRequestId, userId });
@@ -86,7 +83,7 @@ async function findOrCreatePendingPayment(request) {
 
   const providerType = resolveProviderType(request);
   const split = calculateRevenueSplit(request.actualCost, providerType);
-  const orderId = generateOrderId(request._id);
+  const orderId = await allocatePaymentOrderId(request, Payment);
 
   payment = await Payment.create({
     orderId,
@@ -922,7 +919,7 @@ async function runPendingSettlements() {
 }
 
 module.exports = {
-  generateOrderId,
+  allocatePaymentOrderId,
   createPaymentOrder,
   createPaymentLink,
   verifyPayment,

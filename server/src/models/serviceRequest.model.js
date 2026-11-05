@@ -93,6 +93,20 @@ const serviceRequestSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /**
+     * Short coded display ID, e.g. CHSHWA1234AM
+     * (city + shoe + service + seq + hub/area). Stable for the life of the request.
+     */
+    publicId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 16,
+      default: null,
+      index: true,
+      sparse: true,
+      unique: true,
+    },
     serviceType: {
       type: String,
       required: true,

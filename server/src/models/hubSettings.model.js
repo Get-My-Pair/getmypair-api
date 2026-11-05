@@ -56,6 +56,17 @@ const hubSettingsSchema = new mongoose.Schema(
       trim: true,
       default: 'GetMyPair Hub',
     },
+    /**
+     * Optional 2-letter area code used in public order IDs (e.g. AM = Ambattur).
+     * When empty, the first two letters of `name` are used.
+     */
+    areaCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 2,
+      default: '',
+    },
     address: {
       type: String,
       trim: true,

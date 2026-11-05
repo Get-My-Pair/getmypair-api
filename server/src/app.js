@@ -106,6 +106,7 @@ app.use(
       'X-App',
       'X-App-Source',
       'X-App-Version',
+      'X-Client-Platform',
       'X-Active-Profile-Id',
       'Accept',
       'Accept-Language',

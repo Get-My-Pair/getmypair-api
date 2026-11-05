@@ -109,6 +109,7 @@ function publicHub(hub) {
     _id: String(hub._id),
     id: String(hub._id),
     name: hub.name || '',
+    areaCode: hub.areaCode || '',
     address: hub.address || '',
     city: hub.city || '',
     state: hub.state || '',
@@ -145,8 +146,14 @@ function pickFields(body = {}) {
   const str = (key) => String(body[key] ?? '').trim();
   const coords = parseCoords(body);
   if (coords.error) return { error: coords.error };
+  const areaRaw = str('areaCode') || str('code');
+  const areaCode = areaRaw
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 2);
   return {
     name: str('name') || 'GetMyPair Hub',
+    areaCode,
     address: str('address'),
     city: str('city'),
     state: str('state'),

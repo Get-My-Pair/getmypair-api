@@ -26,6 +26,7 @@ const {
   stampProfileId,
   articleMatchesActiveProfile,
 } = require('../utils/activeProfile.helper');
+const { allocatePublicId } = require('../utils/gmpPublicId');
 
 const trackingStateOrder = serviceTrackingStates.reduce((acc, state, idx) => {
   acc[state] = idx;
@@ -120,7 +121,11 @@ const createServiceRequest = async (req, res) => {
         ? String(problemDescription).trim()
         : null;
 
-    const doc = await ServiceRequest.create({
+    const addressDoc =
+      Array.isArray(profile.addresses) &&
+      profile.addresses.find((a) => String(a._id) === addrIdStr);
+
+    const basePayload = {
       userId,
       profileId: stampProfileId(activeProfileId),
       articleId: new mongoose.Types.ObjectId(articleId),
@@ -174,9 +179,37 @@ const createServiceRequest = async (req, res) => {
           timestamp: new Date(),
         },
       ],
-    });
+    };
 
-    logger.info(`Service request created: ${doc._id} user=${userId} article=${articleId} type=${serviceType}`);
+    let doc = null;
+    for (let attempt = 0; attempt < 4 && !doc; attempt += 1) {
+      let publicId = null;
+      try {
+        const coded = await allocatePublicId({
+          serviceType,
+          address: addressDoc || null,
+        });
+        publicId = coded.publicId;
+      } catch (codeErr) {
+        logger.warn(`publicId allocate failed: ${codeErr.message}`);
+      }
+      try {
+        doc = await ServiceRequest.create({ ...basePayload, publicId });
+      } catch (createErr) {
+        if (createErr?.code === 11000 && publicId && attempt < 3) {
+          logger.warn(`publicId collision ${publicId}, retrying`);
+          continue;
+        }
+        throw createErr;
+      }
+    }
+    if (!doc) {
+      throw new Error('Failed to create service request');
+    }
+
+    logger.info(
+      `Service request created: ${doc._id} publicId=${doc.publicId || '-'} user=${userId} article=${articleId} type=${serviceType}`
+    );
     return success(res, 'Service request created successfully', { request: doc }, 201);
   } catch (err) {
     logger.error(`Create service request error: ${err.message}`);
