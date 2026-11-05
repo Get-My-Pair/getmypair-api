@@ -12,17 +12,28 @@ function memberId(req) {
   return req.adminMaster._id;
 }
 
-function orderCode(id) {
+function orderCode(id, publicId) {
+  const coded = String(publicId || '')
+    .trim()
+    .toUpperCase();
+  if (coded) return coded;
   return String(id || '').slice(-8).toUpperCase();
 }
 
-function orderIdMatches(jobId, entered) {
+function orderIdMatches(job, entered) {
+  const jobId = job?._id || job;
+  const publicId = String(job?.publicId || '')
+    .trim()
+    .toLowerCase();
   const id = String(jobId || '').toLowerCase();
   const raw = String(entered || '')
     .replace(/[#\s-]/g, '')
     .toLowerCase();
   if (!raw || raw.length < 4) return false;
-  return id === raw || id.endsWith(raw) || orderCode(jobId).toLowerCase() === raw;
+  if (publicId && (publicId === raw || publicId.includes(raw) || raw.includes(publicId))) {
+    return true;
+  }
+  return id === raw || id.endsWith(raw) || orderCode(jobId, job?.publicId).toLowerCase() === raw;
 }
 
 async function resolveProofPhoto(photo) {
@@ -63,20 +74,38 @@ const listJobs = async (req, res) => {
 
     let filter;
     if (tab === 'pickup') filter = workflow.pickupAssignedFilter(mid);
-    else if (tab === 'return') filter = workflow.returnAssignedFilter(mid);
-    else if (tab === 'picked') {
+    else if (tab === 'return') {
+      // Available return jobs + this rider's active return trips.
+      filter = {
+        $or: [workflow.returnReadyFilter(null), workflow.returnAssignedFilter(mid)],
+      };
+    } else if (tab === 'picked') {
       filter = {
         deliveryMemberId: mid,
         trackingState: 'item_picked',
         status: { $nin: ['cancelled', 'completed'] },
       };
     } else if (tab === 'nearby' || tab === 'available') {
-      // Unassigned pickups ready for a delivery member (with pickup locations).
+      // After Repairshops accept — waiting for pickup partner.
       filter = workflow.pickupReadyFilter(null);
+    } else if (tab === 'completed' || tab === 'done') {
+      filter = {
+        deliveryMemberId: mid,
+        $or: [
+          { status: 'completed' },
+          { trackingState: 'delivered' },
+          { workflowStatus: { $in: ['DELIVERED', 'CLOSED'] } },
+        ],
+      };
     } else {
-      // All / assigned — every active service request (no assignment required).
+      // All — this rider's active pickup/return work + open pickup/return offers.
       filter = {
         status: { $nin: ['cancelled', 'completed'] },
+        $or: [
+          workflow.pickupReadyFilter(null),
+          workflow.returnReadyFilter(null),
+          { deliveryMemberId: mid },
+        ],
       };
     }
 
@@ -101,6 +130,7 @@ const listJobs = async (req, res) => {
           row.store?.name,
           row.serviceType,
           row.orderCode,
+          row.publicId,
           String(row._id || ''),
         ]
           .filter(Boolean)
@@ -115,6 +145,19 @@ const listJobs = async (req, res) => {
       : await workflow.ServiceRequest.countDocuments(filter);
     const pageItems = origin || (q && !idFilter) ? enriched.slice(skip, skip + limit) : enriched;
 
+    const hints = {
+      nearby:
+        'Repair orders waiting for pickup after the shop accepted. Claim, collect from customer, then drop at hub.',
+      available:
+        'Repair orders waiting for pickup after the shop accepted. Claim, collect from customer, then drop at hub.',
+      pickup: 'Your active pickups. Collect the pair, then Go to Hub and mark Dropped at hub.',
+      picked: 'Pairs you collected — take them to the hub and mark Dropped at hub.',
+      return:
+        'Return jobs after shop work is done. Claim, collect from hub, then deliver to the customer.',
+      completed: 'Jobs you fully delivered to the customer.',
+      all: 'Open pickup/return offers plus your active delivery jobs.',
+    };
+
     return success(res, 'Delivery jobs', {
       items: pageItems,
       page,
@@ -122,10 +165,7 @@ const listJobs = async (req, res) => {
       total,
       pages: Math.ceil(total / limit) || 1,
       origin,
-      nearbyHint:
-        tab === 'nearby' || tab === 'available'
-          ? 'Open pickups with customer locations (nearest-first when live location is on).'
-          : 'All active service requests with pickup locations. Nearest-first when live location is on.',
+      nearbyHint: hints[tab] || hints.all,
     });
   } catch (err) {
     logger.error(`Delivery list jobs error: ${err.message}`);
@@ -225,11 +265,30 @@ const updateStatus = async (req, res) => {
       return errorResponse(res, 'This job is assigned to another delivery member', 403);
     }
 
-    // Claim open jobs on first action — no Masteradmin/Repairshops assign step required.
+    // Claim open jobs on first action — pickup only after Repairshops accepts.
     if (isOpen) {
       const claimType =
         spec.requireType ||
-        (['dispatch_ready', 'out_for_delivery'].includes(request.trackingState) ? 'return' : 'pickup');
+        (['dispatch_ready', 'out_for_delivery'].includes(request.trackingState)
+          ? 'return'
+          : 'pickup');
+      if (claimType === 'pickup' && !request.darkStoreId) {
+        return errorResponse(
+          res,
+          'This order is not accepted by a repair shop yet — pickup is not available',
+          400
+        );
+      }
+      if (
+        claimType === 'return' &&
+        !['dispatch_ready', 'out_for_delivery'].includes(String(request.trackingState || ''))
+      ) {
+        return errorResponse(
+          res,
+          'Return pickup is only available after the shop finishes work (dispatch ready)',
+          400
+        );
+      }
       request.deliveryMemberId = mid;
       request.deliveryAssignmentType = claimType;
       request.deliveryAssignedAt = new Date();
@@ -276,7 +335,7 @@ const updateStatus = async (req, res) => {
     if (needsProof) {
       const orderId = String(req.body.orderId || '').trim();
       const photo = req.body.photo;
-      const idOk = orderIdMatches(request._id, orderId);
+      const idOk = orderIdMatches(request, orderId);
       if (!idOk && !photo) {
         return errorResponse(
           res,
@@ -308,6 +367,11 @@ const updateStatus = async (req, res) => {
     }
 
     workflow.applyTracking(request, spec.trackingState, { workflowStatus: spec.workflowStatus });
+    if (action === 'drop_at_store') {
+      // Free the rider assignment so a return partner can claim after shop work.
+      request.deliveryAssignmentType = null;
+      request.status = 'in_service';
+    }
     if (action === 'delivered') {
       request.status = 'completed';
       request.workflowStatus = 'DELIVERED';

@@ -42,8 +42,13 @@ async function enrichJobs(requests) {
   const cobblerIds = [
     ...new Set(requests.map((r) => (r.cobblerId ? String(r.cobblerId) : null)).filter(Boolean)),
   ];
+  const deliveryIds = [
+    ...new Set(
+      requests.map((r) => (r.deliveryMemberId ? String(r.deliveryMemberId) : null)).filter(Boolean)
+    ),
+  ];
 
-  const [users, articles, cobblers] = await Promise.all([
+  const [users, articles, cobblers, deliveryMembers] = await Promise.all([
     userIds.length
       ? User.find({ _id: { $in: userIds } }).select('name mobile email').lean()
       : [],
@@ -53,11 +58,15 @@ async function enrichJobs(requests) {
     cobblerIds.length
       ? CobblerProfile.find({ userId: { $in: cobblerIds } }).select('userId name phone shopName').lean()
       : [],
+    deliveryIds.length
+      ? AdminMaster.find({ _id: { $in: deliveryIds } }).select('name email phone').lean()
+      : [],
   ]);
 
   const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
   const articleMap = Object.fromEntries(articles.map((a) => [String(a._id), a]));
   const cobblerMap = Object.fromEntries(cobblers.map((c) => [String(c.userId), c]));
+  const deliveryMap = Object.fromEntries(deliveryMembers.map((d) => [String(d._id), d]));
 
   // Backfill coded publicId for older requests so Overview Order ID shows CHSHWA1234AM-style codes.
   await Promise.all(
@@ -96,6 +105,9 @@ async function enrichJobs(requests) {
     user: userMap[String(r.userId)] || null,
     article: articleMap[String(r.articleId)] || null,
     cobbler: r.cobblerId ? cobblerMap[String(r.cobblerId)] || null : null,
+    deliveryMember: r.deliveryMemberId
+      ? deliveryMap[String(r.deliveryMemberId)] || null
+      : null,
   }));
 }
 
@@ -119,18 +131,107 @@ function acceptedFilter(sid) {
   };
 }
 
+/** Accepted, waiting for delivery partner to pick up / drop at repair shop. */
+function awaitingPickupFilter(sid) {
+  return {
+    darkStoreId: sid,
+    status: { $nin: ['cancelled', 'completed'] },
+    trackingState: {
+      $in: ['request_created', 'pickup_scheduled', 'pickup_assigned', 'item_picked'],
+    },
+  };
+}
+
+/** Footwear at shop — assign cobbler + internal work (incl. QC). */
+function atShopFilter(sid) {
+  return {
+    darkStoreId: sid,
+    status: { $nin: ['cancelled', 'completed'] },
+    trackingState: {
+      $in: [
+        'dark_store_received',
+        'inspection_started',
+        'repair_in_progress',
+        'repair_completed',
+      ],
+    },
+  };
+}
+
+/** QC passed — waiting for return delivery partner / out for customer. */
+function awaitingReturnFilter(sid) {
+  return {
+    darkStoreId: sid,
+    status: { $nin: ['cancelled', 'completed'] },
+    trackingState: {
+      $in: ['dispatch_ready', 'out_for_delivery'],
+    },
+  };
+}
+
+/** Customer delivery finished. */
+function completedFilter(sid) {
+  return {
+    darkStoreId: sid,
+    $or: [
+      { status: 'completed' },
+      { trackingState: 'delivered' },
+      { workflowStatus: { $in: ['DELIVERED', 'CLOSED'] } },
+    ],
+  };
+}
+
+function filterForStatus(sid, status) {
+  switch (status) {
+    case 'accepted':
+    case 'awaiting_pickup':
+      return awaitingPickupFilter(sid);
+    case 'at_shop':
+    case 'in_shop':
+      return atShopFilter(sid);
+    case 'awaiting_return':
+      return awaitingReturnFilter(sid);
+    case 'completed':
+    case 'done':
+      return completedFilter(sid);
+    case 'all':
+      return { $or: [inboxFilter(sid), acceptedFilter(sid)] };
+    case 'inbox':
+    default:
+      return inboxFilter(sid);
+  }
+}
+
+async function jobStageCounts(sid) {
+  const [inbox, awaitingPickup, atShop, awaitingReturn, completed] = await Promise.all([
+    ServiceRequest.countDocuments(inboxFilter(sid)),
+    ServiceRequest.countDocuments(awaitingPickupFilter(sid)),
+    ServiceRequest.countDocuments(atShopFilter(sid)),
+    ServiceRequest.countDocuments(awaitingReturnFilter(sid)),
+    ServiceRequest.countDocuments(completedFilter(sid)),
+  ]);
+  return {
+    inbox,
+    awaiting_pickup: awaitingPickup,
+    at_shop: atShop,
+    awaiting_return: awaitingReturn,
+    completed,
+    // Legacy keys used by Overview KPI cards
+    accepted: awaitingPickup + atShop + awaitingReturn,
+  };
+}
+
 const overviewStats = async (req, res) => {
   try {
     const sid = storeId(req);
-    const [inboxCount, acceptedCount, cobblerCount, revenue] = await Promise.all([
-      ServiceRequest.countDocuments(inboxFilter(sid)),
-      ServiceRequest.countDocuments(acceptedFilter(sid)),
+    const [counts, cobblerCount, revenue] = await Promise.all([
+      jobStageCounts(sid),
       CobblerProfile.countDocuments({ darkStoreId: sid }),
       darkstorePayment.getRevenueDashboard({ darkStoreId: sid }),
     ]);
 
     return success(res, 'Dashboard stats', {
-      jobCounts: { inbox: inboxCount, accepted: acceptedCount },
+      jobCounts: counts,
       cobblerCount,
       revenue,
       generatedAt: new Date().toISOString(),
@@ -148,21 +249,12 @@ const listJobs = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const skip = (page - 1) * limit;
+    const filter = filterForStatus(sid, status);
 
-    let filter;
-    if (status === 'accepted') {
-      filter = acceptedFilter(sid);
-    } else if (status === 'all') {
-      filter = { $or: [inboxFilter(sid), acceptedFilter(sid)] };
-    } else {
-      filter = inboxFilter(sid);
-    }
-
-    const [items, total, inboxCount, acceptedCount] = await Promise.all([
+    const [items, total, counts] = await Promise.all([
       ServiceRequest.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       ServiceRequest.countDocuments(filter),
-      ServiceRequest.countDocuments(inboxFilter(sid)),
-      ServiceRequest.countDocuments(acceptedFilter(sid)),
+      jobStageCounts(sid),
     ]);
 
     return success(res, 'Jobs retrieved', {
@@ -171,7 +263,7 @@ const listJobs = async (req, res) => {
       limit,
       total,
       pages: Math.ceil(total / limit) || 1,
-      counts: { inbox: inboxCount, accepted: acceptedCount },
+      counts,
     });
   } catch (err) {
     logger.error(`Repairshops list jobs error: ${err.message}`);
@@ -209,8 +301,16 @@ const acceptJob = async (req, res) => {
     request.darkStoreAssignedAt = new Date();
     request.routingType = 'dark_store';
     request.acceptedProviderType = 'dark_store';
-    request.workflowStatus = 'COBBLER_PENDING';
-    pushLifecycle(request, req, 'Repairshops accepted the request');
+    // After accept: wait for delivery partner pickup/drop — cobbler assign comes later.
+    request.workflowStatus = 'PICKUP_SCHEDULED';
+    if (!request.trackingState || request.trackingState === 'request_created') {
+      request.trackingState = 'request_created';
+    }
+    pushLifecycle(
+      request,
+      req,
+      'Repairshops accepted — waiting for delivery partner to bring footwear to hub'
+    );
     await request.save();
 
     const [enriched] = await enrichJobs([request.toObject()]);
@@ -298,6 +398,19 @@ const assignCobbler = async (req, res) => {
       return errorResponse(res, 'Accept this job before assigning a cobbler', 400);
     }
 
+    const atShopStates = [
+      'dark_store_received',
+      'inspection_started',
+      'repair_in_progress',
+    ];
+    if (!atShopStates.includes(String(request.trackingState || ''))) {
+      return errorResponse(
+        res,
+        'Assign cobbler only after the delivery partner drops footwear at the repair shop',
+        400
+      );
+    }
+
     const cobblerProfile = await CobblerProfile.findOne({
       userId: cobblerUserId,
       darkStoreId: sid,
@@ -310,7 +423,8 @@ const assignCobbler = async (req, res) => {
     request.cobblerId = cobblerProfile.userId;
     request.cobblerProfileId = cobblerProfile._id;
     request.cobblerAssignedAt = new Date();
-    request.workflowStatus = 'COBBLER_PENDING';
+    request.workflowStatus = 'IN_PROGRESS';
+    request.status = 'in_service';
     pushLifecycle(
       request,
       req,
@@ -486,15 +600,24 @@ const receiveAtStore = async (req, res) => {
     if (String(request.darkStoreId || '') !== sid) {
       return errorResponse(res, 'This job is not assigned to your store', 403);
     }
-    if (!['item_picked', 'pickup_scheduled', 'dark_store_received'].includes(request.trackingState)) {
+    const canReceive = [
+      'request_created',
+      'pickup_scheduled',
+      'pickup_assigned',
+      'item_picked',
+      'dark_store_received',
+    ].includes(String(request.trackingState || ''));
+    if (!canReceive) {
       return errorResponse(res, 'Job is not ready to mark received at store', 400);
     }
 
     workflow.applyTracking(request, 'dark_store_received', { workflowStatus: 'IN_PROGRESS' });
+    // Clear pickup assignment so return partner can be assigned later.
+    request.deliveryAssignmentType = null;
     workflow.pushLifecycle(request, {
       actorType: 'dark_store',
       actorId: sid,
-      note: 'Footwear received at Repairshops',
+      note: 'Footwear received at Repairshops — ready to assign cobbler',
     });
     await request.save();
     const [job] = await workflow.enrichDeliveryJobs([request.toObject()]);

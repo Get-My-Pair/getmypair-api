@@ -127,22 +127,32 @@ function paidConfirmedFilter(extra = {}) {
   };
 }
 
+/**
+ * Pickup jobs waiting for a delivery partner — only after Repairshops accepts
+ * (darkStoreId set). No cobbler / hub-received work yet.
+ */
 function pickupReadyFilter(storeId) {
   const filter = {
     status: { $nin: ['cancelled', 'completed'] },
-    actualCostUserDecision: 'accepted',
-    trackingState: { $nin: ['item_picked', 'dark_store_received', 'inspection_started', 'repair_in_progress', 'repair_completed', 'dispatch_ready', 'out_for_delivery', 'delivered'] },
+    trackingState: {
+      $in: ['request_created', 'pickup_scheduled', 'pickup_assigned'],
+    },
     $and: [
-      { $or: [{ paymentState: 'PAYMENT_SUCCESS' }, { workflowStatus: 'PAYMENT_SUCCESS' }] },
+      // Shop must have accepted the job.
+      {
+        darkStoreId: storeId
+          ? String(storeId)
+          : { $exists: true, $nin: [null, ''] },
+      },
       {
         $or: [
           { deliveryMemberId: null },
+          { deliveryMemberId: { $exists: false } },
           { deliveryAssignmentType: { $in: [null, 'return'] } },
         ],
       },
     ],
   };
-  if (storeId) filter.darkStoreId = String(storeId);
   return filter;
 }
 
@@ -196,13 +206,22 @@ function pickNearestHub(hubs, fromLat, fromLng) {
   return best;
 }
 
+/**
+ * Return jobs waiting for a delivery partner — after shop QC / dispatch_ready.
+ */
 function returnReadyFilter(storeId) {
   const filter = {
     trackingState: 'dispatch_ready',
     status: { $nin: ['cancelled', 'completed'] },
-    $or: [{ deliveryAssignmentType: { $ne: 'return' } }, { deliveryMemberId: null }],
+    darkStoreId: storeId
+      ? String(storeId)
+      : { $exists: true, $nin: [null, ''] },
+    $or: [
+      { deliveryMemberId: null },
+      { deliveryMemberId: { $exists: false } },
+      { deliveryAssignmentType: { $ne: 'return' } },
+    ],
   };
-  if (storeId) filter.darkStoreId = String(storeId);
   return filter;
 }
 
@@ -390,7 +409,10 @@ async function enrichDeliveryJobs(requests, origin = null) {
         : null,
       pickupLocationLabel: addressLine || 'Pickup location not set',
       pickupGeo: pickupPoint,
-      orderCode: String(r._id).slice(-8).toUpperCase(),
+      orderCode: String(r.publicId || '')
+        .trim()
+        .toUpperCase() || String(r._id).slice(-8).toUpperCase(),
+      publicId: r.publicId || null,
       store: store
         ? {
             name: store.storeName || store.name,
@@ -427,6 +449,15 @@ function searchJobFilter(q) {
   if (!term) return null;
   if (mongoose.Types.ObjectId.isValid(term)) {
     return { _id: term };
+  }
+  const code = term.replace(/^#/, '').toUpperCase();
+  if (code.length >= 4) {
+    return {
+      $or: [
+        { publicId: new RegExp(`^${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') },
+        { publicId: code },
+      ],
+    };
   }
   return null;
 }
