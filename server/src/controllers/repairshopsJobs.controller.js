@@ -12,6 +12,7 @@ const workflow = require('../services/deliveryWorkflow.service');
 const AdminMaster = require('../models/adminMaster.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
+const { allocatePublicId } = require('../utils/gmpPublicId');
 
 function storeId(req) {
   return String(req.adminMaster._id);
@@ -57,6 +58,38 @@ async function enrichJobs(requests) {
   const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
   const articleMap = Object.fromEntries(articles.map((a) => [String(a._id), a]));
   const cobblerMap = Object.fromEntries(cobblers.map((c) => [String(c.userId), c]));
+
+  // Backfill coded publicId for older requests so Overview Order ID shows CHSHWA1234AM-style codes.
+  await Promise.all(
+    requests.map(async (r) => {
+      if (r.publicId && String(r.publicId).trim()) return;
+      try {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const coded = await allocatePublicId({ serviceType: r.serviceType });
+          try {
+            const updated = await ServiceRequest.findOneAndUpdate(
+              {
+                _id: r._id,
+                $or: [
+                  { publicId: null },
+                  { publicId: { $exists: false } },
+                  { publicId: '' },
+                ],
+              },
+              { $set: { publicId: coded.publicId } },
+              { new: true }
+            ).select('publicId').lean();
+            r.publicId = updated?.publicId || coded.publicId;
+            break;
+          } catch (dupErr) {
+            if (dupErr?.code !== 11000 || attempt === 2) throw dupErr;
+          }
+        }
+      } catch (err) {
+        logger.warn(`publicId backfill failed for ${r._id}: ${err.message}`);
+      }
+    })
+  );
 
   return requests.map((r) => ({
     ...r,
