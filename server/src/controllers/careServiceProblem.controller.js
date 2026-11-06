@@ -252,24 +252,25 @@ async function ensureDefaults(serviceType) {
     return;
   }
 
-  // Backfill progress content for existing service-level problems that have none.
-  const missing = await CareServiceProblem.find({
-    ...serviceLevelFilter(serviceType),
-    $or: [
-      { progressSteps: { $exists: false } },
-      { progressSteps: { $size: 0 } },
-      { estimateDays: { $exists: false } },
-      { estimateDays: null },
-    ],
-  })
-    .select('_id code serviceType')
+  // Backfill progress for service-level problems missing steps (or only placeholders).
+  const candidates = await CareServiceProblem.find(serviceLevelFilter(serviceType))
+    .select('_id code serviceType progressSteps estimateDays')
     .lean();
 
-  if (!missing.length) return;
-
-  const ops = missing.map((doc) => {
+  const ops = [];
+  for (const doc of candidates) {
+    const steps = Array.isArray(doc.progressSteps) ? doc.progressSteps : [];
+    const titles = steps.map((s) => String(s?.title || '').trim()).filter(Boolean);
+    const placeholderHeavy =
+      titles.filter((t) => /^progress step\s*\d+$/i.test(t)).length >= 2;
+    const needs =
+      titles.length <= 1 ||
+      placeholderHeavy ||
+      doc.estimateDays == null ||
+      !Number.isFinite(Number(doc.estimateDays));
+    if (!needs) continue;
     const progress = defaultProgressFor(doc.serviceType, doc.code);
-    return {
+    ops.push({
       updateOne: {
         filter: { _id: doc._id },
         update: {
@@ -279,9 +280,11 @@ async function ensureDefaults(serviceType) {
           },
         },
       },
-    };
-  });
-  await CareServiceProblem.bulkWrite(ops, { ordered: false });
+    });
+  }
+  if (ops.length) {
+    await CareServiceProblem.bulkWrite(ops, { ordered: false });
+  }
 }
 
 const listByServiceType = async (req, res) => {
