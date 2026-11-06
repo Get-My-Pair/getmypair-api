@@ -49,6 +49,12 @@ router.get(
   roleMiddleware(['USER']),
   careServiceProblemController.listActiveForCustomer
 );
+/** Problem-wise progress timeline (estimateDays + progressSteps). */
+router.get(
+  '/care-progress',
+  roleMiddleware(['USER']),
+  careServiceProblemController.getProgressForCustomer
+);
 router.post('/create', roleMiddleware(['USER']), createServiceRequestValidation, serviceController.createServiceRequest);
 router.post(
   '/upload-proof/image',

@@ -4,13 +4,49 @@
 const mongoose = require('mongoose');
 const CareServiceProblem = require('../models/careServiceProblem.model');
 const { SERVICE_TYPES } = require('../models/careServiceProblem.model');
-const { CATEGORY_REPAIR_SERVICES } = require('../data/categoryRepairServices.seed');
+const { defaultProgressFor, CARE_PROBLEM_PROGRESS } = require('../data/careProblemProgress.seed');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 
+const DEFAULT_ESTIMATE_DAYS = 7;
+
 const DEFAULTS = {
-  // Repair tiles are seeded per article category (see CATEGORY_REPAIR_SERVICES).
-  repair: [],
+  // User app shows these service tiles for every article. Category-specific
+  // rows stay in Masteradmin and are not returned to the customer app.
+  repair: [
+    {
+      code: 'sole_bottom_construction',
+      name: 'Sole & Bottom Construction Repairs',
+      description:
+        'Complete bottom-up sole restoration, from re-gluing delaminated outsoles and replacing worn heels to full resoles and midsole rebuilds.',
+      priceRupees: 236,
+      sortOrder: 1,
+    },
+    {
+      code: 'upper_seam_restoration',
+      name: 'Upper Material & Seam Restoration',
+      description:
+        'Full upper and interior restoration to patch tears, fix split seams, rebuild heel linings, and replace damaged panels.',
+      priceRupees: 236,
+      sortOrder: 2,
+    },
+    {
+      code: 'hardware_fastener',
+      name: 'Hardware & Fastener Repairs',
+      description:
+        'Complete hardware and fastener replacement for eyelets, zippers, straps, buckles, velcro, and snaps.',
+      priceRupees: 236,
+      sortOrder: 3,
+    },
+    {
+      code: 'fit_structural',
+      name: 'Fit & Structural Adjustments',
+      description:
+        'Fixes squeaks, shaky support inside your shoes, and stretches tight spots for a comfortable fit.',
+      priceRupees: 236,
+      sortOrder: 4,
+    },
+  ],
   maintenance: [
     {
       code: 'protection_conditioning',
@@ -91,8 +127,48 @@ function normalizeCategoryCodes(raw) {
   return out;
 }
 
+function normalizeProgressSteps(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (let i = 0; i < list.length; i += 1) {
+    const item = list[i];
+    const title =
+      typeof item === 'string'
+        ? String(item).trim()
+        : String(item?.title || item?.label || item?.text || '').trim();
+    if (!title) continue;
+    const subtitle =
+      typeof item === 'string' ? '' : String(item?.subtitle || '').trim();
+    let sortOrder = Number(item?.sortOrder);
+    if (!Number.isFinite(sortOrder)) sortOrder = out.length + 1;
+    out.push({ title, subtitle, sortOrder });
+  }
+  return out;
+}
+
+function normalizeEstimateDays(raw, fallbackStepsLen) {
+  let n = Number(raw);
+  if (!Number.isFinite(n) || n < 1) {
+    n = fallbackStepsLen > 0 ? fallbackStepsLen : DEFAULT_ESTIMATE_DAYS;
+  }
+  return Math.min(60, Math.max(1, Math.round(n)));
+}
+
+function progressPayloadFor(doc) {
+  const code = doc?.code || '';
+  const seeded = defaultProgressFor(doc?.serviceType, code);
+  const steps = normalizeProgressSteps(doc?.progressSteps);
+  const progressSteps = steps.length ? steps : seeded.progressSteps;
+  const estimateDays = normalizeEstimateDays(
+    doc?.estimateDays,
+    progressSteps.length || seeded.estimateDays
+  );
+  return { estimateDays, progressSteps };
+}
+
 function publicProblem(doc) {
   if (!doc) return null;
+  const progress = progressPayloadFor(doc);
   return {
     _id: String(doc._id),
     id: String(doc._id),
@@ -103,6 +179,8 @@ function publicProblem(doc) {
     priceRupees: Number(doc.priceRupees) || 0,
     sortOrder: Number(doc.sortOrder) || 0,
     categoryCodes: normalizeCategoryCodes(doc.categoryCodes),
+    estimateDays: progress.estimateDays,
+    progressSteps: progress.progressSteps,
     isActive: doc.isActive !== false,
     createdAt: doc.createdAt || null,
     updatedAt: doc.updatedAt || null,
@@ -119,86 +197,91 @@ function normalizeServiceType(raw) {
   return t;
 }
 
-/**
- * Upsert category-wise RepairMyPair tiles and deactivate legacy generic repair rows.
- * Uses bulkWrite so first-time seed is fast; callers must only run when DB is empty.
- */
-async function syncCategoryRepairServices() {
-  const canonicalCodes = [];
-  const ops = [];
+/** Problems with no category assignment — shown for every article in the user app. */
+function serviceLevelFilter(serviceType, { activeOnly = false } = {}) {
+  const filter = {
+    serviceType,
+    $or: [
+      { categoryCodes: { $exists: false } },
+      { categoryCodes: { $size: 0 } },
+    ],
+  };
+  if (activeOnly) filter.isActive = { $ne: false };
+  return filter;
+}
 
-  for (const [categoryCode, services] of Object.entries(CATEGORY_REPAIR_SERVICES)) {
-    for (const s of services) {
-      canonicalCodes.push(s.code);
-      ops.push({
+/**
+ * Ensure the shared service tiles exist (Repair 4, Maintain 4, Wash 3)
+ * and backfill progressSteps / estimateDays when missing.
+ */
+async function ensureDefaults(serviceType) {
+  const seeds = DEFAULTS[serviceType] || [];
+  if (!seeds.length) return;
+
+  const activeServiceLevel = await CareServiceProblem.countDocuments(
+    serviceLevelFilter(serviceType, { activeOnly: true })
+  );
+
+  if (activeServiceLevel === 0) {
+    const ops = seeds.map((s) => {
+      const progress = CARE_PROBLEM_PROGRESS[s.code] || defaultProgressFor(serviceType, s.code);
+      return {
         updateOne: {
-          filter: { serviceType: 'repair', code: s.code },
+          filter: { serviceType, code: s.code },
           update: {
             $set: {
-              serviceType: 'repair',
+              isActive: true,
+              categoryCodes: [],
+              estimateDays: progress.estimateDays,
+              progressSteps: progress.progressSteps,
+            },
+            $setOnInsert: {
+              serviceType,
               code: s.code,
               name: s.name,
               description: s.description,
               priceRupees: s.priceRupees,
               sortOrder: s.sortOrder,
-              categoryCodes: [categoryCode],
-              isActive: true,
             },
           },
           upsert: true,
         },
-      });
-    }
-  }
-
-  if (ops.length) {
-    await CareServiceProblem.bulkWrite(ops, { ordered: false });
-  }
-
-  // Hide old generic / non-canonical repair tiles so only category lists show.
-  await CareServiceProblem.updateMany(
-    {
-      serviceType: 'repair',
-      code: { $nin: canonicalCodes },
-    },
-    { $set: { isActive: false } }
-  );
-}
-
-/**
- * Seed defaults once. Never re-sync repair seeds on every customer list call
- * (that was making CareMyPair feel very slow in the app).
- *
- * Repair: if only legacy generic tiles exist (no categoryCodes), run category
- * seed once so the app gets footwear-category problem lists instead of the
- * old static 4-item list.
- */
-async function ensureDefaults(serviceType) {
-  if (serviceType === 'repair') {
-    const hasCategoryBound = await CareServiceProblem.exists({
-      serviceType: 'repair',
-      isActive: { $ne: false },
-      'categoryCodes.0': { $exists: true },
+      };
     });
-    if (!hasCategoryBound) {
-      await syncCategoryRepairServices();
-    }
+    await CareServiceProblem.bulkWrite(ops, { ordered: false });
     return;
   }
 
-  const count = await CareServiceProblem.countDocuments({ serviceType });
-  if (count > 0) return;
+  // Backfill progress content for existing service-level problems that have none.
+  const missing = await CareServiceProblem.find({
+    ...serviceLevelFilter(serviceType),
+    $or: [
+      { progressSteps: { $exists: false } },
+      { progressSteps: { $size: 0 } },
+      { estimateDays: { $exists: false } },
+      { estimateDays: null },
+    ],
+  })
+    .select('_id code serviceType')
+    .lean();
 
-  const seeds = DEFAULTS[serviceType] || [];
-  if (!seeds.length) return;
-  await CareServiceProblem.insertMany(
-    seeds.map((s) => ({
-      ...s,
-      serviceType,
-      categoryCodes: [],
-      isActive: true,
-    }))
-  );
+  if (!missing.length) return;
+
+  const ops = missing.map((doc) => {
+    const progress = defaultProgressFor(doc.serviceType, doc.code);
+    return {
+      updateOne: {
+        filter: { _id: doc._id },
+        update: {
+          $set: {
+            estimateDays: progress.estimateDays,
+            progressSteps: progress.progressSteps,
+          },
+        },
+      },
+    };
+  });
+  await CareServiceProblem.bulkWrite(ops, { ordered: false });
 }
 
 const listByServiceType = async (req, res) => {
@@ -209,42 +292,15 @@ const listByServiceType = async (req, res) => {
     }
     await ensureDefaults(serviceType);
     const activeOnly = String(req.query.active || '').trim() === '1';
-    const categoryRaw = String(
-      req.query.category || req.query.articleCategory || req.query.categories || ''
-    ).trim();
-    const categories = normalizeCategoryCodes(categoryRaw);
-    const filter = { serviceType };
-    if (activeOnly) filter.isActive = { $ne: false };
-    // Repair: strict category match only (no legacy "empty = all" generics).
-    // Maintain/Wash: empty categoryCodes still means available for every article.
-    if (categories.length === 1) {
-      if (serviceType === 'repair') {
-        filter.categoryCodes = categories[0];
-      } else {
-        filter.$or = [
-          { categoryCodes: { $exists: false } },
-          { categoryCodes: { $size: 0 } },
-          { categoryCodes: categories[0] },
-        ];
-      }
-    } else if (categories.length > 1) {
-      if (serviceType === 'repair') {
-        filter.categoryCodes = { $in: categories };
-      } else {
-        filter.$or = [
-          { categoryCodes: { $exists: false } },
-          { categoryCodes: { $size: 0 } },
-          { categoryCodes: { $in: categories } },
-        ];
-      }
-    }
-    const items = await CareServiceProblem.find(filter)
+    // Admin and the user app share the service-problem list (Repair 4,
+    // Maintain 4, Wash 3). Category-specific rows are not part of that list.
+    const items = await CareServiceProblem.find(
+      serviceLevelFilter(serviceType, { activeOnly })
+    )
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
     return success(res, 'Care service problems', {
       serviceType,
-      category: categories[0] || null,
-      categories,
       items: items.map(publicProblem),
     });
   } catch (err) {
@@ -260,7 +316,21 @@ const overview = async (req, res) => {
       await ensureDefaults(t);
     }
     const rows = await CareServiceProblem.aggregate([
-      { $group: { _id: '$serviceType', total: { $sum: 1 }, active: { $sum: { $cond: [{ $ne: ['$isActive', false] }, 1, 0] } } } },
+      {
+        $match: {
+          $or: [
+            { categoryCodes: { $exists: false } },
+            { categoryCodes: { $size: 0 } },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: '$serviceType',
+          total: { $sum: 1 },
+          active: { $sum: { $cond: [{ $ne: ['$isActive', false] }, 1, 0] } },
+        },
+      },
     ]);
     const byType = Object.fromEntries(rows.map((r) => [r._id, r]));
     const services = SERVICE_TYPES.map((serviceType) => ({
@@ -304,6 +374,13 @@ const createProblem = async (req, res) => {
     }
     const code = String(req.body.code || '').trim();
     const categoryCodes = normalizeCategoryCodes(req.body.categoryCodes);
+    const seeded = defaultProgressFor(serviceType, code);
+    let progressSteps = normalizeProgressSteps(req.body.progressSteps);
+    if (!progressSteps.length) progressSteps = seeded.progressSteps;
+    const estimateDays = normalizeEstimateDays(
+      req.body.estimateDays,
+      progressSteps.length || seeded.estimateDays
+    );
     const problem = await CareServiceProblem.create({
       serviceType,
       name,
@@ -312,6 +389,8 @@ const createProblem = async (req, res) => {
       sortOrder,
       code,
       categoryCodes,
+      estimateDays,
+      progressSteps,
       isActive: req.body.isActive === false || req.body.isActive === 'false' ? false : true,
       updatedBy: req.adminMaster?._id || null,
     });
@@ -363,6 +442,23 @@ const updateProblem = async (req, res) => {
       }
       $set.serviceType = serviceType;
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'progressSteps')) {
+      const progressSteps = normalizeProgressSteps(req.body.progressSteps);
+      if (!progressSteps.length) {
+        return errorResponse(res, 'progressSteps must include at least one step', 400);
+      }
+      $set.progressSteps = progressSteps;
+      if (!Object.prototype.hasOwnProperty.call(req.body, 'estimateDays')) {
+        $set.estimateDays = normalizeEstimateDays(undefined, progressSteps.length);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'estimateDays')) {
+      const estimateDays = Number(req.body.estimateDays);
+      if (!Number.isFinite(estimateDays) || estimateDays < 1) {
+        return errorResponse(res, 'estimateDays must be at least 1', 400);
+      }
+      $set.estimateDays = normalizeEstimateDays(estimateDays, DEFAULT_ESTIMATE_DAYS);
+    }
     const problem = await CareServiceProblem.findByIdAndUpdate(id, { $set }, { new: true }).lean();
     if (!problem) return notFound(res, 'Problem not found');
     return success(res, 'Problem updated', { item: publicProblem(problem) });
@@ -385,16 +481,87 @@ const deleteProblem = async (req, res) => {
   }
 };
 
-/** Customer app: active problems for one CareMyPair service. */
+/**
+ * Customer app: active service problems for Repair / Maintain / Wash.
+ * Same list for every footwear article. Category-assigned rows stay in admin.
+ */
 const listActiveForCustomer = async (req, res) => {
-  req.query = { ...(req.query || {}), active: '1' };
-  return listByServiceType(req, res);
+  try {
+    const serviceType = normalizeServiceType(req.params.serviceType || req.query.serviceType);
+    if (!SERVICE_TYPES.includes(serviceType)) {
+      return errorResponse(res, 'serviceType must be repair, maintenance, or wash', 400);
+    }
+    await ensureDefaults(serviceType);
+    const items = await CareServiceProblem.find(serviceLevelFilter(serviceType, { activeOnly: true }))
+      .sort({ sortOrder: 1, createdAt: 1 })
+      .lean();
+    return success(res, 'Care service problems', {
+      serviceType,
+      items: items.map(publicProblem),
+    });
+  } catch (err) {
+    logger.error(`List customer care problems error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
+ * Customer app: progress timeline for one problem (by code or id).
+ * Used by "Your Pair's Progress" — estimateDays drives 1 step / day.
+ */
+const getProgressForCustomer = async (req, res) => {
+  try {
+    const serviceType = normalizeServiceType(
+      req.query.serviceType || req.params.serviceType || ''
+    );
+    const code = String(req.query.code || req.params.code || '')
+      .trim()
+      .toLowerCase();
+    const id = String(req.query.id || req.params.id || '').trim();
+
+    if (!code && !id) {
+      return errorResponse(res, 'code or id is required', 400);
+    }
+
+    if (serviceType && SERVICE_TYPES.includes(serviceType)) {
+      await ensureDefaults(serviceType);
+    } else {
+      for (const t of SERVICE_TYPES) await ensureDefaults(t);
+    }
+
+    let doc = null;
+    if (id && mongoose.Types.ObjectId.isValid(id)) {
+      doc = await CareServiceProblem.findById(id).lean();
+    }
+    if (!doc && code) {
+      const filter = { code, isActive: { $ne: false } };
+      if (serviceType && SERVICE_TYPES.includes(serviceType)) {
+        filter.serviceType = serviceType;
+      }
+      doc = await CareServiceProblem.findOne(filter).lean();
+    }
+    if (!doc) return notFound(res, 'Care problem not found');
+
+    const item = publicProblem(doc);
+    return success(res, 'Care progress timeline', {
+      serviceType: item.serviceType,
+      code: item.code,
+      name: item.name,
+      estimateDays: item.estimateDays,
+      progressSteps: item.progressSteps,
+      item,
+    });
+  } catch (err) {
+    logger.error(`Get care progress error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
 };
 
 module.exports = {
   overview,
   listByServiceType,
   listActiveForCustomer,
+  getProgressForCustomer,
   createProblem,
   updateProblem,
   deleteProblem,
