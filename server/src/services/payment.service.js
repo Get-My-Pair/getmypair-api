@@ -300,16 +300,27 @@ async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
 
   await recordDailyRevenue(payment, split);
 
+  // If no repair shop has accepted yet, keep the job in the shop inbox
+  // (AWAITING_ACCEPTANCE) while marking payment done — otherwise paid
+  // requests disappear until a darkStoreId exists.
+  const awaitingShop = !request.darkStoreId && !request.cobblerId;
   await updateServiceWorkflow(
     request._id,
     {
-      workflowStatus: 'PAYMENT_SUCCESS',
+      workflowStatus: awaitingShop ? 'AWAITING_ACCEPTANCE' : 'PAYMENT_SUCCESS',
       paymentState: 'PAYMENT_SUCCESS',
-      status: 'pickup_assigned',
-      trackingState: 'pickup_scheduled',
+      status: awaitingShop ? request.status || 'pending' : 'pickup_assigned',
+      trackingState: awaitingShop
+        ? request.trackingState || 'request_created'
+        : 'pickup_scheduled',
       activePaymentId: payment._id,
     },
-    { actorType: 'system', note: `Payment received (₹${payment.amount})` }
+    {
+      actorType: 'system',
+      note: awaitingShop
+        ? `Payment received (₹${payment.amount}) — waiting for repair shop acceptance`
+        : `Payment received (₹${payment.amount})`,
+    }
   );
 
   await paymentNotification.notifyPaymentSuccess({

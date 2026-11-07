@@ -158,15 +158,31 @@ async function enrichJobs(requests) {
 }
 
 function inboxFilter(sid) {
+  // Unassigned dark-store jobs that still need Accept/Reject.
+  // Include PAYMENT_SUCCESS: customers often pay before any shop accepts, which
+  // previously removed the job from AWAITING_ACCEPTANCE and hid it entirely.
   return {
     routingType: 'dark_store',
-    workflowStatus: 'AWAITING_ACCEPTANCE',
     cobblerId: null,
-    $and: [
-      { $or: [{ darkStoreId: null }, { darkStoreId: '' }] },
-      { darkStoreDeclinedBy: { $nin: [sid] } },
-    ],
     status: { $nin: ['cancelled', 'completed'] },
+    $and: [
+      {
+        $or: [
+          { darkStoreId: null },
+          { darkStoreId: '' },
+          { darkStoreId: { $exists: false } },
+        ],
+      },
+      { darkStoreDeclinedBy: { $nin: [sid] } },
+      {
+        $or: [
+          { workflowStatus: 'AWAITING_ACCEPTANCE' },
+          { workflowStatus: 'CREATED' },
+          { workflowStatus: 'PAYMENT_SUCCESS' },
+          { paymentState: 'PAYMENT_SUCCESS' },
+        ],
+      },
+    ],
   };
 }
 
@@ -366,14 +382,27 @@ const acceptJob = async (req, res) => {
     request.routingType = 'dark_store';
     request.acceptedProviderType = 'dark_store';
     // After accept: wait for delivery partner pickup/drop — cobbler assign comes later.
-    request.workflowStatus = 'PICKUP_SCHEDULED';
-    if (!request.trackingState || request.trackingState === 'request_created') {
+    // Keep paid jobs discoverable for delivery assignment (do not rewind payment).
+    const alreadyPaid =
+      request.paymentState === 'PAYMENT_SUCCESS' ||
+      request.workflowStatus === 'PAYMENT_SUCCESS';
+    request.workflowStatus = alreadyPaid ? 'PAYMENT_SUCCESS' : 'PICKUP_SCHEDULED';
+    if (alreadyPaid) {
+      if (
+        !request.trackingState ||
+        request.trackingState === 'request_created'
+      ) {
+        request.trackingState = 'pickup_scheduled';
+      }
+    } else if (!request.trackingState || request.trackingState === 'request_created') {
       request.trackingState = 'request_created';
     }
     pushLifecycle(
       request,
       req,
-      'Repairshops accepted — waiting for delivery partner to bring footwear to hub'
+      alreadyPaid
+        ? 'Repairshops accepted paid order — waiting for delivery partner'
+        : 'Repairshops accepted — waiting for delivery partner to bring footwear to hub'
     );
     await request.save();
 
