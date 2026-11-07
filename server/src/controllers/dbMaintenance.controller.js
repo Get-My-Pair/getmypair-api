@@ -47,7 +47,11 @@ const clearGroup = async (req, res) => {
 const clearAll = async (req, res) => {
   try {
     const data = await dbMaintenance.deleteAllData(readConfirm(req.body), adminEmail(req));
-    return success(res, 'All application data cleared (master admin login preserved)', data);
+    return success(
+      res,
+      `Cleared ${data.totalDeleted} documents. Kept protected: adminmasters, deliveryprofiles, careserviceproblems, hubsettings, articlecategories, roles, sequencecounters.`,
+      data
+    );
   } catch (err) {
     return errorResponse(res, err.message || 'Failed to clear database', err.statusCode || 500);
   }

@@ -196,17 +196,19 @@ async function countCollection(entry) {
  * @returns {Promise<object>} overview with per-collection counts and group summaries
  */
 async function getOverview() {
-  const collections = [];
-  for (const entry of MODEL_REGISTRY) {
-    const count = await countCollection(entry);
-    collections.push({
-      collection: entry.collection,
-      label: entry.label,
-      group: entry.group,
-      protected: isProtected(entry.collection),
-      count,
-    });
-  }
+  // Parallel counts — sequential scans against Atlas were hanging the UI on "Loading…".
+  const collections = await Promise.all(
+    MODEL_REGISTRY.map(async (entry) => {
+      const count = await countCollection(entry);
+      return {
+        collection: entry.collection,
+        label: entry.label,
+        group: entry.group,
+        protected: isProtected(entry.collection),
+        count,
+      };
+    })
+  );
 
   const groups = Object.entries(COLLECTION_GROUPS).map(([key, meta]) => {
     const memberCollections = collections.filter((c) => meta.collections.includes(c.collection));
@@ -229,7 +231,7 @@ async function getOverview() {
     groups,
     protectedCollections: Array.from(PROTECTED_COLLECTIONS),
     preservedNote:
-      'Preserved: Masteradmin / Repairshop / Delivery portal logins, delivery profiles, and Masteradmin dynamic content (Care problems, Hub settings, Article categories, Roles, Sequence counters).',
+      'Clear all does NOT delete: Masteradmin / Repairshop / Delivery logins (adminmasters), Delivery profiles, Care problems, Hub settings, Article categories, Roles, Sequence counters.',
     totalDeletableDocuments,
     totalCollections: collections.length,
   };
