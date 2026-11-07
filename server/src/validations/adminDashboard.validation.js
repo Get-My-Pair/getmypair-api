@@ -97,17 +97,20 @@ const darkstoreReportQueryValidation = [
   handleValidationErrors,
 ];
 
-/** Accept confirmPhrase or confirm (UI sends confirm). */
+/** Always run — accept confirmPhrase or confirm (UI may send either). */
 function requireConfirmPhrase() {
-  return body('confirmPhrase')
-    .custom((value, { req }) => {
-      const phrase = String(value || req.body?.confirm || '').trim();
-      if (!phrase) {
-        throw new Error('confirmPhrase is required (type CLEAR / CLEAR_ALL)');
-      }
-      req.body.confirmPhrase = phrase;
-      return true;
-    });
+  return body().custom((_, { req }) => {
+    if (!req.body || typeof req.body !== 'object') req.body = {};
+    const phrase = String(req.body.confirmPhrase || req.body.confirm || '')
+      .trim()
+      .toUpperCase();
+    if (!phrase) {
+      throw new Error('Type CLEAR or CLEAR_ALL to confirm');
+    }
+    req.body.confirmPhrase = phrase;
+    req.body.confirm = phrase;
+    return true;
+  });
 }
 
 const dbMaintenanceConfirmValidation = [

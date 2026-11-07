@@ -1,6 +1,6 @@
 /**
- * MongoDB maintenance for Repairshops master admin.
- * Never deletes adminmasters (Repairshops login credentials).
+ * MongoDB maintenance for Master admin.
+ * Preserves portal profiles + masteradmin dynamic config; clears transactional data.
  */
 
 const AdminMaster = require('../models/adminMaster.model');
@@ -11,6 +11,7 @@ const Role = require('../models/role.model');
 const Session = require('../models/session.model');
 const OTP = require('../models/otp.model');
 const Article = require('../models/article.model');
+const ArticleCategory = require('../models/articleCategory.model');
 const { ServiceRequest } = require('../models/serviceRequest.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
 const DeliveryProfile = require('../models/deliveryProfile.model');
@@ -25,17 +26,37 @@ const PaymentAudit = require('../models/paymentAudit.model');
 const WebhookLog = require('../models/webhookLog.model');
 const UserNotification = require('../models/userNotification.model');
 const AuditLog = require('../models/auditLog.model');
+const CareServiceProblem = require('../models/careServiceProblem.model');
+const HubSettings = require('../models/hubSettings.model');
+const SequenceCounter = require('../models/sequenceCounter.model');
+const SellListing = require('../models/sellListing.model');
+const TrustedDevice = require('../models/trustedDevice.model');
 const logger = require('../utils/logger');
 
-/** Collections that must never be cleared via maintenance UI */
-const PROTECTED_COLLECTIONS = new Set(['adminmasters']);
+/**
+ * Never cleared by Clear / Clear all:
+ * - adminmasters → masteradmin + repairshop + delivery portal logins/profiles
+ * - deliveryprofiles → delivery partner profiles
+ * - careserviceproblems / hubsettings / articlecategories → masteradmin dynamic content
+ * - roles → auth role reference (needed after reset)
+ * - sequencecounters → ID sequences for public order codes
+ */
+const PROTECTED_COLLECTIONS = new Set([
+  'adminmasters',
+  'deliveryprofiles',
+  'careserviceproblems',
+  'hubsettings',
+  'articlecategories',
+  'roles',
+  'sequencecounters',
+]);
 
-/** Logical groups for bulk delete */
+/** Logical groups for bulk delete (clearable members only) */
 const COLLECTION_GROUPS = {
   auth: {
     label: 'Users & authentication',
     description: 'Mobile users, sessions, OTPs, and auth audit logs',
-    collections: ['users', 'userprofiles', 'sessions', 'otps', 'auditlogs'],
+    collections: ['users', 'userprofiles', 'sessions', 'otps', 'auditlogs', 'trusteddevices'],
   },
   articles: {
     label: 'Articles (Digital Shoe Passport)',
@@ -45,17 +66,12 @@ const COLLECTION_GROUPS = {
   services: {
     label: 'Services & jobs',
     description: 'Service requests and cobbler job records',
-    collections: ['servicerequests', 'jobs'],
+    collections: ['servicerequests', 'jobs', 'selllistings'],
   },
   cobblers: {
     label: 'Cobbler profiles',
     description: 'Cobbler booth and verification data',
     collections: ['cobblerprofiles'],
-  },
-  delivery: {
-    label: 'Delivery partners',
-    description: 'Delivery partner profiles',
-    collections: ['deliveryprofiles'],
   },
   payments: {
     label: 'Payments & finance',
@@ -78,29 +94,72 @@ const COLLECTION_GROUPS = {
   },
   mobileAdmin: {
     label: 'Mobile admin profiles',
-    description: 'Admin profiles linked to mobile app users (not Repairshops login)',
+    description: 'Admin profiles linked to mobile app users (not portal logins)',
     collections: ['adminprofiles'],
-  },
-  roles: {
-    label: 'Roles (reference)',
-    description: 'USER, COBBER, DELIVERY, ADMIN role documents — re-seed may be needed',
-    collections: ['roles'],
   },
 };
 
 const MODEL_REGISTRY = [
-  { collection: 'adminmasters', model: AdminMaster, label: 'Portal logins (Masteradmin + Repairshops)', group: null, protected: true },
+  {
+    collection: 'adminmasters',
+    model: AdminMaster,
+    label: 'Portal logins (Masteradmin + Repairshops + Delivery)',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'deliveryprofiles',
+    model: DeliveryProfile,
+    label: 'Delivery profiles',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'careserviceproblems',
+    model: CareServiceProblem,
+    label: 'Care My Pair problems (Masteradmin content)',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'hubsettings',
+    model: HubSettings,
+    label: 'Hub settings (Masteradmin content)',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'articlecategories',
+    model: ArticleCategory,
+    label: 'Article categories (Masteradmin content)',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'roles',
+    model: Role,
+    label: 'Roles (system reference)',
+    group: null,
+    protected: true,
+  },
+  {
+    collection: 'sequencecounters',
+    model: SequenceCounter,
+    label: 'Sequence counters (order ID codes)',
+    group: null,
+    protected: true,
+  },
   { collection: 'users', model: User, label: 'Users', group: 'auth' },
   { collection: 'userprofiles', model: UserProfile, label: 'User profiles', group: 'auth' },
   { collection: 'sessions', model: Session, label: 'Sessions', group: 'auth' },
   { collection: 'otps', model: OTP, label: 'OTPs', group: 'auth' },
   { collection: 'auditlogs', model: AuditLog, label: 'Audit logs', group: 'auth' },
-  { collection: 'roles', model: Role, label: 'Roles', group: 'roles' },
+  { collection: 'trusteddevices', model: TrustedDevice, label: 'Trusted devices', group: 'auth' },
   { collection: 'articles', model: Article, label: 'Articles', group: 'articles' },
   { collection: 'servicerequests', model: ServiceRequest, label: 'Service requests', group: 'services' },
   { collection: 'jobs', model: Job, label: 'Jobs', group: 'services' },
+  { collection: 'selllistings', model: SellListing, label: 'Sell listings', group: 'services' },
   { collection: 'cobblerprofiles', model: CobblerProfile, label: 'Cobbler profiles', group: 'cobblers' },
-  { collection: 'deliveryprofiles', model: DeliveryProfile, label: 'Delivery profiles', group: 'delivery' },
   { collection: 'payments', model: Payment, label: 'Payments', group: 'payments' },
   { collection: 'settlements', model: Settlement, label: 'Settlements', group: 'payments' },
   { collection: 'commissions', model: Commission, label: 'Commissions', group: 'payments' },
@@ -124,16 +183,13 @@ function getEntry(collection) {
   return registryByCollection.get(key) || null;
 }
 
-function assertConfirmPhrase(confirmPhrase, expected) {
-  if (String(confirmPhrase || '').trim() !== expected) {
-    const err = new Error(`Confirmation phrase must be exactly: ${expected}`);
-    err.statusCode = 400;
-    throw err;
-  }
-}
-
 async function countCollection(entry) {
-  return entry.model.countDocuments();
+  try {
+    return await entry.model.countDocuments();
+  } catch (err) {
+    logger.warn(`DB maintenance count failed for ${entry.collection}: ${err.message}`);
+    return 0;
+  }
 }
 
 /**
@@ -172,14 +228,31 @@ async function getOverview() {
     collections,
     groups,
     protectedCollections: Array.from(PROTECTED_COLLECTIONS),
+    preservedNote:
+      'Preserved: Masteradmin / Repairshop / Delivery portal logins, delivery profiles, and Masteradmin dynamic content (Care problems, Hub settings, Article categories, Roles, Sequence counters).',
     totalDeletableDocuments,
     totalCollections: collections.length,
   };
 }
 
 async function deleteFromModel(entry) {
+  // Wipe via the model's collection handle (bypasses most document middleware).
+  try {
+    if (entry.model?.collection?.deleteMany) {
+      const result = await entry.model.collection.deleteMany({});
+      return result.deletedCount || 0;
+    }
+  } catch (err) {
+    logger.warn(
+      `Collection deleteMany failed for ${entry.collection}, falling back to model: ${err.message}`
+    );
+  }
   const result = await entry.model.deleteMany({});
   return result.deletedCount || 0;
+}
+
+function normalizePhrase(value) {
+  return String(value || '').trim().toUpperCase();
 }
 
 /**
@@ -193,28 +266,39 @@ async function deleteCollection(collection, confirmPhrase, adminEmail) {
     throw err;
   }
   if (isProtected(entry.collection)) {
-    const err = new Error('This collection is protected and cannot be cleared');
+    const err = new Error(
+      'This collection is protected (portal profiles / Masteradmin content) and cannot be cleared'
+    );
     err.statusCode = 403;
     throw err;
   }
 
-  // UI prompt asks for CLEAR; also accept legacy "DELETE <collection>".
-  const phrase = String(confirmPhrase || '').trim();
-  const legacy = `DELETE ${entry.collection}`;
+  const phrase = normalizePhrase(confirmPhrase);
+  const legacy = normalizePhrase(`DELETE ${entry.collection}`);
   if (phrase !== 'CLEAR' && phrase !== legacy) {
     const err = new Error('Confirmation phrase must be exactly: CLEAR');
     err.statusCode = 400;
     throw err;
   }
 
+  const before = await countCollection(entry);
   const deletedCount = await deleteFromModel(entry);
+  const after = await countCollection(entry);
   logger.warn('DB maintenance: collection cleared', {
     collection: entry.collection,
+    before,
     deletedCount,
+    after,
     adminEmail,
   });
 
-  return { collection: entry.collection, label: entry.label, deletedCount };
+  return {
+    collection: entry.collection,
+    label: entry.label,
+    before,
+    deletedCount,
+    after,
+  };
 }
 
 /**
@@ -228,8 +312,8 @@ async function deleteGroup(groupKey, confirmPhrase, adminEmail) {
     throw err;
   }
 
-  const groupPhrase = String(confirmPhrase || '').trim();
-  const legacyGroup = `DELETE GROUP ${groupKey}`;
+  const groupPhrase = normalizePhrase(confirmPhrase);
+  const legacyGroup = normalizePhrase(`DELETE GROUP ${groupKey}`);
   if (groupPhrase !== 'CLEAR' && groupPhrase !== legacyGroup) {
     const err = new Error('Confirmation phrase must be exactly: CLEAR');
     err.statusCode = 400;
@@ -257,11 +341,10 @@ async function deleteGroup(groupKey, confirmPhrase, adminEmail) {
 }
 
 /**
- * Delete all application data except master admin login (adminmasters).
+ * Delete all application data except portal profiles + Masteradmin dynamic content.
  */
 async function deleteAllData(confirmPhrase, adminEmail) {
-  // UI prompt asks for CLEAR_ALL; also accept legacy "DELETE ALL DATA".
-  const phrase = String(confirmPhrase || '').trim();
+  const phrase = normalizePhrase(confirmPhrase);
   if (phrase !== 'CLEAR_ALL' && phrase !== 'DELETE ALL DATA') {
     const err = new Error('Confirmation phrase must be exactly: CLEAR_ALL');
     err.statusCode = 400;
@@ -273,17 +356,30 @@ async function deleteAllData(confirmPhrase, adminEmail) {
 
   for (const entry of MODEL_REGISTRY) {
     if (isProtected(entry.collection)) continue;
+    const before = await countCollection(entry);
     const deletedCount = await deleteFromModel(entry);
+    const after = await countCollection(entry);
     totalDeleted += deletedCount;
-    results.push({ collection: entry.collection, label: entry.label, deletedCount });
+    results.push({
+      collection: entry.collection,
+      label: entry.label,
+      before,
+      deletedCount,
+      after,
+    });
   }
 
-  logger.warn('DB maintenance: all data cleared (adminmasters preserved)', {
+  logger.warn('DB maintenance: all clearable data wiped (profiles + Masteradmin content preserved)', {
     totalDeleted,
+    preservedCollections: Array.from(PROTECTED_COLLECTIONS),
     adminEmail,
   });
 
-  return { totalDeleted, preservedCollections: Array.from(PROTECTED_COLLECTIONS), results };
+  return {
+    totalDeleted,
+    preservedCollections: Array.from(PROTECTED_COLLECTIONS),
+    results,
+  };
 }
 
 module.exports = {
