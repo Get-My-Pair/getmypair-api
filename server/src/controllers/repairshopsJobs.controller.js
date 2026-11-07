@@ -157,29 +157,36 @@ async function enrichJobs(requests) {
   });
 }
 
+function unassignedStoreClause(sid) {
+  return {
+    routingType: 'dark_store',
+    cobblerId: null,
+    darkStoreDeclinedBy: { $nin: [sid] },
+    $or: [
+      { darkStoreId: null },
+      { darkStoreId: '' },
+      { darkStoreId: { $exists: false } },
+    ],
+  };
+}
+
 function inboxFilter(sid) {
   // Unassigned dark-store jobs that still need Accept/Reject.
   // Include PAYMENT_SUCCESS: customers often pay before any shop accepts, which
   // previously removed the job from AWAITING_ACCEPTANCE and hid it entirely.
   return {
-    routingType: 'dark_store',
-    cobblerId: null,
+    ...unassignedStoreClause(sid),
     status: { $nin: ['cancelled', 'completed'] },
     $and: [
-      {
-        $or: [
-          { darkStoreId: null },
-          { darkStoreId: '' },
-          { darkStoreId: { $exists: false } },
-        ],
-      },
-      { darkStoreDeclinedBy: { $nin: [sid] } },
       {
         $or: [
           { workflowStatus: 'AWAITING_ACCEPTANCE' },
           { workflowStatus: 'CREATED' },
           { workflowStatus: 'PAYMENT_SUCCESS' },
+          { workflowStatus: 'PAYMENT_PENDING' },
           { paymentState: 'PAYMENT_SUCCESS' },
+          { paymentState: 'PAYMENT_PENDING' },
+          { trackingState: 'request_created' },
         ],
       },
     ],
@@ -190,6 +197,14 @@ function acceptedFilter(sid) {
   return {
     darkStoreId: sid,
     status: { $ne: 'cancelled' },
+  };
+}
+
+/** Overview table: every non-cancelled request this shop should see. */
+function overviewAllFilter(sid) {
+  return {
+    status: { $ne: 'cancelled' },
+    $or: [unassignedStoreClause(sid), { darkStoreId: sid }],
   };
 }
 
@@ -275,7 +290,8 @@ function filterForStatus(sid, status) {
     case 'done':
       return completedFilter(sid);
     case 'all':
-      return { $or: [inboxFilter(sid), acceptedFilter(sid)] };
+    case 'overview':
+      return overviewAllFilter(sid);
     case 'inbox':
     default:
       return inboxFilter(sid);
@@ -283,21 +299,24 @@ function filterForStatus(sid, status) {
 }
 
 async function jobStageCounts(sid) {
-  const [inbox, awaitingPickup, atShop, awaitingReturn, completed] = await Promise.all([
-    ServiceRequest.countDocuments(inboxFilter(sid)),
-    ServiceRequest.countDocuments(awaitingPickupFilter(sid)),
-    ServiceRequest.countDocuments(atShopFilter(sid)),
-    ServiceRequest.countDocuments(awaitingReturnFilter(sid)),
-    ServiceRequest.countDocuments(completedFilter(sid)),
-  ]);
+  const [inbox, awaitingPickup, atShop, awaitingReturn, completed, overviewTotal] =
+    await Promise.all([
+      ServiceRequest.countDocuments(inboxFilter(sid)),
+      ServiceRequest.countDocuments(awaitingPickupFilter(sid)),
+      ServiceRequest.countDocuments(atShopFilter(sid)),
+      ServiceRequest.countDocuments(awaitingReturnFilter(sid)),
+      ServiceRequest.countDocuments(completedFilter(sid)),
+      ServiceRequest.countDocuments(overviewAllFilter(sid)),
+    ]);
   return {
     inbox,
     awaiting_pickup: awaitingPickup,
     at_shop: atShop,
     awaiting_return: awaitingReturn,
     completed,
+    overview_total: overviewTotal,
     // Legacy keys used by Overview KPI cards
-    accepted: awaitingPickup + atShop + awaitingReturn,
+    accepted: awaitingPickup + atShop + awaitingReturn + completed,
   };
 }
 
@@ -327,15 +346,27 @@ const listJobs = async (req, res) => {
     const sid = storeId(req);
     const status = String(req.query.status || 'inbox').trim().toLowerCase();
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const skip = (page - 1) * limit;
     const filter = filterForStatus(sid, status);
 
-    const [items, total, counts] = await Promise.all([
+    // Only sort by createdAt — sorting darkStoreId crashes when values mix
+    // null / ObjectId / string ("cannot sort with keys that are of different types").
+    const [rawItems, total, counts] = await Promise.all([
       ServiceRequest.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       ServiceRequest.countDocuments(filter),
       jobStageCounts(sid),
     ]);
+
+    let items = rawItems;
+    if (status === 'all' || status === 'overview') {
+      items = [...rawItems].sort((a, b) => {
+        const aInbox = a.darkStoreId ? 1 : 0;
+        const bInbox = b.darkStoreId ? 1 : 0;
+        if (aInbox !== bInbox) return aInbox - bInbox;
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+    }
 
     return success(res, 'Jobs retrieved', {
       items: await enrichJobs(items),
