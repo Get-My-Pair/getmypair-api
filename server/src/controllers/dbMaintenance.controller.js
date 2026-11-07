@@ -16,10 +16,18 @@ const overview = async (req, res) => {
   }
 };
 
+function readConfirm(body = {}) {
+  return String(body.confirmPhrase || body.confirm || '').trim();
+}
+
 const clearCollection = async (req, res) => {
   try {
-    const { collection, confirmPhrase } = req.body;
-    const data = await dbMaintenance.deleteCollection(collection, confirmPhrase, adminEmail(req));
+    const { collection } = req.body;
+    const data = await dbMaintenance.deleteCollection(
+      collection,
+      readConfirm(req.body),
+      adminEmail(req)
+    );
     return success(res, `Cleared ${data.label}`, data);
   } catch (err) {
     return errorResponse(res, err.message || 'Failed to clear collection', err.statusCode || 500);
@@ -28,8 +36,8 @@ const clearCollection = async (req, res) => {
 
 const clearGroup = async (req, res) => {
   try {
-    const { group, confirmPhrase } = req.body;
-    const data = await dbMaintenance.deleteGroup(group, confirmPhrase, adminEmail(req));
+    const { group } = req.body;
+    const data = await dbMaintenance.deleteGroup(group, readConfirm(req.body), adminEmail(req));
     return success(res, `Cleared group: ${data.label}`, data);
   } catch (err) {
     return errorResponse(res, err.message || 'Failed to clear group', err.statusCode || 500);
@@ -38,8 +46,7 @@ const clearGroup = async (req, res) => {
 
 const clearAll = async (req, res) => {
   try {
-    const { confirmPhrase } = req.body;
-    const data = await dbMaintenance.deleteAllData(confirmPhrase, adminEmail(req));
+    const data = await dbMaintenance.deleteAllData(readConfirm(req.body), adminEmail(req));
     return success(res, 'All application data cleared (master admin login preserved)', data);
   } catch (err) {
     return errorResponse(res, err.message || 'Failed to clear database', err.statusCode || 500);

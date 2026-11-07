@@ -97,20 +97,33 @@ const darkstoreReportQueryValidation = [
   handleValidationErrors,
 ];
 
+/** Accept confirmPhrase or confirm (UI sends confirm). */
+function requireConfirmPhrase() {
+  return body('confirmPhrase')
+    .custom((value, { req }) => {
+      const phrase = String(value || req.body?.confirm || '').trim();
+      if (!phrase) {
+        throw new Error('confirmPhrase is required (type CLEAR / CLEAR_ALL)');
+      }
+      req.body.confirmPhrase = phrase;
+      return true;
+    });
+}
+
 const dbMaintenanceConfirmValidation = [
-  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  requireConfirmPhrase(),
   handleValidationErrors,
 ];
 
 const dbMaintenanceCollectionValidation = [
   body('collection').trim().notEmpty().withMessage('collection is required'),
-  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  requireConfirmPhrase(),
   handleValidationErrors,
 ];
 
 const dbMaintenanceGroupValidation = [
   body('group').trim().notEmpty().withMessage('group is required'),
-  body('confirmPhrase').trim().notEmpty().withMessage('confirmPhrase is required'),
+  requireConfirmPhrase(),
   handleValidationErrors,
 ];
 
@@ -160,12 +173,13 @@ const repairshopsJobQueryValidation = [
       'completed',
       'done',
       'all',
+      'overview',
     ])
     .withMessage(
-      'status must be inbox, accepted, awaiting_pickup, at_shop, awaiting_return, completed, or all'
+      'status must be inbox, accepted, awaiting_pickup, at_shop, awaiting_return, completed, all, or overview'
     ),
   query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('limit').optional().isInt({ min: 1, max: 500 }),
   handleValidationErrors,
 ];
 

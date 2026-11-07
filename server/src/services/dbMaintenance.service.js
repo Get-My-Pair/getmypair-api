@@ -198,7 +198,14 @@ async function deleteCollection(collection, confirmPhrase, adminEmail) {
     throw err;
   }
 
-  assertConfirmPhrase(confirmPhrase, `DELETE ${entry.collection}`);
+  // UI prompt asks for CLEAR; also accept legacy "DELETE <collection>".
+  const phrase = String(confirmPhrase || '').trim();
+  const legacy = `DELETE ${entry.collection}`;
+  if (phrase !== 'CLEAR' && phrase !== legacy) {
+    const err = new Error('Confirmation phrase must be exactly: CLEAR');
+    err.statusCode = 400;
+    throw err;
+  }
 
   const deletedCount = await deleteFromModel(entry);
   logger.warn('DB maintenance: collection cleared', {
@@ -221,7 +228,13 @@ async function deleteGroup(groupKey, confirmPhrase, adminEmail) {
     throw err;
   }
 
-  assertConfirmPhrase(confirmPhrase, `DELETE GROUP ${groupKey}`);
+  const groupPhrase = String(confirmPhrase || '').trim();
+  const legacyGroup = `DELETE GROUP ${groupKey}`;
+  if (groupPhrase !== 'CLEAR' && groupPhrase !== legacyGroup) {
+    const err = new Error('Confirmation phrase must be exactly: CLEAR');
+    err.statusCode = 400;
+    throw err;
+  }
 
   const results = [];
   let totalDeleted = 0;
@@ -247,7 +260,13 @@ async function deleteGroup(groupKey, confirmPhrase, adminEmail) {
  * Delete all application data except master admin login (adminmasters).
  */
 async function deleteAllData(confirmPhrase, adminEmail) {
-  assertConfirmPhrase(confirmPhrase, 'DELETE ALL DATA');
+  // UI prompt asks for CLEAR_ALL; also accept legacy "DELETE ALL DATA".
+  const phrase = String(confirmPhrase || '').trim();
+  if (phrase !== 'CLEAR_ALL' && phrase !== 'DELETE ALL DATA') {
+    const err = new Error('Confirmation phrase must be exactly: CLEAR_ALL');
+    err.statusCode = 400;
+    throw err;
+  }
 
   const results = [];
   let totalDeleted = 0;
