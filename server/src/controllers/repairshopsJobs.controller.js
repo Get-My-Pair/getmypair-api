@@ -5,6 +5,7 @@
 const mongoose = require('mongoose');
 const { ServiceRequest } = require('../models/serviceRequest.model');
 const User = require('../models/user.model');
+const UserProfile = require('../models/userProfile.model');
 const Article = require('../models/article.model');
 const CobblerProfile = require('../models/cobblerProfile.model');
 const darkstorePayment = require('../services/darkstorePayment.service');
@@ -13,6 +14,13 @@ const AdminMaster = require('../models/adminMaster.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const { allocatePublicId } = require('../utils/gmpPublicId');
+
+function formatPickupLine(addr) {
+  if (!addr) return '';
+  return [addr.addressLine1, addr.line, addr.street, addr.area, addr.city, addr.state, addr.pincode]
+    .filter(Boolean)
+    .join(', ');
+}
 
 function storeId(req) {
   return String(req.adminMaster._id);
@@ -48,12 +56,17 @@ async function enrichJobs(requests) {
     ),
   ];
 
-  const [users, articles, cobblers, deliveryMembers] = await Promise.all([
+  const [users, profiles, articles, cobblers, deliveryMembers] = await Promise.all([
     userIds.length
       ? User.find({ _id: { $in: userIds } }).select('name mobile email').lean()
       : [],
+    userIds.length
+      ? UserProfile.find({ userId: { $in: userIds } }).select('userId addresses').lean()
+      : [],
     articleIds.length
-      ? Article.find({ _id: { $in: articleIds } }).select('name brand model').lean()
+      ? Article.find({ _id: { $in: articleIds } })
+          .select('name brand model shoeSize images')
+          .lean()
       : [],
     cobblerIds.length
       ? CobblerProfile.find({ userId: { $in: cobblerIds } }).select('userId name phone shopName').lean()
@@ -64,6 +77,7 @@ async function enrichJobs(requests) {
   ]);
 
   const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
+  const profileMap = Object.fromEntries(profiles.map((p) => [String(p.userId), p]));
   const articleMap = Object.fromEntries(articles.map((a) => [String(a._id), a]));
   const cobblerMap = Object.fromEntries(cobblers.map((c) => [String(c.userId), c]));
   const deliveryMap = Object.fromEntries(deliveryMembers.map((d) => [String(d._id), d]));
@@ -100,15 +114,47 @@ async function enrichJobs(requests) {
     })
   );
 
-  return requests.map((r) => ({
-    ...r,
-    user: userMap[String(r.userId)] || null,
-    article: articleMap[String(r.articleId)] || null,
-    cobbler: r.cobblerId ? cobblerMap[String(r.cobblerId)] || null : null,
-    deliveryMember: r.deliveryMemberId
-      ? deliveryMap[String(r.deliveryMemberId)] || null
-      : null,
-  }));
+  return requests.map((r) => {
+    const profile = profileMap[String(r.userId)] || null;
+    const addresses = Array.isArray(profile?.addresses) ? profile.addresses : [];
+    const matched =
+      addresses.find((a) => String(a._id) === String(r.addressId)) || addresses[0] || null;
+    const line = formatPickupLine(matched);
+    const pickupAddress = matched
+      ? {
+          ...matched,
+          line,
+          addressLine1: matched.addressLine1 || matched.line || '',
+          city: matched.city || '',
+          state: matched.state || '',
+          pincode: matched.pincode || '',
+        }
+      : null;
+
+    const article = articleMap[String(r.articleId)] || null;
+    const requestPhotos = Array.isArray(r.photos) ? r.photos.filter(Boolean) : [];
+    const articleImages = Array.isArray(article?.images) ? article.images.filter(Boolean) : [];
+    const photos = requestPhotos.length ? requestPhotos : articleImages;
+
+    return {
+      ...r,
+      user: userMap[String(r.userId)] || null,
+      article: article
+        ? {
+            ...article,
+            size: article.shoeSize || article.size || null,
+            photos: articleImages,
+          }
+        : null,
+      photos,
+      cobbler: r.cobblerId ? cobblerMap[String(r.cobblerId)] || null : null,
+      deliveryMember: r.deliveryMemberId
+        ? deliveryMap[String(r.deliveryMemberId)] || null
+        : null,
+      pickupAddress,
+      pickupLocationLabel: line || 'Pickup location not set',
+    };
+  });
 }
 
 function inboxFilter(sid) {
@@ -133,12 +179,30 @@ function acceptedFilter(sid) {
 
 /** Accepted, waiting for delivery partner to pick up / drop at repair shop. */
 function awaitingPickupFilter(sid) {
+  const laterStages = [
+    'dark_store_received',
+    'inspection_started',
+    'repair_in_progress',
+    'repair_completed',
+    'dispatch_ready',
+    'out_for_delivery',
+    'delivered',
+  ];
   return {
     darkStoreId: sid,
     status: { $nin: ['cancelled', 'completed'] },
-    trackingState: {
-      $in: ['request_created', 'pickup_scheduled', 'pickup_assigned', 'item_picked'],
-    },
+    trackingState: { $nin: laterStages },
+    $or: [
+      {
+        trackingState: {
+          $in: ['request_created', 'pickup_scheduled', 'pickup_assigned', 'item_picked'],
+        },
+      },
+      // Payment-done jobs must appear here even if tracking lagged behind.
+      { paymentState: 'PAYMENT_SUCCESS' },
+      { workflowStatus: 'PAYMENT_SUCCESS' },
+      { workflowStatus: 'PICKUP_SCHEDULED' },
+    ],
   };
 }
 
