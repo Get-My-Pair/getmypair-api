@@ -184,9 +184,23 @@ function normalizePaymentStatus(payload) {
 }
 
 function isPaidStatus(status) {
-  return ['paid', 'success', 'captured', 'completed', 'succeeded'].includes(
-    String(status || '').toLowerCase()
-  );
+  const s = String(status || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_');
+  return [
+    'paid',
+    'success',
+    'successful',
+    'captured',
+    'completed',
+    'succeeded',
+    'payment_success',
+    'payment_successful',
+    'payment_captured',
+    'payment_completed',
+    'processed',
+  ].includes(s);
 }
 
 /**

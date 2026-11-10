@@ -125,9 +125,12 @@ const paymentStatus = async (req, res) => {
 
 const paymentByServiceRequest = async (req, res) => {
   try {
+    const refresh = req.query.refresh === 'true' || req.query.refresh === '1';
     const data = await paymentService.getPaymentByServiceRequest(
       req.params.serviceRequestId,
-      req.user._id
+      req.user._id,
+      { refresh },
+      req
     );
     return success(res, 'Payment for service request retrieved', data);
   } catch (err) {

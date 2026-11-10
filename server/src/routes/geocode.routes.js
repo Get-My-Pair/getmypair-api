@@ -31,5 +31,11 @@ router.get('/reverse', geocodeController.reverse);
  */
 router.get('/forward', geocodeController.forward);
 
+/**
+ * Driving route metrics (road km + ETA)
+ * GET /api/geocode/route?fromLat=&fromLng=&toLat=&toLng=
+ */
+router.get('/route', geocodeController.route);
+
 module.exports = router;
 

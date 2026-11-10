@@ -136,8 +136,122 @@ async function reverseGeocode(lat, lon) {
   }
 }
 
+function roundKm(n) {
+  if (n == null || !Number.isFinite(Number(n))) return null;
+  return Math.round(Number(n) * 10) / 10;
+}
+
+function formatDuration(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  if (s < 60) return { seconds: s, minutes: 1, label: '1 min' };
+  const minutes = Math.round(s / 60);
+  if (minutes < 60) return { seconds: s, minutes, label: `${minutes} min` };
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  const label = rem ? `${hours} hr ${rem} min` : `${hours} hr`;
+  return { seconds: s, minutes, hours, label };
+}
+
+async function googleDrivingRoute(fromLat, fromLng, toLat, toLng) {
+  const key = String(config.GOOGLE_MAPS_API_KEY || '').trim();
+  if (!key || !fetchFn) return null;
+  const params = new URLSearchParams({
+    origin: `${fromLat},${fromLng}`,
+    destination: `${toLat},${toLng}`,
+    mode: 'driving',
+    units: 'metric',
+    region: 'in',
+    key,
+  });
+  const url = `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`;
+  const res = await fetchFn(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Google Directions ${res.status}: ${text.slice(0, 180)}`);
+  }
+  const data = await res.json();
+  if (data.status !== 'OK' || !data.routes?.[0]?.legs?.[0]) {
+    throw new Error(data.error_message || `Google Directions status: ${data.status || 'UNKNOWN'}`);
+  }
+  const leg = data.routes[0].legs[0];
+  const meters = Number(leg.distance?.value);
+  const seconds = Number(leg.duration?.value);
+  const duration = formatDuration(seconds);
+  return {
+    provider: 'google',
+    distanceMeters: meters,
+    distanceKm: roundKm(meters / 1000),
+    durationSeconds: seconds,
+    durationMinutes: duration.minutes,
+    durationLabel: duration.label,
+    summary: data.routes[0].summary || null,
+  };
+}
+
+async function osrmDrivingRoute(fromLat, fromLng, toLat, toLng) {
+  if (!fetchFn) throw new Error('Fetch API not available');
+  const path = `${fromLng},${fromLat};${toLng},${toLat}`;
+  const url = `https://router.project-osrm.org/route/v1/driving/${path}?overview=false&alternatives=false&steps=false`;
+  const res = await fetchFn(url, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'getmypair-server/1.0 (contact@getmypair.example)',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`OSRM route ${res.status}: ${text.slice(0, 180)}`);
+  }
+  const data = await res.json();
+  const route = data?.routes?.[0];
+  if (!route || data.code !== 'Ok') {
+    throw new Error(data?.message || 'No driving route found');
+  }
+  const meters = Number(route.distance);
+  const seconds = Number(route.duration);
+  const duration = formatDuration(seconds);
+  return {
+    provider: 'osrm',
+    distanceMeters: meters,
+    distanceKm: roundKm(meters / 1000),
+    durationSeconds: seconds,
+    durationMinutes: duration.minutes,
+    durationLabel: duration.label,
+    summary: null,
+  };
+}
+
+/**
+ * Road distance + driving ETA between two coordinates.
+ * Prefers Google Directions when GOOGLE_MAPS_API_KEY is set; falls back to OSRM.
+ */
+async function routeDistance(fromLat, fromLng, toLat, toLng) {
+  const aLat = Number(fromLat);
+  const aLng = Number(fromLng);
+  const bLat = Number(toLat);
+  const bLng = Number(toLng);
+  if (![aLat, aLng, bLat, bLng].every((n) => Number.isFinite(n))) {
+    throw new Error('fromLat, fromLng, toLat, toLng must be valid numbers');
+  }
+  if (Math.abs(aLat) > 90 || Math.abs(bLat) > 90 || Math.abs(aLng) > 180 || Math.abs(bLng) > 180) {
+    throw new Error('Coordinates out of range');
+  }
+
+  if (config.GOOGLE_MAPS_API_KEY) {
+    try {
+      return await googleDrivingRoute(aLat, aLng, bLat, bLng);
+    } catch (err) {
+      logger.warn(`Google route failed, trying OSRM: ${err.message}`);
+    }
+  }
+
+  return osrmDrivingRoute(aLat, aLng, bLat, bLng);
+}
+
 module.exports = {
   reverseGeocode,
   forwardGeocode,
+  routeDistance,
+  formatDuration,
 };
 

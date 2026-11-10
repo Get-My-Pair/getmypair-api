@@ -84,6 +84,15 @@ const config = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 
+  /**
+   * Google Maps / Directions (server). Prefer env on Render.
+   * Used for road distance + driving ETA for delivery navigation.
+   */
+  GOOGLE_MAPS_API_KEY:
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_MAPS_SERVER_KEY ||
+    '',
+
   /** Public website origin used in Repairshops credential emails */
   CLIENT_WEB_URL: (
     process.env.CLIENT_WEB_URL ||

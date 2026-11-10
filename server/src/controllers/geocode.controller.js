@@ -53,8 +53,28 @@ const forward = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/geocode/route?fromLat=&fromLng=&toLat=&toLng=
+ * Driving road distance + ETA (Google Directions or OSRM fallback).
+ */
+const route = async (req, res) => {
+  try {
+    const { fromLat, fromLng, toLat, toLng } = req.query;
+    if ([fromLat, fromLng, toLat, toLng].some((v) => v === undefined || v === '')) {
+      return errorResponse(res, 'fromLat, fromLng, toLat, toLng are required', 400);
+    }
+    const routeInfo = await geocodeService.routeDistance(fromLat, fromLng, toLat, toLng);
+    return success(res, 'Route retrieved successfully', { route: routeInfo });
+  } catch (err) {
+    logger.error(`Geocode route error: ${err.message}`);
+    const status = /out of range|valid numbers|required/i.test(err.message) ? 400 : 502;
+    return errorResponse(res, err.message, status);
+  }
+};
+
 module.exports = {
   reverse,
   forward,
+  route,
 };
 

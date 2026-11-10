@@ -70,10 +70,60 @@ async function getPayableRequest(serviceRequestId, userId) {
     err.statusCode = 400;
     throw err;
   }
+
+  // Guard: Payment row may be SUCCESS while service request lagged behind.
+  const alreadyPaid = await Payment.findOne({
+    serviceRequestId: request._id,
+    status: 'PAYMENT_SUCCESS',
+  })
+    .sort({ paidAt: -1, createdAt: -1 })
+    .lean();
+  if (alreadyPaid) {
+    await syncServiceRequestPaid(request._id, alreadyPaid);
+    const err = new Error('This request is already paid');
+    err.statusCode = 400;
+    throw err;
+  }
+
   return request;
 }
 
+/** Keep service request paymentState in sync when Payment is already SUCCESS. */
+async function syncServiceRequestPaid(serviceRequestId, paymentDoc) {
+  const request = await ServiceRequest.findById(serviceRequestId);
+  if (!request) return null;
+  if (request.paymentState === 'PAYMENT_SUCCESS') {
+    return request;
+  }
+  const awaitingShop = !request.darkStoreId && !request.cobblerId;
+  await updateServiceWorkflow(
+    request._id,
+    {
+      workflowStatus: awaitingShop ? 'AWAITING_ACCEPTANCE' : 'PAYMENT_SUCCESS',
+      paymentState: 'PAYMENT_SUCCESS',
+      status: awaitingShop ? request.status || 'pending' : request.status,
+      activePaymentId: paymentDoc?._id || request.activePaymentId,
+    },
+    {
+      actorType: 'system',
+      note: `Payment synced as paid (₹${paymentDoc?.amount ?? ''})`,
+    }
+  );
+  return ServiceRequest.findById(serviceRequestId);
+}
+
 async function findOrCreatePendingPayment(request) {
+  const paidExisting = await Payment.findOne({
+    serviceRequestId: request._id,
+    status: 'PAYMENT_SUCCESS',
+  }).sort({ paidAt: -1, createdAt: -1 });
+  if (paidExisting) {
+    await syncServiceRequestPaid(request._id, paidExisting);
+    const err = new Error('This request is already paid');
+    err.statusCode = 400;
+    throw err;
+  }
+
   let payment = await Payment.findOne({
     serviceRequestId: request._id,
     status: { $in: ['PAYMENT_PENDING', 'PAYMENT_INITIATED'] },
@@ -218,6 +268,12 @@ async function verifyPayment({ orderId, userId }, req) {
     throw err;
   }
 
+  // Already captured locally — always re-sync service request paid state.
+  if (payment.status === 'PAYMENT_SUCCESS') {
+    await syncServiceRequestPaid(payment.serviceRequestId, payment);
+    return { payment: payment.toObject(), verified: true, alreadyProcessed: true };
+  }
+
   const zohoResult = await zohoPayment.verifyPayment({
     orderId: payment.orderId,
     zohoPaymentId: payment.zohoPaymentId,
@@ -229,18 +285,19 @@ async function verifyPayment({ orderId, userId }, req) {
     zohoResult.status || zohoResult.payment_status
   );
 
-  if (paid && payment.status !== 'PAYMENT_SUCCESS') {
+  if (paid) {
     return processPaymentSuccess(payment, zohoResult, req);
   }
-  if (!paid && payment.status === 'PAYMENT_INITIATED') {
+  if (payment.status === 'PAYMENT_INITIATED' || payment.status === 'PAYMENT_PENDING') {
     return { payment: payment.toObject(), verified: false, zoho: zohoResult };
   }
-  return { payment: payment.toObject(), verified: paid, zoho: zohoResult };
+  return { payment: payment.toObject(), verified: false, zoho: zohoResult };
 }
 
 async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
   if (payment.status === 'PAYMENT_SUCCESS') {
-    return { payment: payment.toObject(), alreadyProcessed: true };
+    await syncServiceRequestPaid(payment.serviceRequestId, payment);
+    return { payment: payment.toObject(), alreadyProcessed: true, verified: true };
   }
 
   const request = await ServiceRequest.findById(payment.serviceRequestId);
@@ -341,7 +398,11 @@ async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
     req
   );
 
-  return { payment: payment.toObject(), request: request.toObject() };
+  return {
+    payment: payment.toObject(),
+    request: request.toObject(),
+    verified: true,
+  };
 }
 
 async function processPaymentFailed(payment, reason, req = null) {
@@ -644,8 +705,8 @@ async function rejectCost({ serviceRequestId, userId, reason }, req) {
   return { request: request.toObject() };
 }
 
-async function getPaymentByServiceRequest(serviceRequestId, userId) {
-  const request = await ServiceRequest.findOne({ _id: serviceRequestId, userId }).lean();
+async function getPaymentByServiceRequest(serviceRequestId, userId, { refresh = false } = {}, req = null) {
+  let request = await ServiceRequest.findOne({ _id: serviceRequestId, userId }).lean();
   if (!request) {
     return {
       request: null,
@@ -653,13 +714,57 @@ async function getPaymentByServiceRequest(serviceRequestId, userId) {
       serviceRequestFound: false,
     };
   }
-  const payment = await Payment.findOne({ serviceRequestId: request._id })
-    .sort({ createdAt: -1 })
+
+  // Prefer a successful payment so a later failed/pending retry cannot hide "paid".
+  let payment = await Payment.findOne({
+    serviceRequestId: request._id,
+    status: 'PAYMENT_SUCCESS',
+  })
+    .sort({ paidAt: -1, createdAt: -1 })
     .lean();
+
+  if (!payment) {
+    const latest = await Payment.findOne({ serviceRequestId: request._id })
+      .sort({ createdAt: -1 });
+
+    if (
+      refresh &&
+      latest &&
+      ['PAYMENT_PENDING', 'PAYMENT_INITIATED'].includes(latest.status)
+    ) {
+      try {
+        const verified = await verifyPayment(
+          { orderId: latest.orderId, userId },
+          req
+        );
+        if (verified?.payment?.status === 'PAYMENT_SUCCESS' || verified?.verified) {
+          payment = verified.payment;
+          request = (await ServiceRequest.findById(request._id).lean()) || request;
+        } else {
+          payment = latest.toObject ? latest.toObject() : latest;
+        }
+      } catch (err) {
+        logger.warn(
+          `Refresh verify for service request ${serviceRequestId}: ${err.message}`
+        );
+        payment = latest.toObject ? latest.toObject() : latest;
+      }
+    } else {
+      payment = latest ? (latest.toObject ? latest.toObject() : latest) : null;
+    }
+  }
+
+  if (payment?.status === 'PAYMENT_SUCCESS' && request.paymentState !== 'PAYMENT_SUCCESS') {
+    await syncServiceRequestPaid(request._id, payment);
+    request = (await ServiceRequest.findById(request._id).lean()) || request;
+  }
+
   return {
     request,
     payment: payment || null,
     serviceRequestFound: true,
+    alreadyPaid:
+      payment?.status === 'PAYMENT_SUCCESS' || request.paymentState === 'PAYMENT_SUCCESS',
   };
 }
 
