@@ -228,9 +228,15 @@ function returnReadyFilter(storeId) {
 function returnAssignedFilter(memberId) {
   return {
     deliveryMemberId: memberId,
-    deliveryAssignmentType: 'return',
     status: { $nin: ['cancelled', 'completed'] },
-    trackingState: { $in: ['dispatch_ready', 'out_for_delivery'] },
+    $or: [
+      {
+        deliveryAssignmentType: 'return',
+        trackingState: { $in: ['dispatch_ready', 'out_for_delivery'] },
+      },
+      // Keep in-progress return cards visible even if assignment type was missing.
+      { trackingState: 'out_for_delivery' },
+    ],
   };
 }
 

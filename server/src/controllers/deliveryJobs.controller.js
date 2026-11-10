@@ -259,8 +259,13 @@ const updateStatus = async (req, res) => {
     }
 
     const assignedTo = request.deliveryMemberId ? String(request.deliveryMemberId) : '';
-    const isMine = assignedTo && assignedTo === String(mid);
-    const isOpen = !assignedTo;
+    const assignmentType = request.deliveryAssignmentType || null;
+    const stateBefore = String(request.trackingState || '');
+    // After hub drop, pickup assignment is released (type cleared) so any rider can claim return.
+    const returnClaimable =
+      ['dispatch_ready', 'out_for_delivery'].includes(stateBefore) && assignmentType !== 'return';
+    const isMine = assignedTo && assignedTo === String(mid) && !returnClaimable;
+    const isOpen = !assignedTo || returnClaimable;
     if (!isMine && !isOpen) {
       return errorResponse(res, 'This job is assigned to another delivery member', 403);
     }
@@ -269,9 +274,7 @@ const updateStatus = async (req, res) => {
     if (isOpen) {
       const claimType =
         spec.requireType ||
-        (['dispatch_ready', 'out_for_delivery'].includes(request.trackingState)
-          ? 'return'
-          : 'pickup');
+        (['dispatch_ready', 'out_for_delivery'].includes(stateBefore) ? 'return' : 'pickup');
       if (claimType === 'pickup' && !request.darkStoreId) {
         return errorResponse(
           res,
@@ -281,7 +284,7 @@ const updateStatus = async (req, res) => {
       }
       if (
         claimType === 'return' &&
-        !['dispatch_ready', 'out_for_delivery'].includes(String(request.trackingState || ''))
+        !['dispatch_ready', 'out_for_delivery'].includes(stateBefore)
       ) {
         return errorResponse(
           res,
@@ -308,10 +311,17 @@ const updateStatus = async (req, res) => {
     // Collect can set/repair missing pickup assignment type for this rider.
     if (
       action === 'picked_up' &&
-      isMine &&
+      (isMine || isOpen) &&
       (!request.deliveryAssignmentType || request.deliveryAssignmentType === 'pickup')
     ) {
       request.deliveryAssignmentType = 'pickup';
+    }
+
+    // Keep return trips listed under Hub → Customer after "Start delivery trip".
+    if (spec.requireType === 'return') {
+      request.deliveryMemberId = mid;
+      request.deliveryAssignmentType = 'return';
+      if (!request.deliveryAssignedAt) request.deliveryAssignedAt = new Date();
     }
 
     if (
@@ -370,6 +380,8 @@ const updateStatus = async (req, res) => {
     if (action === 'drop_at_store') {
       // Free the rider assignment so a return partner can claim after shop work.
       request.deliveryAssignmentType = null;
+      request.deliveryMemberId = null;
+      request.deliveryAssignedAt = null;
       request.status = 'in_service';
     }
     if (action === 'delivered') {
