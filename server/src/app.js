@@ -136,9 +136,11 @@ app.post(
   paymentController.zohoWebhook
 );
 
-// Body parser middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parser. Delivery proof photos and member photos are JSON data URLs,
+// which are larger than the 100kb default and were rejected with 413.
+const jsonBodyLimit = '12mb';
+app.use(express.json({ limit: jsonBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
 
 // Logging middleware
 if (config.NODE_ENV === 'development') {

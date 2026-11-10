@@ -23,6 +23,12 @@ const errorHandler = (err, req, res, next) => {
   let message = err.message || 'Internal Server Error';
   let errorDetails = null;
 
+  // body-parser: photo/data-URL body exceeded the JSON limit
+  if (err.type === 'entity.too.large' || err.name === 'PayloadTooLargeError') {
+    statusCode = 413;
+    message = 'Photo is too large. Use a smaller image and try again.';
+  }
+
   // body-parser: invalid JSON (e.g. {mobile: "…"} without quoted keys, or single quotes)
   if (
     err instanceof SyntaxError ||
