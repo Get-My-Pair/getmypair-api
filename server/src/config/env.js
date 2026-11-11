@@ -15,7 +15,9 @@
  * ----------------------------------------------------------------------------
  */
 
-require('dotenv').config();
+const path = require('path');
+// Load server/.env (local) — Render injects process.env directly.
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',

@@ -68,7 +68,9 @@ India DLT: the SMS Flow template must map an approved DLT Template ID + sender I
 
 | Variable | Notes |
 |----------|--------|
-| `REMOVE_BG_API_KEY` | Server-only. Used by `POST /api/articles/remove-background`. Never put this in the mobile app or dart-defines. Rotate if it was ever committed. |
+| `REMOVE_BG_API_KEY` | **Required for cutouts.** Server-only. Used by `POST /api/articles/remove-background`. Never put this in the mobile app or `dart_defines`. Rotate if it was ever committed. Dashboard: https://www.remove.bg/dashboard#api-key |
+
+If unset, that endpoint returns `503` and the mobile app keeps the original photo (soft-fail).
 
 ## Zoho Payments
 
@@ -93,7 +95,7 @@ See [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md) and [ZOHO_OAUTH_SETUP.md](ZOHO_OA
 | `SETTLEMENT_SCHEDULER_INTERVAL_MS` | Default 1 hour |
 | `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX_REQUESTS` | Global API limiter |
 
-## Example `.env` (login code via MSG91 Flow SMS)
+## Example `.env` (see also `server/.env.example`)
 
 ```env
 NODE_ENV=development
@@ -101,6 +103,14 @@ PORT=3000
 MONGODB_URI=mongodb+srv://...
 JWT_SECRET=dev-secret
 JWT_REFRESH_SECRET=dev-refresh-secret
+
+# Footwear BG remover — server only (mobile must NOT embed this key)
+REMOVE_BG_API_KEY=YOUR_REMOVE_BG_API_KEY
+
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
 MSG91_OTP_VAR=number
@@ -108,13 +118,14 @@ MSG91_OTP_VAR=number
 # Phone OTP: Android/iOS → MSG91; Flutter web → Dev OTP (X-Client-Platform)
 ```
 
-## Example production phone SMS
+## Example production (Render Environment)
 
 ```env
 NODE_ENV=production
 MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
 MSG91_OTP_VAR=number
+REMOVE_BG_API_KEY=YOUR_REMOVE_BG_API_KEY
 ```
 
-On Render, set `NODE_ENV=production`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, and `MSG91_OTP_VAR=number` (template uses `##number##`, DLT-mapped). Android/iOS use MSG91; Flutter web gets Dev OTP via `X-Client-Platform: web`.
+On Render, set at least `NODE_ENV=production`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, `MSG91_OTP_VAR=number`, and `REMOVE_BG_API_KEY` for footwear cutouts. Android/iOS use MSG91; Flutter web gets Dev OTP via `X-Client-Platform: web`.
