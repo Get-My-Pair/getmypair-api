@@ -72,6 +72,22 @@ India DLT: the SMS Flow template must map an approved DLT Template ID + sender I
 
 If unset, that endpoint returns `503` and the mobile app keeps the original photo (soft-fail).
 
+## Google Maps (server)
+
+| Variable | Notes |
+|----------|--------|
+| `GOOGLE_MAPS_API_KEY` | Server Directions / distance / ETA. Alias: `GOOGLE_MAPS_SERVER_KEY`. Restrict by API + IP in Google Cloud Console. |
+| `GOOGLE_MAPS_SERVER_KEY` | Optional alias if `GOOGLE_MAPS_API_KEY` is unset |
+
+**Mobile / web Maps SDK keys are separate** (do not put the unrestricted mobile key only on the server, and do not commit either key):
+
+| Client | Where to set |
+|--------|----------------|
+| Android | `android/local.properties` → `GOOGLE_MAPS_API_KEY=...` (or env) |
+| iOS | `ios/Flutter/Secrets.xcconfig` → `GOOGLE_MAPS_API_KEY=...` |
+| Flutter / web | `--dart-define=GOOGLE_MAPS_API_KEY=...` and `web/index.html` script tag |
+| Restrict | Android package `com.getmypair.userapp`, iOS bundle ID, HTTP referrers for web; enable Maps SDK / JS API as needed |
+
 ## Zoho Payments
 
 See [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md) and [ZOHO_OAUTH_SETUP.md](ZOHO_OAUTH_SETUP.md).
@@ -107,6 +123,9 @@ JWT_REFRESH_SECRET=dev-refresh-secret
 # Footwear BG remover — server only (mobile must NOT embed this key)
 REMOVE_BG_API_KEY=YOUR_REMOVE_BG_API_KEY
 
+# Google Maps — server Directions / ETA (restrict by API + IP)
+GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY
+
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
@@ -126,6 +145,7 @@ MSG91_AUTH_KEY=your_auth_key
 MSG91_FLOW_ID=your_sms_flow_or_template_id
 MSG91_OTP_VAR=number
 REMOVE_BG_API_KEY=YOUR_REMOVE_BG_API_KEY
+GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY
 ```
 
-On Render, set at least `NODE_ENV=production`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, `MSG91_OTP_VAR=number`, and `REMOVE_BG_API_KEY` for footwear cutouts. Android/iOS use MSG91; Flutter web gets Dev OTP via `X-Client-Platform: web`.
+On Render, set at least `NODE_ENV=production`, `MSG91_AUTH_KEY`, `MSG91_FLOW_ID`, `MSG91_OTP_VAR=number`, `REMOVE_BG_API_KEY` (cutouts), and `GOOGLE_MAPS_API_KEY` (server maps). Android/iOS use MSG91; Flutter web gets Dev OTP via `X-Client-Platform: web`.
