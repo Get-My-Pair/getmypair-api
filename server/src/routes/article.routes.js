@@ -27,5 +27,10 @@ router.get('/:articleId', articleController.getArticleById);
 router.put('/update/:articleId', updateArticleValidation, articleController.updateArticle);
 router.delete('/delete/:articleId', articleController.deleteArticle);
 router.post('/upload-image', uploadArticleImage, articleController.uploadArticleImage);
+router.post(
+  '/remove-background',
+  uploadArticleImage,
+  articleController.removeArticleBackground,
+);
 
 module.exports = router;

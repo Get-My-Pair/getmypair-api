@@ -84,6 +84,9 @@ const config = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
 
+  /** remove.bg — server-only; never ship this key in mobile/web clients */
+  REMOVE_BG_API_KEY: process.env.REMOVE_BG_API_KEY || '',
+
   /**
    * Google Maps / Directions (server). Prefer env on Render.
    * Used for road distance + driving ETA for delivery navigation.

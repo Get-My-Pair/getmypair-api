@@ -11,6 +11,7 @@ const UserProfile = require('../models/userProfile.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
 const logger = require('../utils/logger');
 const { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
+const removeBgService = require('../services/removeBg.service');
 const {
   resolveActiveProfileIdForRequest,
   contentQueryForProfile,
@@ -238,6 +239,38 @@ const uploadArticleImage = async (req, res) => {
   }
 };
 
+/**
+ * Proxy footwear background removal through remove.bg (API key stays on server).
+ * POST /api/articles/remove-background
+ * multipart field: file
+ * Response: image/png binary
+ */
+const removeArticleBackground = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 'No file uploaded', 400);
+    }
+    if (!removeBgService.isConfigured()) {
+      return errorResponse(res, 'Background removal is not configured on the server', 503);
+    }
+
+    const pngBuffer = await removeBgService.removeBackground(
+      req.file.buffer,
+      req.file.mimetype || 'image/jpeg',
+    );
+
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-store',
+      'Content-Length': String(pngBuffer.length),
+    });
+    return res.status(200).send(pngBuffer);
+  } catch (err) {
+    logger.error(`Remove article background error: ${err.message}`);
+    return errorResponse(res, err.message, err.statusCode || 500);
+  }
+};
+
 module.exports = {
   createArticle,
   getMyArticles,
@@ -245,4 +278,5 @@ module.exports = {
   updateArticle,
   deleteArticle,
   uploadArticleImage,
+  removeArticleBackground,
 };

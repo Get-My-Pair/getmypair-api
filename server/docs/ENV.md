@@ -64,6 +64,12 @@ India DLT: the SMS Flow template must map an approved DLT Template ID + sender I
 | `CLOUDINARY_API_KEY` | |
 | `CLOUDINARY_API_SECRET` | |
 
+## remove.bg (footwear cutouts)
+
+| Variable | Notes |
+|----------|--------|
+| `REMOVE_BG_API_KEY` | Server-only. Used by `POST /api/articles/remove-background`. Never put this in the mobile app or dart-defines. Rotate if it was ever committed. |
+
 ## Zoho Payments
 
 See [MODULE_5_PAYMENT.md](MODULE_5_PAYMENT.md) and [ZOHO_OAUTH_SETUP.md](ZOHO_OAUTH_SETUP.md).
