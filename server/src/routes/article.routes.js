@@ -23,14 +23,15 @@ router.get('/categories', articleCategoryController.listActiveForCustomer);
 
 router.post('/create', createArticleValidation, articleController.createArticle);
 router.get('/my', articleController.getMyArticles);
-router.get('/:articleId', articleController.getArticleById);
-router.put('/update/:articleId', updateArticleValidation, articleController.updateArticle);
-router.delete('/delete/:articleId', articleController.deleteArticle);
 router.post('/upload-image', uploadArticleImage, articleController.uploadArticleImage);
 router.post(
   '/remove-background',
   uploadArticleImage,
   articleController.removeArticleBackground,
 );
+// Parameterized routes after static paths
+router.get('/:articleId', articleController.getArticleById);
+router.put('/update/:articleId', updateArticleValidation, articleController.updateArticle);
+router.delete('/delete/:articleId', articleController.deleteArticle);
 
 module.exports = router;
