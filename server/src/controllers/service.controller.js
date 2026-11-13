@@ -672,6 +672,80 @@ const respondToActualCost = async (req, res) => {
 };
 
 /**
+ * Customer service history review (“Rate your pair’s glow-up”).
+ * POST /api/service/review
+ * Body: { requestId, rating (1–5), comment? }
+ */
+const submitCustomerReview = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { requestId } = req.body;
+    const rating = Number(req.body.rating);
+    const comment =
+      req.body.comment == null ? '' : String(req.body.comment).trim();
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return errorResponse(res, 'rating must be an integer from 1 to 5', 400);
+    }
+
+    const request = await ServiceRequest.findOne({
+      _id: requestId,
+      userId,
+    });
+    if (!request) {
+      return notFound(res, 'Service request not found');
+    }
+
+    const status = String(request.status || '').toLowerCase();
+    const tracking = String(request.trackingState || '').toLowerCase();
+    const isHistory =
+      status === 'completed' || tracking === 'delivered';
+    if (!isHistory) {
+      return errorResponse(
+        res,
+        'Reviews can only be submitted after the service is completed',
+        400
+      );
+    }
+
+    if (request.customerReview?.rating != null && request.customerReview.rating >= 1) {
+      return errorResponse(res, 'This service has already been reviewed', 409);
+    }
+
+    request.customerReview = {
+      rating,
+      comment: comment || null,
+      submittedAt: new Date(),
+    };
+    request.lifecycleEvents = Array.isArray(request.lifecycleEvents)
+      ? request.lifecycleEvents
+      : [];
+    request.lifecycleEvents.push({
+      state: request.trackingState || 'delivered',
+      status: request.status || 'completed',
+      actorType: 'customer',
+      actorId: String(userId),
+      note: `Customer review submitted (${rating}/5)`,
+      media: { photos: [], videos: [] },
+      timestamp: new Date(),
+    });
+    request.trackingUpdatedAt = new Date();
+    await request.save();
+
+    logger.info(
+      `Customer review saved request=${requestId} rating=${rating} user=${userId}`
+    );
+    return success(res, 'Review submitted successfully', {
+      request: request.toObject(),
+      review: request.customerReview,
+    });
+  } catch (err) {
+    logger.error(`Submit customer review error: ${err.message}`);
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+/**
  * Upload service request media evidence
  * POST /api/service/upload-media
  */
@@ -998,6 +1072,7 @@ module.exports = {
   updateServiceStatus,
   cancelServiceRequest,
   respondToActualCost,
+  submitCustomerReview,
   cobblerListNewRequests,
   cobblerAcceptRequest,
   cobblerRejectRequest,

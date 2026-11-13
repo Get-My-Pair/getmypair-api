@@ -238,6 +238,24 @@ module.exports = {
       .withMessage('decision must be accept or reject'),
     handleValidationErrors,
   ],
+  submitCustomerReviewValidation: [
+    body('requestId')
+      .notEmpty()
+      .withMessage('requestId is required')
+      .isMongoId()
+      .withMessage('requestId must be a valid Mongo ID'),
+    body('rating')
+      .notEmpty()
+      .withMessage('rating is required')
+      .isInt({ min: 1, max: 5 })
+      .withMessage('rating must be an integer from 1 to 5'),
+    body('comment')
+      .optional({ values: 'falsy' })
+      .trim()
+      .isLength({ max: 2000 })
+      .withMessage('comment must be at most 2000 characters'),
+    handleValidationErrors,
+  ],
   uploadServiceMediaValidation: [
     body('requestId')
       .notEmpty()

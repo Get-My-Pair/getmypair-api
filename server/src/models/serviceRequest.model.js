@@ -314,6 +314,28 @@ const serviceRequestSchema = new mongoose.Schema(
       type: [lifecycleEventSchema],
       default: [],
     },
+    /**
+     * Customer “Rate your pair’s glow-up” review after delivery/completion.
+     * Stored on the request so history is backend-driven (no local prefs).
+     */
+    customerReview: {
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+        default: null,
+      },
+      comment: {
+        type: String,
+        trim: true,
+        maxlength: 2000,
+        default: null,
+      },
+      submittedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: true },

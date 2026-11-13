@@ -30,6 +30,7 @@ const {
   updateServiceStatusValidation,
   cancelServiceRequestValidation,
   respondToActualCostValidation,
+  submitCustomerReviewValidation,
   uploadServiceMediaValidation,
 } = require('../validations/service.validation');
 
@@ -97,6 +98,12 @@ router.post(
   roleMiddleware(['USER']),
   respondToActualCostValidation,
   serviceController.respondToActualCost
+);
+router.post(
+  '/review',
+  roleMiddleware(['USER']),
+  submitCustomerReviewValidation,
+  serviceController.submitCustomerReview
 );
 router.post(
   '/upload-media',
