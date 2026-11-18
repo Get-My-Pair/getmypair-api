@@ -19,7 +19,14 @@ const paymentSchema = new mongoose.Schema(
     serviceRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ServiceRequest',
-      required: true,
+      default: null,
+      index: true,
+    },
+    /** Set for Thrift Store checkouts. Service requests leave this empty. */
+    thriftOrderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ThriftOrder',
+      default: null,
       index: true,
     },
     userId: {

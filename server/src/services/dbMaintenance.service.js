@@ -30,6 +30,9 @@ const CareServiceProblem = require('../models/careServiceProblem.model');
 const HubSettings = require('../models/hubSettings.model');
 const SequenceCounter = require('../models/sequenceCounter.model');
 const SellListing = require('../models/sellListing.model');
+const RentListing = require('../models/rentListing.model');
+const RentRequest = require('../models/rentRequest.model');
+const DonateRequest = require('../models/donateRequest.model');
 const TrustedDevice = require('../models/trustedDevice.model');
 const logger = require('../utils/logger');
 
@@ -66,7 +69,7 @@ const COLLECTION_GROUPS = {
   services: {
     label: 'Services & jobs',
     description: 'Service requests and cobbler job records',
-    collections: ['servicerequests', 'jobs', 'selllistings'],
+    collections: ['servicerequests', 'jobs', 'selllistings', 'rentlistings', 'rentrequests', 'donaterequests'],
   },
   cobblers: {
     label: 'Cobbler profiles',
@@ -159,6 +162,9 @@ const MODEL_REGISTRY = [
   { collection: 'servicerequests', model: ServiceRequest, label: 'Service requests', group: 'services' },
   { collection: 'jobs', model: Job, label: 'Jobs', group: 'services' },
   { collection: 'selllistings', model: SellListing, label: 'Sell listings', group: 'services' },
+  { collection: 'rentlistings', model: RentListing, label: 'Rent listings', group: 'services' },
+  { collection: 'rentrequests', model: RentRequest, label: 'Rent requests', group: 'services' },
+  { collection: 'donaterequests', model: DonateRequest, label: 'Donate requests', group: 'services' },
   { collection: 'cobblerprofiles', model: CobblerProfile, label: 'Cobbler profiles', group: 'cobblers' },
   { collection: 'payments', model: Payment, label: 'Payments', group: 'payments' },
   { collection: 'settlements', model: Settlement, label: 'Settlements', group: 'payments' },

@@ -43,6 +43,7 @@ const SERVICE_CODES = {
   wash: 'WA',
   donate: 'DO',
   dispose: 'DI',
+  thrift: 'TS',
 };
 
 function lettersOnly(raw) {

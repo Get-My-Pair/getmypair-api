@@ -19,6 +19,8 @@ const User = require('../models/user.model');
 const Role = require('../models/role.model');
 const Article = require('../models/article.model');
 const sellListingController = require('./sellListing.controller');
+const rentController = require('./rent.controller');
+const donateController = require('./donate.controller');
 const {
   ServiceRequest,
   serviceTrackingStates,
@@ -641,6 +643,9 @@ const dashboardStats = async (req, res) => {
       cobblersCount,
       deliveryCount,
       sellListingsPending,
+      rentListingsPending,
+      rentRequestsCount,
+      donateRequestsPending,
     ] = await Promise.all([
       User.countDocuments(),
       Article.aggregate([
@@ -705,6 +710,9 @@ const dashboardStats = async (req, res) => {
         { $count: 'count' },
       ]).then((rows) => (rows[0] ? rows[0].count : 0)),
       sellListingController.countPending(),
+      rentController.countPendingListings(),
+      rentController.countRequests(),
+      donateController.countPending(),
     ]);
 
     return success(res, 'Dashboard stats', {
@@ -714,6 +722,9 @@ const dashboardStats = async (req, res) => {
       cobblersCount,
       deliveryCount,
       sellListingsPending,
+      rentListingsPending,
+      rentRequestsCount,
+      donateRequestsPending,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {

@@ -16,7 +16,9 @@ const zohoPayment = require('./zohoPayment.service');
 const { logPaymentAudit } = require('./paymentAudit.service');
 const paymentNotification = require('./paymentNotification.service');
 const { updateServiceWorkflow, resolveProviderType } = require('../utils/paymentWorkflow.helper');
-const { allocatePaymentOrderId } = require('../utils/gmpPublicId');
+const { allocatePaymentOrderId, allocatePublicId } = require('../utils/gmpPublicId');
+const ThriftOrder = require('../models/thriftOrder.model');
+const ThriftProduct = require('../models/thriftProduct.model');
 const logger = require('../utils/logger');
 
 async function getPayableRequest(serviceRequestId, userId) {
@@ -268,9 +270,11 @@ async function verifyPayment({ orderId, userId }, req) {
     throw err;
   }
 
-  // Already captured locally — always re-sync service request paid state.
+  // Already captured locally — always re-sync the paid record.
   if (payment.status === 'PAYMENT_SUCCESS') {
-    await syncServiceRequestPaid(payment.serviceRequestId, payment);
+    if (payment.serviceRequestId) {
+      await syncServiceRequestPaid(payment.serviceRequestId, payment);
+    }
     return { payment: payment.toObject(), verified: true, alreadyProcessed: true };
   }
 
@@ -294,7 +298,149 @@ async function verifyPayment({ orderId, userId }, req) {
   return { payment: payment.toObject(), verified: false, zoho: zohoResult };
 }
 
+function isThriftPayment(payment) {
+  return Boolean(payment?.thriftOrderId) && !payment?.serviceRequestId;
+}
+
+async function processThriftPaymentSuccess(payment, zohoPayload = {}, req = null) {
+  if (payment.status === 'PAYMENT_SUCCESS') {
+    return { payment: payment.toObject(), alreadyProcessed: true, verified: true };
+  }
+
+  const officePercent = Number(payment.commissionPercent) || 0;
+  const gmpShare = Math.round(payment.amount * officePercent) / 100;
+  const partnerShare = Math.round((payment.amount - gmpShare) * 100) / 100;
+  payment.status = 'PAYMENT_SUCCESS';
+  payment.gmpShare = gmpShare;
+  payment.cobblerShare = partnerShare;
+  payment.paidAt = new Date();
+  payment.zohoPaymentId =
+    zohoPayload.payment_id || zohoPayload.id || payment.zohoPaymentId;
+  payment.metadata = {
+    ...payment.metadata,
+    zohoSuccess: zohoPayload,
+    channel: 'thrift_store',
+  };
+  await payment.save();
+
+  const order = await ThriftOrder.findOneAndUpdate(
+    { _id: payment.thriftOrderId, status: { $ne: 'paid' } },
+    {
+      $set: {
+        status: 'paid',
+        paidAt: payment.paidAt,
+        paymentId: payment._id,
+      },
+    },
+    { new: true }
+  );
+  if (order) {
+    await ThriftProduct.updateOne(
+      { _id: order.productId },
+      { $inc: { stock: -Math.max(1, Number(order.qty) || 1) } }
+    );
+  }
+
+  await recordDailyRevenue(payment, { gmpShare, partnerShare });
+  await paymentNotification.notifyPaymentEvent({
+    userId: payment.userId,
+    type: 'PAYMENT_SUCCESS',
+    title: 'Thrift Store order placed',
+    body: `Your payment of ₹${payment.amount} was successful. We will deliver this pair to your address.`,
+    data: { thriftOrderId: String(payment.thriftOrderId), amount: payment.amount },
+  });
+  await logPaymentAudit(
+    {
+      action: 'payment_success',
+      resourceType: 'payment',
+      resourceId: payment._id,
+      userId: payment.userId,
+      status: 'success',
+      details: { orderId: payment.orderId, amount: payment.amount, channel: 'thrift_store' },
+    },
+    req
+  );
+  return { payment: payment.toObject(), verified: true };
+}
+
+async function createThriftPaymentLink({ order, userId, redirectUrl, paymentMode }, req) {
+  if (!order || String(order.userId) !== String(userId)) {
+    const err = new Error('Order not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (order.status === 'paid') {
+    const err = new Error('This order is already paid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let payment = await Payment.findOne({
+    thriftOrderId: order._id,
+    status: { $in: ['PAYMENT_PENDING', 'PAYMENT_INITIATED'] },
+  }).sort({ createdAt: -1 });
+
+  if (!payment) {
+    const allocated = await allocatePublicId({ serviceType: 'thrift' });
+    const officePercent = Number(order.officePercent) || 0;
+    const gmpShare = Math.round(Number(order.amount) * officePercent) / 100;
+    payment = await Payment.create({
+      orderId: allocated.publicId,
+      userId,
+      thriftOrderId: order._id,
+      amount: order.amount,
+      currency: zohoPayment.normalizeCurrency('INR'),
+      providerType: 'gmp',
+      status: 'PAYMENT_PENDING',
+      gmpShare,
+      cobblerShare: Math.round((Number(order.amount) - gmpShare) * 100) / 100,
+      commissionPercent: officePercent,
+      metadata: { channel: 'thrift_store' },
+    });
+  }
+
+  const customer = await resolveZohoCustomer(userId);
+  const zohoMode = zohoPayment.normalizeZohoMode(paymentMode);
+  const link = await zohoPayment.createPaymentLink({
+    orderId: payment.orderId,
+    amount: payment.amount,
+    currency: payment.currency,
+    redirectUrl,
+    customer,
+    description: `GetMyPair Thrift Store #${String(order._id).slice(-8)}`,
+    mode: zohoMode,
+  });
+
+  payment.paymentLinkUrl = link.url;
+  payment.zohoOrderId = link.payment_link_id || payment.zohoOrderId;
+  payment.status = 'PAYMENT_INITIATED';
+  payment.metadata = {
+    ...payment.metadata,
+    zohoMode,
+    paymentLink: link,
+    channel: 'thrift_store',
+  };
+  await payment.save();
+
+  await logPaymentAudit(
+    {
+      action: 'payment_link_created',
+      resourceType: 'payment',
+      resourceId: payment._id,
+      userId,
+      status: 'success',
+      details: { url: link.url, zohoMode, channel: 'thrift_store' },
+    },
+    req
+  );
+
+  return { payment: payment.toObject(), paymentLink: link, zohoMode };
+}
+
 async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
+  if (isThriftPayment(payment)) {
+    return processThriftPaymentSuccess(payment, zohoPayload, req);
+  }
   if (payment.status === 'PAYMENT_SUCCESS') {
     await syncServiceRequestPaid(payment.serviceRequestId, payment);
     return { payment: payment.toObject(), alreadyProcessed: true, verified: true };
@@ -411,6 +557,24 @@ async function processPaymentFailed(payment, reason, req = null) {
   payment.failureReason = reason || 'Payment failed';
   await payment.save();
 
+  if (isThriftPayment(payment)) {
+    await ThriftOrder.updateOne(
+      { _id: payment.thriftOrderId, status: 'pending_payment' },
+      { $set: { status: 'payment_failed' } }
+    );
+    await logPaymentAudit(
+      {
+        action: 'payment_failed',
+        resourceType: 'payment',
+        resourceId: payment._id,
+        status: 'failure',
+        errorMessage: reason,
+      },
+      req
+    );
+    return { payment: payment.toObject() };
+  }
+
   await updateServiceWorkflow(payment.serviceRequestId, {
     paymentState: 'PAYMENT_FAILED',
     workflowStatus: 'PAYMENT_PENDING',
@@ -442,6 +606,18 @@ async function processPaymentFailed(payment, reason, req = null) {
 async function processPaymentPending(payment, req = null) {
   payment.status = 'PAYMENT_PENDING';
   await payment.save();
+  if (isThriftPayment(payment)) {
+    await logPaymentAudit(
+      {
+        action: 'payment_pending',
+        resourceType: 'payment',
+        resourceId: payment._id,
+        status: 'info',
+      },
+      req
+    );
+    return { payment: payment.toObject() };
+  }
   await updateServiceWorkflow(payment.serviceRequestId, {
     paymentState: 'PAYMENT_PENDING',
   });
@@ -1038,6 +1214,7 @@ module.exports = {
   allocatePaymentOrderId,
   createPaymentOrder,
   createPaymentLink,
+  createThriftPaymentLink,
   verifyPayment,
   processPaymentSuccess,
   processPaymentFailed,

@@ -42,9 +42,13 @@ const repairshopsUserController = require('../controllers/repairshopsUser.contro
 const deliveryMemberController = require('../controllers/deliveryMember.controller');
 const repairshopsJobsController = require('../controllers/repairshopsJobs.controller');
 const sellListingController = require('../controllers/sellListing.controller');
+const rentController = require('../controllers/rent.controller');
+const donateController = require('../controllers/donate.controller');
+const recycleController = require('../controllers/recycle.controller');
 const hubSettingsController = require('../controllers/hubSettings.controller');
 const careServiceProblemController = require('../controllers/careServiceProblem.controller');
 const articleCategoryController = require('../controllers/articleCategory.controller');
+const thriftController = require('../controllers/thrift.controller');
 
 // Auth — email OTP after password
 router.post(
@@ -107,6 +111,12 @@ router.get('/articles', adminMasterAuth, adminDashboardController.listArticles);
 router.get('/sell-listings', adminMasterAuth, sellListingController.adminList);
 router.get('/sell-listings/:id', adminMasterAuth, sellListingController.adminGet);
 router.patch('/sell-listings/:id/review', adminMasterAuth, sellListingController.adminReview);
+router.get('/rent-listings', adminMasterAuth, rentController.adminListListings);
+router.patch('/rent-listings/:id/review', adminMasterAuth, rentController.adminReviewListing);
+router.get('/rent-requests', adminMasterAuth, rentController.adminListRequests);
+router.get('/donate-requests', adminMasterAuth, donateController.adminList);
+router.patch('/donate-requests/:id/review', adminMasterAuth, donateController.adminReview);
+router.get('/recycle-slides', adminMasterAuth, recycleController.listSlides);
 router.get('/service-requests', adminMasterAuth, adminDashboardController.listServiceRequests);
 router.get(
   '/service-requests/:id',
@@ -384,6 +394,12 @@ router.put(
   hubSettingsController.updateHub
 );
 router.delete('/hub-address/:id', adminMasterAuth, hubSettingsController.deleteHub);
+
+router.get('/thrift-products', adminMasterAuth, thriftController.adminList);
+router.post('/thrift-products', adminMasterAuth, thriftController.adminCreate);
+router.put('/thrift-products/:id', adminMasterAuth, thriftController.adminUpdate);
+router.delete('/thrift-products/:id', adminMasterAuth, thriftController.adminRemove);
+router.get('/thrift-orders', adminMasterAuth, thriftController.adminOrders);
 
 // DB maintenance
 router.get('/db/overview', adminMasterAuth, dbMaintenanceController.overview);
