@@ -15,7 +15,7 @@ Dashboards now live in the React client (`client/client`) on GoDaddy:
 
 ## Portal login (email OTP)
 
-Repairshops and Masteradmin share the same `AdminMaster` account and require **password + email OTP**:
+Repairshops require **password + email OTP** (once per account). Masteradmin is **email + password only** — login returns `accessToken` with `requiresOtp: false`.
 
 1. `POST /api/{portal}/auth/login` `{ email, password }` → sends OTP email, returns `challengeToken`
 2. `POST /api/{portal}/auth/verify-otp` `{ challengeToken, otp }` → returns `accessToken`

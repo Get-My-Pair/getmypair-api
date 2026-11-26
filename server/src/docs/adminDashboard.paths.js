@@ -18,7 +18,7 @@ void 0;
  * @swagger
  * /api/masteradmin/auth/login:
  *   post:
- *     summary: Start Master Console login (password + email OTP)
+ *     summary: Master Console login (email + password, no OTP)
  *     tags: [Master Admin Dashboard]
  *     requestBody:
  *       required: true
@@ -32,7 +32,7 @@ void 0;
  *               password: { type: string, example: "Admin@123" }
  *     responses:
  *       200:
- *         description: OTP sent — complete with /auth/verify-otp
+ *         description: Login successful — accessToken returned (OTP is not required)
  *       401:
  *         description: Invalid email or password
  */

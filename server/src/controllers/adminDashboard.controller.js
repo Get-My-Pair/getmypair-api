@@ -163,8 +163,9 @@ function canUsePortal(admin, portalKey) {
   return false;
 }
 
-/** Repairshops / delivery portals: OTP once per account, then email + password only. */
+/** Masteradmin: password only. Repairshops / delivery: OTP once, then email + password. */
 const shouldSkipPortalOtp = (admin, portalKey) => {
+  if (portalKey === 'masteradmin') return true;
   if (portalKey !== 'repairshops' && portalKey !== 'delivery') return false;
   if (admin?.emailVerifiedAt) return true;
   // Legacy store/delivery rows that already logged in before emailVerifiedAt existed
@@ -226,7 +227,7 @@ async function issueAndSendPortalOtp(admin, portalLabel, options = {}) {
 
 /**
  * POST /api/{portal}/auth/login
- * Masteradmin: password then email OTP every time.
+ * Masteradmin: email + password only (no OTP).
  * Repairshops / delivery: email OTP once (any account on that portal); later logins issue JWT after password.
  */
 const login = async (req, res) => {
@@ -265,7 +266,8 @@ const login = async (req, res) => {
 
     if (shouldSkipPortalOtp(admin, portalKey)) {
       const payload = await completePortalLogin(admin, portalKey);
-      logger.info(`${portalKey} password login (OTP already verified): ${email}`);
+      const reason = portalKey === 'masteradmin' ? 'password only' : 'OTP already verified';
+      logger.info(`${portalKey} password login (${reason}): ${email}`);
       return success(res, 'Login successful', {
         requiresOtp: false,
         ...payload,
