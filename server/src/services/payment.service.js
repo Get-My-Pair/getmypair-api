@@ -19,6 +19,8 @@ const { updateServiceWorkflow, resolveProviderType } = require('../utils/payment
 const { allocatePaymentOrderId, allocatePublicId } = require('../utils/gmpPublicId');
 const ThriftOrder = require('../models/thriftOrder.model');
 const ThriftProduct = require('../models/thriftProduct.model');
+const RentListing = require('../models/rentListing.model');
+const RentRequest = require('../models/rentRequest.model');
 const logger = require('../utils/logger');
 
 async function getPayableRequest(serviceRequestId, userId) {
@@ -302,6 +304,18 @@ function isThriftPayment(payment) {
   return Boolean(payment?.thriftOrderId) && !payment?.serviceRequestId;
 }
 
+function isRentPayment(payment) {
+  return Boolean(payment?.rentListingId) && !payment?.serviceRequestId && !payment?.thriftOrderId;
+}
+
+const RENT_DURATION_LABELS = {
+  week: '1 week',
+  month: '1 month',
+  '3month': '3 months',
+  '6month': '6 months',
+  '1year': '1 year',
+};
+
 async function processThriftPaymentSuccess(payment, zohoPayload = {}, req = null) {
   if (payment.status === 'PAYMENT_SUCCESS') {
     return { payment: payment.toObject(), alreadyProcessed: true, verified: true };
@@ -395,7 +409,12 @@ async function createThriftPaymentLink({ order, userId, redirectUrl, paymentMode
       gmpShare,
       cobblerShare: Math.round((Number(order.amount) - gmpShare) * 100) / 100,
       commissionPercent: officePercent,
-      metadata: { channel: 'thrift_store' },
+      metadata: {
+        channel: 'thrift_store',
+        title: order.product?.title || 'Thrift Store',
+        subtitle: order.product?.brand || '',
+        imageUrl: order.product?.image || '',
+      },
     });
   }
 
@@ -437,9 +456,196 @@ async function createThriftPaymentLink({ order, userId, redirectUrl, paymentMode
   return { payment: payment.toObject(), paymentLink: link, zohoMode };
 }
 
+async function processRentPaymentSuccess(payment, zohoPayload = {}, req = null) {
+  if (payment.status === 'PAYMENT_SUCCESS') {
+    return { payment: payment.toObject(), alreadyProcessed: true, verified: true };
+  }
+
+  payment.status = 'PAYMENT_SUCCESS';
+  payment.gmpShare = payment.amount;
+  payment.cobblerShare = 0;
+  payment.commissionPercent = 100;
+  payment.paidAt = new Date();
+  payment.zohoPaymentId =
+    zohoPayload.payment_id || zohoPayload.id || payment.zohoPaymentId;
+  payment.metadata = {
+    ...payment.metadata,
+    zohoSuccess: zohoPayload,
+    channel: 'rent',
+  };
+  await payment.save();
+
+  const listing = await RentListing.findById(payment.rentListingId);
+  if (listing && listing.status === 'approved' && String(listing.ownerId) !== String(payment.userId)) {
+    const existing = await RentRequest.findOne({
+      listingId: listing._id,
+      renterId: payment.userId,
+    });
+    if (!existing) {
+      await RentRequest.create({
+        listingId: listing._id,
+        ownerId: listing.ownerId,
+        renterId: payment.userId,
+        duration: listing.duration,
+        price: listing.price,
+        paymentStatus: 'paid',
+        paidAmount: payment.amount,
+        paidAt: payment.paidAt,
+        status: 'requested',
+      });
+    }
+  }
+
+  await recordDailyRevenue(payment, { gmpShare: payment.amount, partnerShare: 0 });
+  await paymentNotification.notifyPaymentEvent({
+    userId: payment.userId,
+    type: 'PAYMENT_SUCCESS',
+    title: 'Rent payment received',
+    body: `Your payment of ₹${payment.amount} was successful. The owner can see your rent request.`,
+    data: { rentListingId: String(payment.rentListingId), amount: payment.amount },
+  });
+  await logPaymentAudit(
+    {
+      action: 'payment_success',
+      resourceType: 'payment',
+      resourceId: payment._id,
+      userId: payment.userId,
+      status: 'success',
+      details: { orderId: payment.orderId, amount: payment.amount, channel: 'rent' },
+    },
+    req
+  );
+  return { payment: payment.toObject(), verified: true };
+}
+
+async function createRentPaymentLink({ listing, userId, redirectUrl, paymentMode }, req) {
+  if (!listing || listing.status !== 'approved') {
+    const err = new Error('This footwear is not available to rent');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (String(listing.ownerId) === String(userId)) {
+    const err = new Error('You cannot rent your own footwear');
+    err.statusCode = 400;
+    throw err;
+  }
+  const alreadyPaid = await RentRequest.findOne({
+    listingId: listing._id,
+    renterId: userId,
+  }).lean();
+  if (alreadyPaid) {
+    const err = new Error('You already paid to rent this pair');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const durationLabel = RENT_DURATION_LABELS[listing.duration] || listing.duration;
+  let payment = await Payment.findOne({
+    rentListingId: listing._id,
+    userId,
+    status: { $in: ['PAYMENT_PENDING', 'PAYMENT_INITIATED'] },
+  }).sort({ createdAt: -1 });
+
+  if (!payment) {
+    const allocated = await allocatePublicId({ serviceType: 'rent' });
+    payment = await Payment.create({
+      orderId: allocated.publicId,
+      userId,
+      rentListingId: listing._id,
+      amount: listing.price,
+      currency: zohoPayment.normalizeCurrency('INR'),
+      providerType: 'gmp',
+      status: 'PAYMENT_PENDING',
+      gmpShare: listing.price,
+      cobblerShare: 0,
+      commissionPercent: 100,
+      metadata: {
+        channel: 'rent',
+        title: listing.title || 'Footwear',
+        subtitle: durationLabel,
+        imageUrl: listing.imageUrl || '',
+        listingId: String(listing._id),
+      },
+    });
+  }
+
+  const customer = await resolveZohoCustomer(userId);
+  const zohoMode = zohoPayment.normalizeZohoMode(paymentMode);
+  const link = await zohoPayment.createPaymentLink({
+    orderId: payment.orderId,
+    amount: payment.amount,
+    currency: payment.currency,
+    redirectUrl,
+    customer,
+    description: `GetMyPair rent ${listing.title || 'footwear'}`,
+    mode: zohoMode,
+  });
+
+  payment.paymentLinkUrl = link.url;
+  payment.zohoOrderId = link.payment_link_id || payment.zohoOrderId;
+  payment.status = 'PAYMENT_INITIATED';
+  payment.metadata = {
+    ...payment.metadata,
+    channel: 'rent',
+    title: listing.title || 'Footwear',
+    subtitle: durationLabel,
+    imageUrl: listing.imageUrl || '',
+    listingId: String(listing._id),
+    zohoMode,
+    paymentLink: link,
+  };
+  await payment.save();
+
+  await logPaymentAudit(
+    {
+      action: 'payment_link_created',
+      resourceType: 'payment',
+      resourceId: payment._id,
+      userId,
+      status: 'success',
+      details: { url: link.url, zohoMode, channel: 'rent' },
+    },
+    req
+  );
+
+  return { payment: payment.toObject(), paymentLink: link, zohoMode };
+}
+
+async function listOpenCart(userId) {
+  const rows = await Payment.find({
+    userId,
+    serviceRequestId: null,
+    status: { $in: ['PAYMENT_PENDING', 'PAYMENT_INITIATED'] },
+    paymentLinkUrl: { $nin: [null, ''] },
+  })
+    .sort({ createdAt: -1 })
+    .limit(40)
+    .populate('thriftOrderId', 'product status')
+    .lean();
+
+  return rows.map((row) => {
+    const meta = row.metadata || {};
+    const product = row.thriftOrderId && row.thriftOrderId.product ? row.thriftOrderId.product : null;
+    const channel = meta.channel || (row.thriftOrderId ? 'thrift_store' : 'rent');
+    return {
+      paymentId: row._id,
+      orderId: row.orderId,
+      amount: row.amount,
+      checkoutUrl: row.paymentLinkUrl,
+      channel,
+      title: meta.title || product?.title || (channel === 'thrift_store' ? 'Thrift Store' : 'Rent footwear'),
+      subtitle: meta.subtitle || product?.brand || '',
+      imageUrl: meta.imageUrl || product?.image || '',
+    };
+  });
+}
+
 async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
   if (isThriftPayment(payment)) {
     return processThriftPaymentSuccess(payment, zohoPayload, req);
+  }
+  if (isRentPayment(payment)) {
+    return processRentPaymentSuccess(payment, zohoPayload, req);
   }
   if (payment.status === 'PAYMENT_SUCCESS') {
     await syncServiceRequestPaid(payment.serviceRequestId, payment);
@@ -557,11 +763,13 @@ async function processPaymentFailed(payment, reason, req = null) {
   payment.failureReason = reason || 'Payment failed';
   await payment.save();
 
-  if (isThriftPayment(payment)) {
-    await ThriftOrder.updateOne(
-      { _id: payment.thriftOrderId, status: 'pending_payment' },
-      { $set: { status: 'payment_failed' } }
-    );
+  if (isThriftPayment(payment) || isRentPayment(payment)) {
+    if (isThriftPayment(payment)) {
+      await ThriftOrder.updateOne(
+        { _id: payment.thriftOrderId, status: 'pending_payment' },
+        { $set: { status: 'payment_failed' } }
+      );
+    }
     await logPaymentAudit(
       {
         action: 'payment_failed',
@@ -1215,6 +1423,8 @@ module.exports = {
   createPaymentOrder,
   createPaymentLink,
   createThriftPaymentLink,
+  createRentPaymentLink,
+  listOpenCart,
   verifyPayment,
   processPaymentSuccess,
   processPaymentFailed,

@@ -29,6 +29,13 @@ const paymentSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    /** Set for Rent My Pair checkouts. The rent request is created only after Zoho marks this paid. */
+    rentListingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'RentListing',
+      default: null,
+      index: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

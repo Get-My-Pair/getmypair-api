@@ -3,6 +3,7 @@ const RentListing = require('../models/rentListing.model');
 const { RENT_DURATIONS } = require('../models/rentListing.model');
 const RentRequest = require('../models/rentRequest.model');
 const { success, error: errorResponse, notFound } = require('../utils/response');
+const paymentService = require('../services/payment.service');
 const logger = require('../utils/logger');
 const { uploadToCloudinary } = require('../config/cloudinary');
 
@@ -163,12 +164,9 @@ const listAvailable = async (req, res) => {
   }
 };
 
-const createRequest = async (req, res) => {
+const checkout = async (req, res) => {
   try {
     const listingId = String(req.body.listingId || '').trim();
-    if (req.body.paymentConfirmed !== true) {
-      return errorResponse(res, 'Pay the rent amount to send this request', 400);
-    }
     if (!mongoose.Types.ObjectId.isValid(listingId)) {
       return errorResponse(res, 'Footwear not found', 404);
     }
@@ -176,42 +174,37 @@ const createRequest = async (req, res) => {
     if (!listing || listing.status !== 'approved') {
       return notFound(res, 'This footwear is not available to rent');
     }
-    if (String(listing.ownerId) === String(req.user._id)) {
-      return errorResponse(res, 'You cannot rent your own footwear', 400);
-    }
-    const existing = await RentRequest.findOne({
-      listingId: listing._id,
-      renterId: req.user._id,
-    }).lean();
-    if (existing) {
-      return errorResponse(res, 'You already sent a rent request for this pair', 409);
-    }
-
-    const paidAt = new Date();
-    const request = await RentRequest.create({
-      listingId: listing._id,
-      ownerId: listing.ownerId,
-      renterId: req.user._id,
-      duration: listing.duration,
-      price: listing.price,
-      paymentStatus: 'paid',
-      paidAmount: listing.price,
-      paidAt,
-      status: 'requested',
+    const paymentData = await paymentService.createRentPaymentLink(
+      {
+        listing,
+        userId: req.user._id,
+        redirectUrl: req.body.redirectUrl,
+        paymentMode: req.body.paymentMode,
+      },
+      req
+    );
+    return success(res, 'Checkout ready', {
+      listing: mapListing(listing.toObject ? listing.toObject() : listing),
+      ...paymentData,
     });
-    const saved = await populateRequest(RentRequest.findById(request._id)).lean();
-    logger.info(`Rent request ${request._id} paid for listing ${listing._id}`);
-    return success(res, 'Rent request sent', { request: mapRequest(saved) }, 201);
   } catch (err) {
-    logger.error(`Create rent request error: ${err.message}`);
-    return errorResponse(res, err.message, 500);
+    logger.error(`Rent checkout error: ${err.message}`);
+    return errorResponse(res, err.message || 'Could not start payment', err.statusCode || 500);
   }
+};
+
+const createRequest = async (req, res) => {
+  return errorResponse(
+    res,
+    'Pay with Zoho checkout. The request is created after payment succeeds.',
+    400
+  );
 };
 
 const listIncoming = async (req, res) => {
   try {
     const rows = await populateRequest(
-      RentRequest.find({ ownerId: req.user._id }).sort({ createdAt: -1 })
+      RentRequest.find({ ownerId: req.user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 })
     ).lean();
     return success(res, 'Rent requests on your footwear', {
       requests: rows.map(mapRequest),
@@ -271,7 +264,9 @@ const adminReviewListing = async (req, res) => {
 
 const adminListRequests = async (req, res) => {
   try {
-    const rows = await populateRequest(RentRequest.find().sort({ createdAt: -1 })).lean();
+    const rows = await populateRequest(
+      RentRequest.find({ paymentStatus: 'paid' }).sort({ createdAt: -1 })
+    ).lean();
     return success(res, 'Rent requests', { requests: rows.map(mapRequest) });
   } catch (err) {
     logger.error(`Admin list rent requests error: ${err.message}`);
@@ -287,6 +282,7 @@ module.exports = {
   createListing,
   listMine,
   listAvailable,
+  checkout,
   createRequest,
   listIncoming,
   adminListListings,

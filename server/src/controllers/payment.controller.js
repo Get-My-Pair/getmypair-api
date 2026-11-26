@@ -95,6 +95,15 @@ const rejectCost = async (req, res) => {
   }
 };
 
+const openCart = async (req, res) => {
+  try {
+    const items = await paymentService.listOpenCart(req.user._id);
+    return success(res, 'Open payment requests', { items });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+};
+
 const paymentHistory = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
@@ -307,6 +316,7 @@ module.exports = {
   zohoWebhook,
   approveCost,
   rejectCost,
+  openCart,
   paymentHistory,
   paymentByServiceRequest,
   paymentStatus,

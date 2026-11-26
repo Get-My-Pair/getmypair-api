@@ -44,6 +44,7 @@ const SERVICE_CODES = {
   donate: 'DO',
   dispose: 'DI',
   thrift: 'TS',
+  rent: 'RN',
 };
 
 function lettersOnly(raw) {

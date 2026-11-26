@@ -12,6 +12,7 @@ router.post('/upload-image', uploadArticleImage, rentController.uploadImage);
 router.post('/listings', rentController.createListing);
 router.get('/listings', rentController.listMine);
 router.get('/available', rentController.listAvailable);
+router.post('/checkout', rentController.checkout);
 router.post('/requests', rentController.createRequest);
 router.get('/requests/incoming', rentController.listIncoming);
 

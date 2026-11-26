@@ -61,6 +61,11 @@ router.post(
 );
 
 router.get(
+  '/open-cart',
+  roleMiddleware(['USER']),
+  paymentController.openCart
+);
+router.get(
   '/history',
   roleMiddleware(['USER']),
   historyQueryValidation,
