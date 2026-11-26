@@ -112,8 +112,8 @@ const config = {
     process.env.RESEND_SANDBOX_OWNER_EMAIL || 'ranjith.kumar@getmypair.com',
 
   /** Single Masteradmin account — override in production via .env on Render */
-  MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'ranjith.kumar@getmypair.com',
-  MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || '123455678',
+  MASTER_ADMIN_EMAIL: process.env.MASTER_ADMIN_EMAIL || 'rajeshrathnam@getmypair.com',
+  MASTER_ADMIN_PASSWORD: process.env.MASTER_ADMIN_PASSWORD || 'Rathnam@1975',
 
   // Zoho Payments (OAuth — do not put Client ID in ZOHO_API_KEY)
   ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID || '',
