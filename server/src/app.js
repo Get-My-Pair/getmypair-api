@@ -9,6 +9,8 @@ const localeMiddleware = require('./middleware/locale.middleware');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const cobblerProfileRoutes = require('./routes/cobbler.profile.routes');
+const recyclerRoutes = require('./routes/recycler.routes');
+const masteradminRecyclerRoutes = require('./routes/masteradminRecycler.routes');
 const { notFound } = require('./utils/response');
 const { t } = require('./utils/i18n');
 const config = require('./config/env');
@@ -43,7 +45,8 @@ app.use(
 );
 
 // Body parser middleware
-app.use(express.json());
+// 6mb: recycler batch photos are sent as base64 data URLs (resized to ~900px on the client).
+app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Locale resolution from Accept-Language / X-App-Language headers
@@ -105,6 +108,8 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cobbler/profile', cobblerProfileRoutes);
+app.use('/api/recycler', recyclerRoutes);
+app.use('/api/masteradmin', masteradminRecyclerRoutes);
 
 // 404 handler
 app.use((req, res) => {
