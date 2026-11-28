@@ -92,6 +92,24 @@ async function getPayableRequest(serviceRequestId, userId) {
   return request;
 }
 
+/**
+ * Record how the customer paid (UPI / card / …) and return the time the gateway
+ * says it was paid, falling back to "now". Never throws.
+ */
+function applyGatewayPaymentDetails(payment, zohoPayload = {}) {
+  try {
+    const details = zohoPayment.extractPaymentDetails(zohoPayload);
+    if (details.method) payment.paymentMethod = details.method;
+    if (details.detail) payment.paymentMethodDetail = details.detail;
+    const created = payment.createdAt ? new Date(payment.createdAt).getTime() : 0;
+    if (details.paidAt && details.paidAt.getTime() >= created - 60 * 1000) {
+      return details.paidAt;
+    }
+  } catch (err) {
+    logger.warn(`Could not read payment method from gateway payload: ${err.message}`);
+  }
+  return new Date();
+}
 /** Keep service request paymentState in sync when Payment is already SUCCESS. */
 async function syncServiceRequestPaid(serviceRequestId, paymentDoc) {
   const request = await ServiceRequest.findById(serviceRequestId);
@@ -327,7 +345,7 @@ async function processThriftPaymentSuccess(payment, zohoPayload = {}, req = null
   payment.status = 'PAYMENT_SUCCESS';
   payment.gmpShare = gmpShare;
   payment.cobblerShare = partnerShare;
-  payment.paidAt = new Date();
+  payment.paidAt = applyGatewayPaymentDetails(payment, zohoPayload);
   payment.zohoPaymentId =
     zohoPayload.payment_id || zohoPayload.id || payment.zohoPaymentId;
   payment.metadata = {
@@ -465,7 +483,7 @@ async function processRentPaymentSuccess(payment, zohoPayload = {}, req = null) 
   payment.gmpShare = payment.amount;
   payment.cobblerShare = 0;
   payment.commissionPercent = 100;
-  payment.paidAt = new Date();
+  payment.paidAt = applyGatewayPaymentDetails(payment, zohoPayload);
   payment.zohoPaymentId =
     zohoPayload.payment_id || zohoPayload.id || payment.zohoPaymentId;
   payment.metadata = {
@@ -623,7 +641,49 @@ async function listOpenCart(userId) {
     .populate('thriftOrderId', 'product status')
     .lean();
 
-  return rows.map((row) => {
+  // 1) Drop already-paid thrift orders, expired links and duplicate attempts for
+  //    the same item (every "Pay Now" retry can leave an extra INITIATED row).
+  const now = Date.now();
+  const seen = new Set();
+  const candidates = [];
+  for (const row of rows) {
+    const meta = row.metadata || {};
+    if (row.thriftOrderId && row.thriftOrderId.status === 'paid') continue;
+    const expiresAt = meta.paymentLink && meta.paymentLink.expires_at
+      ? new Date(meta.paymentLink.expires_at).getTime()
+      : NaN;
+    if (Number.isFinite(expiresAt) && expiresAt < now) continue;
+    const itemKey = row.thriftOrderId
+      ? `thrift:${row.thriftOrderId._id || row.thriftOrderId}`
+      : row.rentListingId
+        ? `rent:${row.rentListingId}:${meta.subtitle || ''}`
+        : `order:${row.orderId}`;
+    if (seen.has(itemKey)) continue;
+    seen.add(itemKey);
+    candidates.push(row);
+  }
+
+  // 2) Ask Zoho whether any of these were actually paid (status can lag behind
+  //    the gateway when the webhook / return URL was missed). Paid ones are
+  //    finalised here and removed from the cart.
+  const paidIds = new Set();
+  await Promise.all(
+    candidates.slice(0, 10).map(async (row) => {
+      try {
+        const result = await Promise.race([
+          verifyPayment({ orderId: row.orderId, userId }, null),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('verify timeout')), 6000)),
+        ]);
+        if (result && (result.verified || (result.payment && result.payment.status === 'PAYMENT_SUCCESS'))) {
+          paidIds.add(String(row._id));
+        }
+      } catch (err) {
+        logger.warn(`Open cart reconcile skipped for ${row.orderId}: ${err.message}`);
+      }
+    })
+  );
+
+  return candidates.filter((row) => !paidIds.has(String(row._id))).map((row) => {
     const meta = row.metadata || {};
     const product = row.thriftOrderId && row.thriftOrderId.product ? row.thriftOrderId.product : null;
     const channel = meta.channel || (row.thriftOrderId ? 'thrift_store' : 'rent');
@@ -664,7 +724,7 @@ async function processPaymentSuccess(payment, zohoPayload = {}, req = null) {
   payment.gmpShare = split.gmpShare;
   payment.cobblerShare = split.cobblerShare;
   payment.commissionPercent = split.commissionPercent;
-  payment.paidAt = new Date();
+  payment.paidAt = applyGatewayPaymentDetails(payment, zohoPayload);
   payment.zohoPaymentId =
     zohoPayload.payment_id || zohoPayload.id || payment.zohoPaymentId;
   payment.metadata = { ...payment.metadata, zohoSuccess: zohoPayload };
@@ -1199,11 +1259,25 @@ async function getPaymentDetails(paymentId, userId, isAdmin) {
     ? { _id: paymentId }
     : { orderId: paymentId };
   if (!isAdmin) filter.userId = userId;
-  const payment = await Payment.findOne(filter).lean();
+  let payment = await Payment.findOne(filter).lean();
   if (!payment) {
     const err = new Error('Payment not found');
     err.statusCode = 404;
     throw err;
+  }
+
+  // A payment stuck at "initiated" may already be paid at the gateway — settle it
+  // now so the transaction screen shows the real status and paid date.
+  if (['PAYMENT_PENDING', 'PAYMENT_INITIATED'].includes(payment.status)) {
+    try {
+      const verified = await Promise.race([
+        verifyPayment({ orderId: payment.orderId, userId: isAdmin ? undefined : userId }, null),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('verify timeout')), 6000)),
+      ]);
+      if (verified && verified.payment) payment = verified.payment;
+    } catch (err) {
+      logger.warn(`Details reconcile skipped for ${payment.orderId}: ${err.message}`);
+    }
   }
   return payment;
 }

@@ -319,12 +319,25 @@ async function verifyPayment({
     );
     const link = unwrapPaymentLink(linkResult);
     const linkStatus = normalizePaymentStatus(link);
-    if (isPaidStatus(linkStatus)) {
+    // The link status can lag behind: also trust a succeeded entry in link.payments
+    // or a fully-paid amount so a completed payment never stays "initiated".
+    const linkPayments = Array.isArray(link.payments) ? link.payments : [];
+    const succeededPayment = linkPayments.find((p) =>
+      isPaidStatus(normalizePaymentStatus(p))
+    );
+    const amountPaid = Number(link.amount_paid);
+    const amountDue = Number(link.amount);
+    const fullyPaid =
+      Number.isFinite(amountPaid) && amountPaid > 0 && Number.isFinite(amountDue) && amountPaid >= amountDue;
+    if (isPaidStatus(linkStatus) || succeededPayment || fullyPaid) {
       return {
         status: 'paid',
-        payment_status: linkStatus,
+        payment_status: linkStatus || 'paid',
         reference_id: link.reference_id || orderId,
-        payment_id: link.payment_id || zohoPaymentId,
+        payment_id:
+          (succeededPayment && (succeededPayment.payment_id || succeededPayment.id)) ||
+          link.payment_id ||
+          zohoPaymentId,
         payment_link_id: link.payment_link_id || linkId,
         amount: link.amount,
         amount_paid: link.amount_paid,
@@ -573,7 +586,126 @@ function normalizeWebhookPayload(payload) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Payment method / paid-time extraction                               */
+/* ------------------------------------------------------------------ */
+
+function normalizeMethodKey(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (!s) return null;
+  if (/(upi|gpay|google_?pay|phone_?pe|paytm|bhim)/.test(s)) return 'upi';
+  if (/(card|credit|debit|visa|master|rupay|amex)/.test(s)) return 'card';
+  if (/(net_?banking|netbanking|net banking|bank)/.test(s)) return 'netbanking';
+  if (/wallet/.test(s)) return 'wallet';
+  if (/emi/.test(s)) return 'emi';
+  return s.replace(/\s+/g, '_').slice(0, 32);
+}
+
+function firstString(...values) {
+  for (const v of values) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s && s !== '[object Object]') return s;
+  }
+  return '';
+}
+
+function readMethodDetail(methodKey, src) {
+  if (!src || typeof src !== 'object') return '';
+  if (methodKey === 'upi') {
+    return firstString(src.vpa, src.upi_id, src.upi_vpa, src.payer_vpa, src.upi_app, src.app_name);
+  }
+  if (methodKey === 'card') {
+    const last4 = firstString(src.last_four_digits, src.last4, src.card_last4, src.last_4_digits);
+    const network = firstString(src.network, src.card_network, src.card_type, src.brand);
+    if (last4) return `${network ? `${network} ` : ''}•••• ${last4}`;
+    return network;
+  }
+  if (methodKey === 'netbanking') {
+    return firstString(src.bank_name, src.bank, src.bank_code);
+  }
+  if (methodKey === 'wallet') {
+    return firstString(src.wallet_name, src.wallet, src.provider);
+  }
+  return firstString(src.name, src.provider);
+}
+
+function parseGatewayDate(value) {
+  if (value == null || value === '') return null;
+  let d;
+  if (typeof value === 'number') {
+    d = new Date(value < 1e12 ? value * 1000 : value);
+  } else {
+    const str = String(value).trim().replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+    d = /^\d{10,13}$/.test(str)
+      ? new Date(str.length <= 10 ? Number(str) * 1000 : Number(str))
+      : new Date(str);
+  }
+  if (Number.isNaN(d.getTime())) return null;
+  // Ignore nonsense values (before 2020 or more than 5 minutes in the future).
+  if (d.getFullYear() < 2020 || d.getTime() > Date.now() + 5 * 60 * 1000) return null;
+  return d;
+}
+
+/**
+ * Pull the payment instrument (UPI / card / netbanking / wallet) and the gateway's
+ * own paid timestamp out of any Zoho payload shape (verify result, return URL,
+ * webhook envelope). Everything is optional — callers must tolerate nulls.
+ */
+function extractPaymentDetails(payload) {
+  const out = { method: null, detail: '', paidAt: null };
+  if (!payload || typeof payload !== 'object') return out;
+
+  const candidates = [];
+  const push = (v) => {
+    if (Array.isArray(v)) v.forEach(push);
+    else if (v && typeof v === 'object') candidates.push(v);
+  };
+  const eo = payload.event_object && typeof payload.event_object === 'object' ? payload.event_object : {};
+  const link = eo.payment_links || eo.payment_link || {};
+  push(payload.raw && payload.raw.payments);
+  push(payload.raw && payload.raw.payment);
+  push(payload.payments);
+  push(payload.payment);
+  push(eo.payment);
+  push(eo.payments);
+  push(link.payments);
+  push(payload);
+
+  candidates.sort(
+    (a, b) =>
+      Number(isPaidStatus(normalizePaymentStatus(b))) -
+      Number(isPaidStatus(normalizePaymentStatus(a)))
+  );
+
+  for (const c of candidates) {
+    const pm = c.payment_method ?? c.payment_mode ?? c.payment_method_type ?? c.method ?? c.instrument;
+    if (!out.method && pm != null && pm !== '') {
+      let typeRaw = pm;
+      let src = c;
+      if (typeof pm === 'object') {
+        typeRaw = firstString(pm.type, pm.name, pm.method, Object.keys(pm).find((k) => typeof pm[k] === 'object'));
+        const nested = typeRaw && typeof pm[typeRaw] === 'object' ? pm[typeRaw] : {};
+        src = { ...c, ...pm, ...nested };
+      }
+      const key = normalizeMethodKey(typeRaw);
+      if (key) {
+        out.method = key;
+        out.detail = readMethodDetail(key, src);
+      }
+    }
+    if (!out.paidAt) {
+      out.paidAt = parseGatewayDate(
+        c.paid_time ?? c.payment_time ?? c.paid_at ?? c.payment_date ?? c.date ?? c.created_time
+      );
+    }
+    if (out.method && out.paidAt) break;
+  }
+  return out;
+}
+
 module.exports = {
+  extractPaymentDetails,
   createPaymentOrder,
   createPaymentLink,
   verifyPayment,

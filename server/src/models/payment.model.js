@@ -72,7 +72,10 @@ const paymentSchema = new mongoose.Schema(
     zohoPaymentId: { type: String, trim: true, default: null, index: true },
     zohoOrderId: { type: String, trim: true, default: null },
     paymentLinkUrl: { type: String, trim: true, default: null },
+    /** How the customer paid: upi | card | netbanking | wallet | emi (from the gateway) */
     paymentMethod: { type: String, trim: true, default: null },
+    /** Human detail for the method — UPI id, "Visa •••• 4242", bank name, … */
+    paymentMethodDetail: { type: String, trim: true, default: null },
     gmpShare: { type: Number, default: 0, min: 0 },
     cobblerShare: { type: Number, default: 0, min: 0 },
     commissionPercent: { type: Number, default: 20, min: 0, max: 100 },
