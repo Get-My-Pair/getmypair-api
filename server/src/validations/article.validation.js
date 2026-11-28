@@ -56,7 +56,7 @@ async function assertActiveCategory(value) {
 
 const footwearTypeEnum = ['luxury', 'everyday'];
 
-const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize', 'footwearType'];
+const updateArticleFieldKeys = ['brand', 'model', 'category', 'color', 'purchaseYear', 'condition', 'materials', 'images', 'shoeSize', 'footwearType', 'isFavorite'];
 
 const createArticleValidation = [
   body('purchaseYear')
@@ -202,6 +202,10 @@ const updateArticleValidation = [
     .trim()
     .isLength({ max: 32 })
     .withMessage('Shoe size must be at most 32 characters'),
+  body('isFavorite')
+    .optional()
+    .isBoolean()
+    .withMessage('isFavorite must be true or false'),
   body().custom((value, { req }) => {
     const b = req.body || {};
     const hasField = updateArticleFieldKeys.some((k) => Object.prototype.hasOwnProperty.call(b, k));

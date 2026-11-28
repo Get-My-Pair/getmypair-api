@@ -122,11 +122,15 @@ const updateArticle = async (req, res) => {
   try {
     const { articleId } = req.params;
     const ownerId = req.user._id;
-    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize, footwearType } = req.body;
+    const { brand, model, category, color, purchaseYear, materials, condition, images, shoeSize, footwearType, isFavorite } = req.body;
 
     const article = await Article.findOne({ _id: articleId, ownerId });
     if (!article) {
       return notFound(res, 'Article not found');
+    }
+
+    if (isFavorite !== undefined) {
+      article.isFavorite = isFavorite === true || isFavorite === 'true';
     }
 
     if (footwearType !== undefined) {

@@ -95,6 +95,11 @@ const articleSchema = new mongoose.Schema(
       maxlength: 32,
       default: null,
     },
+    /** Marked with the heart in the app; listed on the Favorites tab */
+    isFavorite: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

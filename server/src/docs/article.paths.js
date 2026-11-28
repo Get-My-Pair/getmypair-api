@@ -364,6 +364,9 @@ void 0;
  *                 items:
  *                   type: string
  *                   format: uri
+ *               isFavorite:
+ *                 type: boolean
+ *                 description: Heart toggle - true lists the article on the Favorites tab
  *     responses:
  *       200:
  *         description: Article updated successfully
