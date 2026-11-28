@@ -45,6 +45,8 @@ const paymentRoutes = require('./routes/payment.routes');
 const masteradminRoutes = require('./routes/masteradmin.routes');
 const recyclerRoutes = require('./routes/recycler.routes');
 const masteradminRecyclerRoutes = require('./routes/masteradminRecycler.routes');
+const dropBoxRoutes = require('./routes/dropBox.routes');
+const masteradminDropBoxRoutes = require('./routes/masteradminDropBox.routes');
 const repairshopsRoutes = require('./routes/repairshops.routes');
 const deliveryPortalRoutes = require('./routes/delivery.routes');
 const { notFound } = require('./utils/response');
@@ -253,7 +255,9 @@ app.use('/api/darkworkstore', repairshopsRoutes);
 
 // Masteradmin dashboard APIs
 app.use('/api/recycler', recyclerRoutes);
+app.use('/api/dropbox', dropBoxRoutes);
 app.use('/api/masteradmin', masteradminRecyclerRoutes);
+app.use('/api/masteradmin', masteradminDropBoxRoutes);
 app.use('/api/masteradmin', masteradminRoutes);
 
 // Legacy alias (prefer /api/masteradmin)

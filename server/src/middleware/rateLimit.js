@@ -101,10 +101,40 @@ const adminLoginRateLimiter = rateLimit({
   skip: () => isNonProduction,
 });
 
+/** Public Drop Box form — anyone can post, so keep it to a few submissions per hour per IP. */
+const dropBoxSubmitRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isNonProduction ? 100000 : 15,
+  message: {
+    success: false,
+    message: 'Too many drop box submissions from this device. Please try again later.',
+    statusCode: 429,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS' || isNonProduction,
+});
+
+/** Public Drop Box location updates (one per submission, plus retries). */
+const dropBoxLocationRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isNonProduction ? 100000 : 60,
+  message: {
+    success: false,
+    message: 'Too many location updates. Please try again later.',
+    statusCode: 429,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS' || isNonProduction,
+});
+
 module.exports = {
   globalRateLimiter,
   otpRateLimiter,
   otpSendRateLimiter,
   otpVerifyRateLimiter,
   adminLoginRateLimiter,
+  dropBoxSubmitRateLimiter,
+  dropBoxLocationRateLimiter,
 };
