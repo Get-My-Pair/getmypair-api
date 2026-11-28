@@ -1251,7 +1251,32 @@ async function listPaymentHistory(userId, { page = 1, limit = 20, req } = {}) {
     Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Payment.countDocuments(filter),
   ]);
-  return { items, total, page, limit };
+  return { items: await attachServiceTypes(items), total, page, limit };
+}
+
+async function attachServiceTypes(payments) {
+  const requestIds = [
+    ...new Set(
+      payments
+        .map((item) => item.serviceRequestId)
+        .filter(Boolean)
+        .map((id) => String(id))
+    ),
+  ];
+  const requests = requestIds.length
+    ? await ServiceRequest.find({ _id: { $in: requestIds } }).select('serviceType').lean()
+    : [];
+  const typeById = new Map(requests.map((row) => [String(row._id), row.serviceType]));
+  return payments.map((raw) => {
+    const item = raw && typeof raw.toObject === 'function' ? raw.toObject() : raw;
+    let serviceType = null;
+    if (item.thriftOrderId) serviceType = 'thrift';
+    else if (item.rentListingId) serviceType = 'rent';
+    else if (item.serviceRequestId) {
+      serviceType = typeById.get(String(item.serviceRequestId)) || null;
+    }
+    return { ...item, serviceType };
+  });
 }
 
 async function getPaymentDetails(paymentId, userId, isAdmin) {
@@ -1279,7 +1304,7 @@ async function getPaymentDetails(paymentId, userId, isAdmin) {
       logger.warn(`Details reconcile skipped for ${payment.orderId}: ${err.message}`);
     }
   }
-  return payment;
+  return attachServiceTypes([payment]).then((rows) => rows[0]);
 }
 
 async function getCobblerEarnings(cobblerId, { from, to }) {
